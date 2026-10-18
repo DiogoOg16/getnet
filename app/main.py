@@ -1,11 +1,22 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from app.agents.router import RouterAgent
+from app.agents.knowledge import KnowledgeAgent
+from app.agents.customer_support import CustomerSupportAgent
+from app.agents.web_search import WebSearchAgent
+
+
 app = FastAPI(
     title="Getnet AI Agent",
     description="API para o sistema multiagente de suporte.",
-    version="0.1.0",
+    version="0.3.0",
 )
+
+router_agent = RouterAgent()
+knowledge_agent = KnowledgeAgent()
+support_agent = CustomerSupportAgent()
+web_search_agent = WebSearchAgent()
 
 
 class ChatRequest(BaseModel):
@@ -17,6 +28,10 @@ class ChatResponse(BaseModel):
     user_id: str
     message: str
     response: str
+    agent: str
+    routing_reason: str
+    sources: list[str] = Field(default_factory=list)
+    tool_used: str | None = None
 
 
 @app.get("/health")
@@ -26,10 +41,39 @@ def health_check():
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-    # Resposta temporária: depois será substituída
-    # pelo resultado do nosso sistema multiagente.
+    decision = router_agent.route(request.message)
+
+    if decision.agent == "knowledge":
+        result = knowledge_agent.answer(request.message)
+
+    elif decision.agent == "customer_support":
+        result = support_agent.answer(
+            message=request.message,
+            user_id=request.user_id,
+        )
+
+    elif decision.agent == "web_search":
+        result = web_search_agent.answer(request.message)
+
+    else:
+        result = {
+            "agent": "fallback",
+            "response": (
+                "Não consegui identificar sua solicitação com segurança. "
+                "Você pode perguntar sobre produtos e serviços Getnet, "
+                "informações externas ou um problema específico da sua "
+                "conta ou transação."
+            ),
+            "sources": [],
+            "tool_used": None,
+        }
+
     return ChatResponse(
         user_id=request.user_id,
         message=request.message,
-        response="API funcionando. Os agentes ainda serão implementados.",
+        response=result["response"],
+        agent=result["agent"],
+        routing_reason=decision.reason,
+        sources=result.get("sources", []),
+        tool_used=result.get("tool_used"),
     )
