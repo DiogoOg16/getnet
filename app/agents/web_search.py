@@ -2,6 +2,11 @@ import re
 
 import requests
 from bs4 import BeautifulSoup
+from app.tools.weather import (
+    extract_city,
+    get_forecast,
+    wants_tomorrow,
+)
 from app.tools.exchange_rate import (
     CURRENCIES,
     detect_currency,
@@ -37,6 +42,9 @@ class WebSearchAgent:
         currency = detect_currency(message)
         if currency and self._is_exchange_question(message):
             return self._exchange_answer(currency)
+
+        if self._is_weather_question(message):
+            return self._weather_answer(message)
 
         try:
             response = requests.post(
@@ -128,6 +136,59 @@ class WebSearchAgent:
             ),
             "sources": [item["url"] for item in results],
             "tool_used": "duckduckgo_search",
+        }
+
+    @staticmethod
+    def _is_weather_question(message: str) -> bool:
+        return bool(re.search(
+            r"\bclima\b|\btempo em\b|previs[aã]o do tempo|\bweather\b|\bforecast\b",
+            message.casefold(),
+        ))
+
+    @staticmethod
+    def _weather_answer(message: str) -> dict:
+        city = extract_city(message)
+        if not city:
+            return {
+                "agent": "web_search",
+                "response": (
+                    "Para consultar a previsão do tempo, informe a cidade. "
+                    "Por exemplo: previsão do tempo em Porto Alegre."
+                ),
+                "sources": [],
+                "tool_used": None,
+            }
+
+        result = get_forecast(city, tomorrow=wants_tomorrow(message))
+
+        if not result["found"]:
+            reason = (
+                f"Não encontrei a cidade {city}."
+                if result["error"] == "city_not_found"
+                else "O serviço de previsão do tempo está indisponível no momento."
+            )
+            return {
+                "agent": "web_search",
+                "response": f"{reason} Tente novamente mais tarde.",
+                "sources": [],
+                "tool_used": "open_meteo",
+            }
+
+        year, month, day = result["date"].split("-")
+        place = ", ".join(
+            part for part in (result["city"], result["region"]) if part
+        )
+        return {
+            "agent": "web_search",
+            "response": (
+                f"Previsão para {place} em {day}/{month}/{year}: "
+                f"mínima de {result['temp_min']:.1f} °C, "
+                f"máxima de {result['temp_max']:.1f} °C, "
+                f"chance de chuva de {result['rain_probability']}%. "
+                "Fonte: Open-Meteo."
+            ),
+            "sources": ["https://open-meteo.com"],
+            "tool_used": "open_meteo",
         }
 
     @staticmethod

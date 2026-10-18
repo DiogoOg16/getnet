@@ -151,3 +151,68 @@ def test_exchange_question_reports_unavailable_without_inventing(monkeypatch):
     assert result["sources"] == []
     assert "indisponível" in result["response"]
     assert "R$" not in result["response"]
+
+
+def test_weather_question_uses_open_meteo_instead_of_search(monkeypatch):
+    from app.agents import web_search
+
+    monkeypatch.setattr(
+        web_search,
+        "get_forecast",
+        lambda city, tomorrow=False: {
+            "found": True,
+            "city": "Porto Alegre",
+            "region": "Rio Grande do Sul",
+            "country": "Brasil",
+            "date": "2026-10-19",
+            "temp_max": 19.6,
+            "temp_min": 11.0,
+            "rain_probability": 10,
+        },
+    )
+
+    def fail_post(*args, **kwargs):
+        raise AssertionError("não deveria consultar o DuckDuckGo")
+
+    monkeypatch.setattr(requests, "post", fail_post)
+
+    result = WebSearchAgent().answer(
+        "What's the weather forecast in Porto Alegre tomorrow?"
+    )
+
+    assert result["tool_used"] == "open_meteo"
+    assert "19/10/2026" in result["response"]
+    assert "19.6" in result["response"]
+    assert "10%" in result["response"]
+
+
+def test_weather_question_without_city_asks_for_city(monkeypatch):
+    from app.agents import web_search
+
+    def fail(*args, **kwargs):
+        raise AssertionError("não deveria consultar a rede")
+
+    monkeypatch.setattr(web_search, "get_forecast", fail)
+    monkeypatch.setattr(requests, "post", fail)
+
+    result = WebSearchAgent().answer("Como está o clima?")
+
+    assert result["tool_used"] is None
+    assert "informe a cidade" in result["response"]
+
+
+def test_weather_unavailable_does_not_invent_values(monkeypatch):
+    from app.agents import web_search
+
+    monkeypatch.setattr(
+        web_search,
+        "get_forecast",
+        lambda city, tomorrow=False: {"found": False, "error": "unavailable"},
+    )
+
+    result = WebSearchAgent().answer("Previsão do tempo em Porto Alegre")
+
+    assert result["tool_used"] == "open_meteo"
+    assert result["sources"] == []
+    assert "indisponível" in result["response"]
+    assert "°C" not in result["response"]
