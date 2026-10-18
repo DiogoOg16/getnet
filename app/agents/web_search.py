@@ -121,6 +121,9 @@ class WebSearchAgent:
     @staticmethod
     def _resolve_url(raw_url: str) -> str | None:
         """Unwrap DuckDuckGo redirects and accept only HTTP(S) URLs."""
+        if raw_url.startswith("//"):
+            raw_url = "https:" + raw_url
+
         parsed = urlparse(raw_url)
 
         if parsed.scheme not in {"http", "https"}:

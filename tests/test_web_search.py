@@ -88,3 +88,15 @@ def test_unwraps_duckduckgo_redirect():
     resolved = WebSearchAgent._resolve_url(url)
 
     assert resolved == "https://www.bcb.gov.br/conversao"
+
+
+def test_unwraps_protocol_relative_duckduckgo_redirect():
+    url = (
+        "//duckduckgo.com/l/?uddg="
+        "https%3A%2F%2Fwww.bcb.gov.br%2Fconversao"
+    )
+
+    assert (
+        WebSearchAgent._resolve_url(url)
+        == "https://www.bcb.gov.br/conversao"
+    )
