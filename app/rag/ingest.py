@@ -214,6 +214,77 @@ def ingest_faq(slug: str) -> list[dict]:
     return records
 
 
+def _page_soup(slug: str) -> tuple[BeautifulSoup, str]:
+    url = f"https://site.getnet.com.br/{slug}/"
+    response = requests.get(
+        url, headers={"User-Agent": USER_AGENT}, timeout=25
+    )
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "html.parser")
+    for element in soup.select("script, style, noscript, svg, form"):
+        element.decompose()
+    return soup, url
+
+
+def _text(element) -> str:
+    return clean_text(element.get_text(" ", strip=True))
+
+
+def ingest_product_pages() -> list[dict]:
+    """Selected, noise-free sections from product pages."""
+    now = datetime.now(timezone.utc).isoformat()
+    records = []
+
+    def add(title, content, url):
+        records.append({
+            "title": title,
+            "content": content,
+            "source_url": url,
+            "category": "product_page",
+            "ingested_at": now,
+        })
+
+    soup, url = _page_soup("link-de-pagamento")
+    for css, title in [
+        ("section.banner-section", "Link de Pagamento: visão geral"),
+        ("section.s-benefits", "Link de Pagamento: benefícios"),
+        ("section.s-payment", "Link de Pagamento: planos e custos"),
+        ("section.s-steps", "Link de Pagamento: como criar e compartilhar"),
+    ]:
+        element = soup.select_one(css)
+        if element:
+            add(title, _text(element), url)
+
+    soup, url = _page_soup("crediario")
+    for element in soup.select("div.o-image-text"):
+        add("Crediário: vantagens", _text(element), url)
+    for element in soup.select("section.c-disclaimer-text-image"):
+        add("Crediário: observações sobre taxas e juros", _text(element), url)
+
+    soup, url = _page_soup("todas-as-maquininhas")
+    candidates = [
+        e for e in soup.find_all(True)
+        if "79,90" in _text(e) and "129,90" in _text(e)
+    ]
+    if candidates:
+        prices = _text(min(candidates, key=lambda e: len(_text(e))))
+        add(
+            "Maquininhas Get Clássica e Get Smart: valor mensal de utilização",
+            (
+                "Valor de utilização mensal das maquininhas, cobrado caso o "
+                f"faturamento mínimo não seja atingido: {prices}. "
+                "Faturamento acima de R$ 20 mil por mês: Get Clássica "
+                "sem aluguel. Acima de R$ 40 mil por mês: Get Clássica ou "
+                "Get Smart sem aluguel. Vendas por Voucher (VA/VR) e "
+                "Crediário não compõem o faturamento para a isenção do "
+                "aluguel. Valores e condições podem mudar; confirme no site."
+            ),
+            url,
+        )
+
+    return records
+
+
 def dedupe(records: list[dict]) -> list[dict]:
     seen = set()
     unique = []
@@ -248,6 +319,14 @@ def main():
         except requests.RequestException as error:
             failures.append(f"faq/{slug}")
             print(f"ERROR: faq/{slug} -> {error}")
+
+    try:
+        products = ingest_product_pages()
+        all_records.extend(products)
+        print(f"OK: product pages -> {len(products)} chunks")
+    except requests.RequestException as error:
+        failures.append("product_pages")
+        print(f"ERROR: product pages -> {error}")
 
     all_records = dedupe(all_records)
 
