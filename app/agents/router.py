@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import re
 import unicodedata
 
 
@@ -9,60 +10,155 @@ class RoutingDecision:
 
 
 def normalize(text: str) -> str:
-    text = unicodedata.normalize("NFKD", text.casefold())
+    text = unicodedata.normalize(
+        "NFKD", text.replace("’", "'").casefold()
+    )
     return "".join(
         char for char in text
         if not unicodedata.combining(char)
     ).strip()
 
 
+def _compile(patterns: tuple[str, ...]) -> re.Pattern:
+    return re.compile("|".join(patterns))
+
+
+# Todos os padrões operam sobre texto normalizado (minúsculo, sem acentos).
+
+TRANSACTION_ID = re.compile(r"\btxn\d+\b")
+
+DEVICE = _compile((
+    r"\bmaquin",
+    r"\bcard machine\b",
+    r"\bcard reader\b",
+    r"\bterminal\b",
+))
+
+DEVICE_PROBLEM = _compile((
+    r"\bnao conecta",
+    r"\bnao liga",
+    r"\bnao funciona",
+    r"\btravou",
+    r"\binternet\b",
+    r"\bwi-?fi\b",
+    r"\berro\b",
+    r"\berror\b",
+    r"\bdeclin",
+    r"\brecus",
+    r"\bwon'?t\b",
+    r"\bnot working\b",
+    r"\bconnect",
+    r"\bfreez",
+))
+
+SUPPORT = _compile((
+    r"\bminha conta\b",
+    r"\bmeu cadastro\b",
+    r"\bmeus dados\b",
+    r"\bmeu perfil\b",
+    r"\bmeu saldo\b",
+    r"\bmeu dinheiro\b",
+    r"\bmeu recebimento\b",
+    r"\bdeposit",
+    r"\btransac",
+    r"\bnao recebi\b",
+    r"\bfoi recusad[ao]\b",
+    r"\bnao consigo acessar\b",
+    r"\bproblemas? (?:na minha conta|para acessar)\b",
+    r"\bmy account\b",
+    r"\bmy balance\b",
+    r"\bmy money\b",
+    r"\bmy payment",
+    r"\bmy profile\b",
+    r"\bdid(?:n't| not) receive\b",
+    r"\bnot received\b",
+    r"\bhaven't received\b",
+))
+
+WEB = _compile((
+    r"\bclima\b",
+    r"\btempo em\b",
+    r"\bprevisao do tempo\b",
+    r"\bweather\b",
+    r"\bforecast\b",
+    r"\bcotacao\b",
+    r"\bcambio\b",
+    r"\bexchange rate\b",
+    r"\beuros?\b",
+    r"\bdolar(?:es)?\b",
+    r"\bdollars?\b",
+    r"\bnoticias?\b",
+    r"\bnews\b",
+    r"\beleicao\b",
+    r"\belection\b",
+    r"\bquem ganhou\b",
+    r"\bultimo resultado\b",
+    r"\batualizado hoje\b",
+))
+
+KNOWLEDGE = _compile((
+    r"\bqual a diferenca\b",
+    r"\bdiferenca entre\b",
+    r"\bdifference between\b",
+    r"\bcomo funciona",
+    r"\bhow (?:does|do i|do you|can i)\b",
+    r"\bo que (?:e|sao)\b",
+    r"\bwhat is\b",
+    r"\bquais sao\b",
+    r"\bmaquin",
+    r"\bcard machine\b",
+    r"\bpix\b",
+    r"\bantecip",
+    r"\breceivable",
+    r"\blink de pagamento\b",
+    r"\bpayment link\b",
+    r"\bcrediario\b",
+    r"\binstallment",
+    r"\bparcel",
+    r"\btaxas?\b",
+    r"\bfees?\b",
+    r"\bprodutos?\b",
+    r"\bservicos?\b",
+    r"\bgetnet\b",
+    r"\bget (?:classica|smart)\b",
+    r"\bwhatsapp\b",
+))
+
+
 class RouterAgent:
-    """Routes incoming messages using explicit keyword rules."""
-
-    SUPPORT_KEYWORDS = (
-        "minha venda", "minhas vendas",
-        "meu pagamento", "meus pagamentos",
-        "meu dinheiro", "minha conta", "meu cadastro",
-        "meu recebimento", "meu saldo", "saldo",
-        "deposito", "transacao", "transacoes",
-        "nao consigo acessar", "nao conecta",
-        "nao funciona", "foi recusada", "foi recusado",
-        "nao recebi", "problema na minha conta",
-        "problemas para acessar",
-    )
-
-    WEB_KEYWORDS = (
-        "clima", "tempo em ", "previsao do tempo",
-        "cotacao", "cambio", "euro", "dolar",
-        "eleicao", "noticias", "noticia",
-        "quem ganhou", "ultimo resultado",
-        "atualizado hoje",
-    )
-
-    KNOWLEDGE_KEYWORDS = (
-        "qual a diferenca", "como funciona",
-        "o que e", "o que sao", "quais sao",
-        "maquininha", "maquina de cartao",
-        "pix", "antecipacao", "link de pagamento",
-        "crediario", "taxas", "produtos", "servicos",
-    )
+    """Routes incoming messages using explicit, rule-based intent patterns."""
 
     def route(self, message: str) -> RoutingDecision:
         text = normalize(message)
 
-        if any(keyword in text for keyword in self.SUPPORT_KEYWORDS):
+        if TRANSACTION_ID.search(text):
+            return RoutingDecision(
+                agent="customer_support",
+                reason="The message references a specific transaction ID.",
+            )
+
+        if DEVICE.search(text) and DEVICE_PROBLEM.search(text):
+            return RoutingDecision(
+                agent="knowledge",
+                reason=(
+                    "The message describes a card machine problem; "
+                    "answered from troubleshooting knowledge."
+                ),
+            )
+
+        if SUPPORT.search(text):
             return RoutingDecision(
                 agent="customer_support",
                 reason="The message appears to concern a customer account or transaction.",
             )
 
-        if any(keyword in text for keyword in self.WEB_KEYWORDS):
+        if WEB.search(text):
             return RoutingDecision(
                 agent="web_search",
                 reason="The message appears to require external or current information.",
             )
 
-        if any(keyword in text for keyword in self.KNOWLEDGE_KEYWORDS):
+        if KNOWLEDGE.search(text):
             return RoutingDecision(
                 agent="knowledge",
                 reason="The message appears to ask about a Getnet product or service.",

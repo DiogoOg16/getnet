@@ -11,14 +11,14 @@ def test_routes_product_question_to_knowledge():
     assert result.agent == "knowledge"
 
 
-def test_routes_customer_issue_to_support():
+def test_routes_device_problem_to_knowledge():
     router = RouterAgent()
 
     result = router.route(
         "Minha máquina não conecta à internet"
     )
 
-    assert result.agent == "customer_support"
+    assert result.agent == "knowledge"
 
 
 def test_routes_payment_problem_to_support():
