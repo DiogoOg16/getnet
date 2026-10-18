@@ -36,6 +36,15 @@ SOURCES = [
 ]
 
 
+FAQ_BASE = "https://site.getnet.com.br/duvidas/"
+FAQ_SLUGS = [
+    "get-smart", "get-tap", "operacional", "pix", "pix-mais-respostas",
+    "antecipacao-de-vendas", "receba-ja-2-dias", "crediario", "parcelado",
+    "link-de-pagamento", "taxas", "aluguel", "aluguel-zero", "bandeiras",
+    "cancelamento-descredenciamento", "get-conta", "split-de-pagamento",
+    "pre-autorizacao", "plano-light", "tef-captura-pinpad",
+]
+
 OUTPUT_PATH = Path(__file__).parent / "documents" / "getnet_sources.jsonl"
 USER_AGENT = "GetnetSupportPrototype/0.1 (educational project)"
 
@@ -171,6 +180,52 @@ def ingest_source(source: dict) -> list[dict]:
     return records
 
 
+def ingest_faq(slug: str) -> list[dict]:
+    """One chunk per question/answer pair from a /duvidas/ page."""
+    url = f"{FAQ_BASE}{slug}/"
+    response = requests.get(
+        url, headers={"User-Agent": USER_AGENT}, timeout=25
+    )
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    now = datetime.now(timezone.utc).isoformat()
+    records = []
+
+    for modal in soup.select("div.o-modal__content--faq"):
+        question = modal.select_one(".o-modal__title")
+        answer = modal.select_one(".o-modal__text")
+        if not question or not answer:
+            continue
+
+        q = clean_text(question.get_text(" ", strip=True))
+        a = clean_text(answer.get_text(" ", strip=True))
+        if len(q) < 10 or len(a) < 20:
+            continue
+
+        records.append({
+            "title": q,
+            "content": a,
+            "source_url": url,
+            "category": "faq",
+            "ingested_at": now,
+        })
+
+    return records
+
+
+def dedupe(records: list[dict]) -> list[dict]:
+    seen = set()
+    unique = []
+    for record in records:
+        key = (record["title"], record["content"])
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(record)
+    return unique
+
+
 def main():
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     all_records = []
@@ -184,6 +239,17 @@ def main():
         except (requests.RequestException, ValueError) as error:
             failures.append(source["url"])
             print(f"ERROR: {source['url']} -> {error}")
+
+    for slug in FAQ_SLUGS:
+        try:
+            records = ingest_faq(slug)
+            all_records.extend(records)
+            print(f"OK: faq/{slug} -> {len(records)} chunks")
+        except requests.RequestException as error:
+            failures.append(f"faq/{slug}")
+            print(f"ERROR: faq/{slug} -> {error}")
+
+    all_records = dedupe(all_records)
 
     if not all_records:
         raise SystemExit(
