@@ -8,7 +8,7 @@ class RoutingDecision:
 
 
 class RouterAgent:
-    """Classifica mensagens e escolhe o agente responsável."""
+    """Routes incoming messages to the appropriate agent."""
 
     SUPPORT_KEYWORDS = (
         "minha venda",
@@ -19,6 +19,7 @@ class RouterAgent:
         "minha conta",
         "meu cadastro",
         "meu recebimento",
+        "meu saldo",
         "saldo",
         "depósito",
         "deposito",
@@ -32,7 +33,10 @@ class RouterAgent:
         "nao conecta",
         "não funciona",
         "nao funciona",
-        "erro na minha",
+        "foi recusada",
+        "foi recusado",
+        "não recebi",
+        "nao recebi",
     )
 
     KNOWLEDGE_KEYWORDS = (
@@ -64,16 +68,16 @@ class RouterAgent:
         if any(keyword in text for keyword in self.SUPPORT_KEYWORDS):
             return RoutingDecision(
                 agent="customer_support",
-                reason="A mensagem parece tratar de uma conta ou operação do cliente.",
+                reason="The message appears to concern a customer account or transaction.",
             )
 
         if any(keyword in text for keyword in self.KNOWLEDGE_KEYWORDS):
             return RoutingDecision(
                 agent="knowledge",
-                reason="A mensagem parece pedir informações sobre produtos ou serviços.",
+                reason="The message appears to ask about a product or service.",
             )
 
         return RoutingDecision(
             agent="fallback",
-            reason="Não foi possível identificar a intenção com confiança.",
+            reason="The message intent could not be identified by the current rules.",
         )

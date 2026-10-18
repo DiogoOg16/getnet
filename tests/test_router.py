@@ -21,6 +21,16 @@ def test_routes_customer_issue_to_support():
     assert result.agent == "customer_support"
 
 
+def test_routes_payment_problem_to_support():
+    router = RouterAgent()
+
+    result = router.route(
+        "Não recebi meu pagamento"
+    )
+
+    assert result.agent == "customer_support"
+
+
 def test_unknown_message_uses_fallback():
     router = RouterAgent()
 
