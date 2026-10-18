@@ -1,5 +1,13 @@
+import re
+
 import requests
 from bs4 import BeautifulSoup
+from app.tools.exchange_rate import (
+    CURRENCIES,
+    detect_currency,
+    format_brl,
+    get_exchange_rate,
+)
 from urllib.parse import parse_qs, unquote, urlparse
 
 
@@ -26,6 +34,10 @@ class WebSearchAgent:
     }
 
     def answer(self, message: str) -> dict:
+        currency = detect_currency(message)
+        if currency and self._is_exchange_question(message):
+            return self._exchange_answer(currency)
+
         try:
             response = requests.post(
                 self.SEARCH_URL,
@@ -116,6 +128,49 @@ class WebSearchAgent:
             ),
             "sources": [item["url"] for item in results],
             "tool_used": "duckduckgo_search",
+        }
+
+    @staticmethod
+    def _is_exchange_question(message: str) -> bool:
+        return bool(re.search(
+            r"cota[cç][aã]o|c[aâ]mbio|exchange rate|quanto (?:est[aá]|vale|custa)|how much",
+            message.casefold(),
+        ))
+
+    @staticmethod
+    def _exchange_answer(currency: str) -> dict:
+        name = CURRENCIES[currency][0]
+        result = get_exchange_rate(currency)
+
+        if not result["found"]:
+            reason = (
+                "O serviço do Banco Central está indisponível no momento."
+                if result["error"] == "unavailable"
+                else "Não encontrei cotação recente nos últimos dias."
+            )
+            return {
+                "agent": "web_search",
+                "response": (
+                    f"{reason} Consulte a cotação oficial em "
+                    "https://www.bcb.gov.br/conversao."
+                ),
+                "sources": [],
+                "tool_used": "bcb_ptax",
+            }
+
+        quoted_at = result["quoted_at"]
+        return {
+            "agent": "web_search",
+            "response": (
+                f"Cotação do {name} (PTAX de fechamento do Banco Central, "
+                f"{quoted_at:%d/%m/%Y %H:%M}): compra "
+                f"{format_brl(result['buy'])}, venda "
+                f"{format_brl(result['sell'])}. Não é uma cotação em "
+                "tempo real; bancos e casas de câmbio praticam valores "
+                "diferentes."
+            ),
+            "sources": ["https://www.bcb.gov.br/conversao"],
+            "tool_used": "bcb_ptax",
         }
 
     @staticmethod

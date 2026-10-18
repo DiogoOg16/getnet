@@ -27,14 +27,18 @@ def test_returns_only_allowed_domains(monkeypatch):
     </div>
     """
 
-    monkeypatch.setattr(
-        requests,
-        "post",
-        lambda *args, **kwargs: FakeResponse(html),
-    )
+    calls = []
 
-    result = WebSearchAgent().answer("cotação euro")
+    def fake_post(*args, **kwargs):
+        calls.append(kwargs.get("data"))
+        return FakeResponse(html)
 
+    monkeypatch.setattr(requests, "post", fake_post)
+
+    result = WebSearchAgent().answer("indicadores economia Brasil")
+
+    assert calls, "a busca simulada deveria ter sido chamada"
+    assert result["tool_used"] == "duckduckgo_search"
     assert len(result["sources"]) == 1
     assert result["sources"][0] == "https://www.bcb.gov.br/conversao"
 
@@ -45,7 +49,7 @@ def test_unavailable_when_request_fails(monkeypatch):
 
     monkeypatch.setattr(requests, "post", fail_request)
 
-    result = WebSearchAgent().answer("cotação euro")
+    result = WebSearchAgent().answer("indicadores economia Brasil")
 
     assert result["agent"] == "web_search"
     assert result["sources"] == []
@@ -100,3 +104,50 @@ def test_unwraps_protocol_relative_duckduckgo_redirect():
         WebSearchAgent._resolve_url(url)
         == "https://www.bcb.gov.br/conversao"
     )
+
+
+def test_exchange_question_uses_bcb_instead_of_search(monkeypatch):
+    from datetime import datetime
+
+    from app.agents import web_search
+
+    monkeypatch.setattr(
+        web_search,
+        "get_exchange_rate",
+        lambda code: {
+            "found": True,
+            "currency": code,
+            "buy": 5.7076,
+            "sell": 5.7088,
+            "quoted_at": datetime(2026, 10, 16, 13, 4),
+        },
+    )
+
+    def fail_post(*args, **kwargs):
+        raise AssertionError("não deveria consultar o DuckDuckGo")
+
+    monkeypatch.setattr(requests, "post", fail_post)
+
+    result = WebSearchAgent().answer("What's the euro exchange rate today?")
+
+    assert result["tool_used"] == "bcb_ptax"
+    assert "5,7088" in result["response"]
+    assert "16/10/2026" in result["response"]
+    assert "tempo real" in result["response"]
+
+
+def test_exchange_question_reports_unavailable_without_inventing(monkeypatch):
+    from app.agents import web_search
+
+    monkeypatch.setattr(
+        web_search,
+        "get_exchange_rate",
+        lambda code: {"found": False, "error": "unavailable"},
+    )
+
+    result = WebSearchAgent().answer("Qual é a cotação do euro hoje?")
+
+    assert result["tool_used"] == "bcb_ptax"
+    assert result["sources"] == []
+    assert "indisponível" in result["response"]
+    assert "R$" not in result["response"]
