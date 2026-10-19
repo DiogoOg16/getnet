@@ -63,3 +63,10 @@ def test_support_has_priority_over_web_keywords():
         "Não recebi meu pagamento hoje"
     )
     assert result.agent == "customer_support"
+
+
+def test_routes_unsupported_sensitive_request_to_human_escalation():
+    result = RouterAgent().route(
+        "Preciso de ajuda com dados pessoais sensíveis e não posso continuar aqui."
+    )
+    assert result.agent == "human_escalation"

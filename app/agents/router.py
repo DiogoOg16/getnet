@@ -96,6 +96,15 @@ WEB = _compile((
     r"\batualizado hoje\b",
 ))
 
+HUMAN_ESCALATION = _compile((
+    r"\b(?:dados? pessoais|informacoes? pessoais|dados sensiveis)\b",
+    r"\b(?:sensivel|sensíveis|sensitive)\b",
+    r"\b(?:atendimento humano|falar com humano|contato humano)\b",
+    r"\b(?:nao consigo continuar|nao posso continuar|preciso de ajuda urgente)\b",
+    r"\b(?:cpf|rg|senha|cartao|numero do cartao|chave pix)\b",
+    r"\b(?:my personal data|sensitive data|human agent|talk to a human)\b",
+))
+
 KNOWLEDGE = _compile((
     r"\bqual a diferenca\b",
     r"\bdiferenca entre\b",
@@ -130,6 +139,14 @@ class RouterAgent:
 
     def route(self, message: str) -> RoutingDecision:
         text = normalize(message)
+
+        if HUMAN_ESCALATION.search(text):
+            return RoutingDecision(
+                agent="human_escalation",
+                reason=(
+                    "The request is sensitive, unsupported, or requires human assistance."
+                ),
+            )
 
         if TRANSACTION_ID.search(text):
             return RoutingDecision(

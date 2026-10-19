@@ -1,222 +1,220 @@
+"""BM25 lexical retriever over the ingested Getnet knowledge base."""
 
 import json
+import math
 import re
 import unicodedata
+from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 
 DOCUMENTS_PATH = (
     Path(__file__).parent / "documents" / "getnet_sources.jsonl"
 )
 
+K1 = 1.5
+B = 0.75
+STEM_LEN = 5
+
+# Calibrados com as perguntas de teste; ajustar medindo, não adivinhando.
+MIN_SCORE = 3.0
+MIN_COVERAGE = 0.7
+
 STOPWORDS = {
+    # português
     "a", "o", "as", "os", "um", "uma", "de", "do", "da", "dos", "das",
     "em", "no", "na", "nos", "nas", "por", "para", "com", "e", "ou",
     "que", "como", "qual", "quais", "meu", "minha", "meus", "minhas",
     "eu", "voce", "voces", "ser", "ter", "ao", "se", "via", "pelo",
-    "pela", "pode", "posso", "fazer", "funciona", "sobre", "mais",
+    "pela", "pode", "posso", "fazer","faco","funciona", "sobre", "mais",
+    "nao", "sua", "seu", "suas", "seus", "esta", "isso", "ja", "onde",
+    "quando", "quantas", "quanto", "quantos", "preciso", "precisa",
+    "ontem", "hoje", "amanha", "informacoes", "informacao", "existem",
+    "existe", "tem", "sao", "foi", "vou", "ha",
+    # inglês
+    "the", "an", "of", "to", "in", "is", "are", "do", "does", "did",
+    "my", "me", "can", "what", "how", "with", "and", "or", "for", "on",
+    "it", "be", "will", "from", "between", "into", "should", "i", "you",
+    "your", "have", "has", "need", "won", "t", "s", "yesterday", "today",
+    "tomorrow", "many", "much", "work", "split", "there", "this", "that",
+    "sale", "sales", "through", "using", "showing", "into",
 }
 
-IGNORED_TITLE_TERMS = {
-    "veja", "videos", "video", "beneficios",
+# Termos de perguntas em inglês traduzidos para o vocabulário da base.
+SYNONYMS = {
+    "installment": "parcelas", "installments": "parcelas",
+    "machine": "maquininha", "machines": "maquininha",
+    "terminal": "maquininha", "reader": "maquininha",
+    "receivable": "recebiveis", "receivables": "recebiveis",
+    "advance": "antecipacao", "anticipation": "antecipacao",
+    "deposit": "deposito", "deposited": "depositado",
+    "envio": "enviado",
+    "sell": "vender",
+    "transacao": "vendas",
+    "bank": "banco", "account": "conta",
+    "money": "dinheiro", "receive": "receber", "payment": "pagamento",
+    "connect": "conecta", "connection": "conexao",
+    "decline": "recusada venda negada",
+    "declined": "recusada venda negada",
+    "refused": "recusada venda negada",
+    "recusada": "venda negada",
+    "recusado": "venda negada",
+    "recusadas": "venda negada",
+    "recusados": "venda negada",
+    "error": "erro", "difference": "diferenca", "card": "cartao",
+    "fee": "taxa", "fees": "taxas", "rate": "taxa", "rates": "taxas",
+    "wifi": "wi fi",
 }
+
+# Chunks de rodapé herdados das primeiras ingestões.
+NOISE_TITLE_WORDS = {"veja", "videos"}
+
 
 def normalize(text: str) -> str:
     text = unicodedata.normalize("NFKD", text.lower())
-    text = "".join(
-        char for char in text
-        if not unicodedata.combining(char)
+    return "".join(c for c in text if not unicodedata.combining(c))
+
+
+def _words(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9]+", normalize(text))
+
+
+def _stem(word: str) -> str:
+    return word[:STEM_LEN]
+
+
+def _doc_terms(text: str) -> list[str]:
+    return [
+        _stem(w) for w in _words(text)
+        if len(w) > 1 and w not in STOPWORDS
+    ]
+
+
+def query_terms(query: str) -> list[str]:
+    words = []
+    for word in _words(query):
+        if len(word) <= 1 or word in STOPWORDS:
+            continue
+        words.extend(SYNONYMS.get(word, word).split())
+    return sorted({_stem(w) for w in words})
+
+
+def _title_boost(title: str, known_terms: list[str]) -> float:
+    title_terms = set(_doc_terms(title))
+    title_matches = sum(1 for term in known_terms if term in title_terms)
+    boost = 0.35 * title_matches
+
+    if re.match(r"^(o que e|como funciona|qual e|quais sao|como e)\b", normalize(title)):
+        boost += 0.6
+    return boost
+
+
+@lru_cache(maxsize=1)
+def _index() -> dict:
+    docs = []
+
+    if DOCUMENTS_PATH.exists():
+        with DOCUMENTS_PATH.open(encoding="utf-8") as file:
+            for line in file:
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                title = record.get("title", "").strip()
+                content = record.get("content", "").strip()
+                if not title or not content:
+                    continue
+                if NOISE_TITLE_WORDS <= set(_words(title)):
+                    continue
+
+                title_terms = _doc_terms(title)
+                content_terms = _doc_terms(content)
+                terms = title_terms * 2 + content_terms
+
+                record["_title_tf"] = Counter(title_terms)
+                record["_tf"] = Counter(terms)
+                record["_len"] = len(terms)
+                docs.append(record)
+
+    df = Counter()
+    for doc in docs:
+        df.update(doc["_tf"].keys())
+
+    avgdl = (
+        sum(doc["_len"] for doc in docs) / len(docs) if docs else 0.0
     )
-    return text
+    return {"docs": docs, "df": df, "avgdl": avgdl}
 
 
-def tokenize(text: str) -> set[str]:
-    words = re.findall(r"[a-z0-9]+", normalize(text))
-    return {
-        word for word in words
-        if len(word) > 1 and word not in STOPWORDS
-    }
-
-
-def load_documents() -> list[dict]:
-    if not DOCUMENTS_PATH.exists():
-        return []
-
-    documents = []
-
-    with DOCUMENTS_PATH.open(encoding="utf-8") as file:
-        for line in file:
-            if not line.strip():
-                continue
-
-            document = json.loads(line)
-            title = document.get("title", "").strip()
-            content = document.get("content", "").strip()
-
-            if not title or not content:
-                continue
-
-            if tokenize(title) & IGNORED_TITLE_TERMS:
-                continue
-
-            document["_title_tokens"] = tokenize(title)
-            document["_content_tokens"] = tokenize(content)
-            documents.append(document)
-
-    return documents
-
-
-
+def _idf(df: Counter, total: int, term: str) -> float:
+    n = df.get(term, 0)
+    return math.log(1 + (total - n + 0.5) / (n + 0.5))
 
 
 def retrieve(query: str, limit: int = 3) -> list[dict]:
-    query_tokens = tokenize(query)
-
-    if not query_tokens or limit < 1:
+    terms = query_terms(query)
+    if not terms or limit < 1:
         return []
 
-    normalized_query = normalize(query)
-    documents = load_documents()
-    best_by_url = {}
+    index = _index()
+    docs, df, avgdl = index["docs"], index["df"], index["avgdl"]
+    if not docs:
+        return []
 
-    # Identifica o assunto principal da pergunta.
-    intent = None
+    # Termos ausentes da base não contam na cobertura.
+    known = [t for t in terms if df.get(t, 0) > 0]
+    if not known:
+        return []
 
-    if any(
-        term in normalized_query
-        for term in ["antecipar", "antecipacao", "antecipação"]
-    ):
-        intent = "antecipacao"
-    elif "expirado" in query_tokens and (
-        "qr" in query_tokens or "code" in query_tokens
-    ):
-        intent = "status_pix"
-    elif "integrar" in query_tokens or "integracao" in query_tokens:
-        intent = "integracao"
-    elif "maquininha" in query_tokens and (
-        "venda" in query_tokens or "vendas" in query_tokens
-    ):
-        intent = "venda_maquininha"
-    elif "habilitar" in query_tokens and "pix" in query_tokens:
-        if "aplicativo" in query_tokens or "app" in query_tokens:
-            intent = "habilitar_app"
-        elif "portal" in query_tokens:
-            intent = "habilitar_portal"
+    idf = {t: _idf(df, len(docs), t) for t in known}
+    total_idf = sum(idf.values())
+    key_term = max(known, key=lambda t: idf[t])
 
-    for document in documents:
-        title = normalize(document["title"])
-        content = normalize(document["content"])
-        title_tokens = document["_title_tokens"]
-        content_tokens = document["_content_tokens"]
-        url = normalize(document["source_url"])
+    results = []
+    for doc in docs:
+        tf, length = doc["_tf"], doc["_len"]
+        score = 0.0
+        matched = 0.0
+        title_matched = 0.0
 
-        title_matches = query_tokens & title_tokens
-        content_matches = query_tokens & content_tokens
+        for term in known:
+            freq = tf.get(term, 0)
+            if not freq:
+                continue
 
-        # Busca lexical: títulos têm mais peso que o conteúdo.
-        score = len(title_matches) * 5 + len(content_matches)
+            norm = freq + K1 * (1 - B + B * length / avgdl)
+            score += idf[term] * freq * (K1 + 1) / norm
+            matched += idf[term]
 
-        # Reforça correspondências com a intenção identificada.
-        if intent == "habilitar_app":
-            if "habilitar" in title and (
-                "aplicativo" in title or "app" in title
-            ):
-                score += 20
-            if "habilitar-pix-pelo-portal" in url:
-                score -= 10
+            if doc["_title_tf"].get(term, 0):
+                title_matched += idf[term]
 
-        elif intent == "habilitar_portal":
-            if "portal" in title and "habilitar" in title:
-                score += 20
-
-        elif intent == "venda_maquininha":
-            if "venda" in title and "maquininha" in title:
-                score += 20
-
-            if (
-                "maquininha" in normalized_query
-                and any(
-                    term in content
-                    for term in [
-                        "selecione a opcao",
-                        "digite o valor",
-                        "escolha pix",
-                        "qr code",
-                    ]
-                )
-            ):
-                score += 25
-
-        elif intent == "antecipacao":
-            if "antecipar" in title or "antecipacao" in title:
-                score += 20
-
-        elif intent == "status_pix":
-            if "status" in title or "expirado" in title:
-                score += 15
-            if "expirado" in content:
-                score += 5
-
-        elif intent == "integracao":
-            if document.get("category") == "technical_documentation":
-                score += 15
-            if "pix" in title:
-                score += 5
-
-        # Descarta resultados sem correspondência lexical suficiente.
-        has_sale_steps = (
-            intent == "venda_maquininha"
-            and any(
-                term in content
-                for term in [
-                    "selecione a opcao",
-                    "digite o valor",
-                    "escolha pix",
-                    "qr code",
-                ]
-            )
-        )
-
-        has_anticipation_content = (
-            intent == "antecipacao"
-            and any(
-                term in content
-                for term in ["antecipar", "antecipacao", "antecipação"]
-            )
-        )
-
-        if (
-            not title_matches
-            and len(content_matches) < 2
-            and not has_sale_steps
-            and not has_anticipation_content
-        ):
+        coverage = matched / total_idf
+        if key_term not in tf:
+            continue
+        if score < MIN_SCORE or coverage < MIN_COVERAGE:
             continue
 
-        if has_anticipation_content:
-            score += 20
+        score += _title_boost(doc["title"], known)
 
-        if has_sale_steps:
-            score += 40
+        results.append({
+            "title": doc["title"],
+            "content": doc["content"],
+            "source_url": doc["source_url"],
+            "category": doc["category"],
+            "score": round(score, 2),
+            "coverage": round(coverage, 2),
+        })
 
-        if score <= 0:
-            continue
-
-        result = {
-            "title": document["title"],
-            "content": document["content"],
-            "source_url": document["source_url"],
-            "category": document["category"],
-            "score": score,
-        }
-
-        # Retém o chunk mais relevante por página.
-        if url not in best_by_url or score > best_by_url[url]["score"]:
-            best_by_url[url] = result
-
-    results = sorted(
-        best_by_url.values(),
-        key=lambda item: item["score"],
+    results.sort(
+        key=lambda r: (r["score"], r["coverage"]),
         reverse=True,
     )
 
-    return results[:limit]
+    unique, seen_titles = [], set()
+    for result in results:
+        if result["title"] in seen_titles:
+            continue
+        seen_titles.add(result["title"])
+        unique.append(result)
+
+    return unique[:limit]

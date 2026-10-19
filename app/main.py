@@ -32,6 +32,7 @@ class ChatResponse(BaseModel):
     routing_reason: str
     sources: list[str] = Field(default_factory=list)
     tool_used: str | None = None
+    handoff_required: bool = False
 
 
 @app.get("/health")
@@ -55,6 +56,18 @@ def chat(request: ChatRequest):
     elif decision.agent == "web_search":
         result = web_search_agent.answer(request.message)
 
+    elif decision.agent == "human_escalation":
+        result = {
+            "agent": "human_escalation",
+            "response": (
+                "Solicitação fora do escopo ou sensível. "
+                "Encaminho para atendimento humano para continuidade segura."
+            ),
+            "sources": [],
+            "tool_used": "human_escalation",
+            "handoff_required": True,
+        }
+
     else:
         result = {
             "agent": "fallback",
@@ -66,6 +79,7 @@ def chat(request: ChatRequest):
             ),
             "sources": [],
             "tool_used": None,
+            "handoff_required": False,
         }
 
     return ChatResponse(
@@ -76,4 +90,5 @@ def chat(request: ChatRequest):
         routing_reason=decision.reason,
         sources=result.get("sources", []),
         tool_used=result.get("tool_used"),
+        handoff_required=result.get("handoff_required", False),
     )
