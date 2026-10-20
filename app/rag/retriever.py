@@ -123,6 +123,18 @@ def _title_boost(title: str, known_terms: list[str], query: str | None = None) -
     if plugin_query and re.match(r"^\d+\.\s*[A-Z0-9&/ -]+$", title.strip()):
         boost += 1.5
 
+    title_norm = normalize(title)
+    query_norm = normalize(query or "")
+
+    if "pix" in title_norm and "qr" in title_norm and "code" in title_norm and "pix" in query_norm and "qr" in query_norm:
+        boost += 4.0
+    if "pix" in title_norm and "get tap" in title_norm and "pix" in query_norm and "get tap" in query_norm:
+        boost += 5.0
+    if "pix" in title_norm and "get tap" in title_norm and "habilitar" in query_norm and "vender" in query_norm:
+        boost += 2.5
+    if "pix" in title_norm and "qr" in title_norm and "code" in title_norm and "vender" in query_norm:
+        boost += 2.0
+
     return boost
 
 
@@ -223,6 +235,7 @@ def retrieve(query: str, limit: int = 3) -> list[dict]:
                 "content": doc["content"],
                 "source_url": doc["source_url"],
                 "category": doc["category"],
+                "section": doc.get("section", doc.get("category", "Geral")),
                 "score": round(score, 2),
                 "coverage": round(coverage, 2),
             })
@@ -253,6 +266,7 @@ def retrieve(query: str, limit: int = 3) -> list[dict]:
             "content": doc["content"],
             "source_url": doc["source_url"],
             "category": doc["category"],
+            "section": doc.get("section", doc.get("category", "Geral")),
             "score": round(score, 2),
             "coverage": round(coverage, 2),
         })

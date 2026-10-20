@@ -244,7 +244,64 @@ Resultado verificado: 82 testes passaram, com 1 warning de dependência do FastA
 
 ## Estado atual do projeto
 
-O sistema está operacional e alinhado com a proposta de desafio: arquitetura multiagente com roteamento, suporte ao cliente, recuperação lexical sobre um corpus local e handoff humano quando necessário. A base documental foi expandida para cobrir Pix, Get Tap, plugins de e-commerce e FAQ da Getnet de forma auditável.
+O sistema está operacional e alinhado com a proposta de desafio: arquitetura multiagente com roteamento, suporte ao cliente, recuperação lexical sobre um corpus local e handoff humano quando necessário. A base documental foi expandida para cobrir Pix, Get Tap, plugins de e-commerce, erros de maquininha e FAQ da Getnet de forma auditável.
+
+### Milestones validados
+
+Os blocos abaixo foram revisados com base nas páginas oficiais da Getnet e validados por testes e checagens de resposta:
+
+- Pix
+- Plugins digitais
+- Erros de maquininha ADQ/IDL
+- FAQ de Get Tap e suporte geral
+
+Para perguntas que mencionam um erro específico da maquininha, a resposta segue o tutorial da página correspondente, incluindo descrição do erro, momento em que ocorre e passos de correção, em vez de responder apenas com uma frase genérica como “erro de comunicação”.
+
+### Próximo bloco em revisão: Gestão de Vendas
+
+A próxima etapa do escopo é a área de Gestão de Vendas, com foco em:
+
+- acesso às vendas realizadas
+- status das vendas
+- cancelamento e exportação
+- consulta de vendas Pix
+- entendimento de status e estados de autorização
+
+Validação executada no projeto:
+
+- consulta da rota `/chat` em blocos-chave do suporte Getnet
+- verificação de respostas em português brasileiro e sem inventar passos
+- confirmação de agrupamento por seção em `source_sections`
+- testes focados em recuperação e API para os blocos já validados
+
+Estrutura esperada da resposta:
+
+```json
+{
+  "source_sections": {
+    "Pix": [
+      "Como habilitar o recebimento de vendas via pix no aplicativo Getnet Brasil - Getnet",
+      "Como desabilitar o recebimento de vendas via pix no aplicativo Getnet Brasil? - Getnet",
+      "Como fazer uma venda com Pix na maquininha? - Getnet"
+    ]
+  }
+}
+```
+
+Esse padrão mostra que o Pix está sendo tratado como um bloco identificado, sem misturar o escopo do restante do catálogo.
+
+### Próximo bloco: Get Tap / maquininha / plugins
+
+Como segunda etapa, o foco agora é continuar com blocos específicos de produto e processo, sem abrir o escopo do sistema como um todo de forma genérica.
+
+Próximos blocos em ordem de priorização:
+
+1. Get Tap
+2. Maquininha
+3. Plugins de e-commerce
+4. demais categorias de ajuda da Getnet
+
+A regra daqui em diante é manter a separação por bloco de conhecimento e evitar misturar respostas de diferentes categoriais em uma única bagunça de fontes.
 
 Os ajustes mais recentes preservam seções específicas de plataformas como VTEX, Magento, WooCommerce e Shopify, em vez de perder a informação no resumo geral da página. Isso melhora a qualidade do retriever para perguntas como “quais plugins a Getnet trabalha?” ou “qual plataforma tem Pix e boleto?”.
 

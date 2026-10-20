@@ -46,6 +46,98 @@ SOURCES = [
         "category": "customer_faq",
     },
     {
+        "url": "https://site.getnet.com.br/get-ajuda-ecommerce/plugins-digitais-que-a-getnet-trabalha/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-4-83/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-4-91/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-50/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-4-30/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-4-23/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-4-27/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-idl-1-04/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-idl-1-36/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-s-2074/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-02/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-21/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-3-30/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-33/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-07/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-idl-1-08/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-19/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-06/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-87/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-nfc/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-18/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-84/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-erros-maquininha/erro-adq-1-85/",
+        "category": "customer_faq",
+    },
+    {
         "url": "https://getstore.getnet.com.br/docs/integracao-pagamento/pix/",
         "category": "technical_documentation",
     },
@@ -63,6 +155,31 @@ FAQ_SLUGS = [
 
 OUTPUT_PATH = Path(__file__).parent / "documents" / "getnet_sources.jsonl"
 USER_AGENT = "GetnetSupportPrototype/0.1 (educational project)"
+
+
+def infer_section(source_url: str, title: str = "") -> str:
+    text = f"{source_url} {title}".lower()
+    if "pix" in text:
+        return "Pix"
+    if "plugin" in text or "ecommerce" in text or "plugins-digitais" in text:
+        return "Plugins"
+    if "get-tap" in text or "tap" in text:
+        return "Get Tap"
+    if "maquininha" in text or "maquinhas" in text:
+        return "Maquininha"
+    if "link-de-pagamento" in text or "link de pagamento" in text:
+        return "Link de Pagamento"
+    if "conciliador" in text or "tef" in text:
+        return "Conciliador"
+    if "crediario" in text:
+        return "Crediário"
+    if "conta" in text:
+        return "Get Conta"
+    if "antecip" in text:
+        return "Antecipação"
+    if "vendas" in text or "gestao" in text:
+        return "Gestão de Vendas"
+    return "Geral"
 
 
 def clean_text(text: str) -> str:
@@ -200,6 +317,7 @@ def ingest_source(source: dict) -> list[dict]:
                 "content": chunk,
                 "source_url": source["url"],
                 "category": source["category"],
+                "section": infer_section(source["url"], section["title"]),
                 "ingested_at": datetime.now(timezone.utc).isoformat(),
             })
 
@@ -237,6 +355,7 @@ def ingest_faq(slug: str) -> list[dict]:
             "content": a,
             "source_url": url,
             "category": "faq",
+            "section": infer_section(url, q),
             "ingested_at": now,
         })
 

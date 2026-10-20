@@ -31,6 +31,7 @@ class ChatResponse(BaseModel):
     agent: str
     routing_reason: str
     sources: list[str] = Field(default_factory=list)
+    source_sections: dict[str, list[str]] = Field(default_factory=dict)
     tool_used: str | None = None
     handoff_required: bool = False
 
@@ -89,6 +90,7 @@ def chat(request: ChatRequest):
         agent=result["agent"],
         routing_reason=decision.reason,
         sources=result.get("sources", []),
+        source_sections=result.get("source_sections", {}),
         tool_used=result.get("tool_used"),
         handoff_required=result.get("handoff_required", False),
     )
