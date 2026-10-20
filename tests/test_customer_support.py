@@ -50,3 +50,14 @@ def test_agent_answers_customer_account_question():
 
     assert result["tool_used"] == "lookup_customer"
     assert "Cliente de Teste" in result["response"]
+
+
+def test_agent_handles_settlement_timing_question_without_transaction_id():
+    result = CustomerSupportAgent().answer(
+        "Quando o dinheiro das vendas de ontem será depositado?",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert "prazo" in result["response"].lower()
+    assert "transação" in result["response"].lower() or "txn" in result["response"].lower()

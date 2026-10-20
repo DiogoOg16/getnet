@@ -31,6 +31,15 @@ def test_routes_payment_problem_to_support():
     assert result.agent == "customer_support"
 
 
+def test_routes_settlement_timing_question_to_support():
+    assert RouterAgent().route(
+        "Quando o dinheiro das vendas de ontem será depositado?"
+    ).agent == "customer_support"
+    assert RouterAgent().route(
+        "When will the money from yesterday's sales be deposited?"
+    ).agent == "customer_support"
+
+
 def test_unknown_message_uses_fallback():
     router = RouterAgent()
 
@@ -63,6 +72,16 @@ def test_support_has_priority_over_web_keywords():
         "Não recebi meu pagamento hoje"
     )
     assert result.agent == "customer_support"
+
+
+def test_routes_generic_pix_concept_to_web_search():
+    result = RouterAgent().route("O que é o Pix?")
+    assert result.agent == "web_search"
+
+
+def test_routes_how_it_works_pix_question_to_knowledge():
+    result = RouterAgent().route("Como funciona o Pix?")
+    assert result.agent == "knowledge"
 
 
 def test_routes_unsupported_sensitive_request_to_human_escalation():

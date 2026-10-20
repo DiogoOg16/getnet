@@ -18,7 +18,23 @@ SOURCES = [
         "category": "customer_faq",
     },
     {
+        "url": "https://site.getnet.com.br/get-ajuda-pix/como-utilizo-o-pix-por-biometria/",
+        "category": "customer_faq",
+    },
+    {
         "url": "https://site.getnet.com.br/get-ajuda-pix/como-habilitar-pix-pelo-portal/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-pix/como-desabilitar-o-recebimento-de-vendas-via-pix-no-aplicativo-getnet-brasil/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-get-tap/como-habilitar-e-vender-com-pix-no-get-tap/",
+        "category": "customer_faq",
+    },
+    {
+        "url": "https://site.getnet.com.br/get-ajuda-ecommerce/plugins-digitais-que-a-getnet-trabalha/",
         "category": "customer_faq",
     },
     {
@@ -104,6 +120,13 @@ def extract_sections(html: str) -> list[dict[str, str]]:
         else "Getnet documentation"
     )
 
+    def is_plugin_heading(title: str) -> bool:
+        return bool(re.match(
+            r"^\d+\.\s*[A-Z0-9&/ -]+(?:\s*-\s*plugin(?:\s+de\s+e-commerce)?)?$",
+            title.strip(),
+            re.IGNORECASE,
+        ))
+
     sections = []
     current_title = page_title
     current_text = []
@@ -122,6 +145,12 @@ def extract_sections(html: str) -> list[dict[str, str]]:
                 })
             current_title = text
             current_text = []
+            continue
+
+        if element.name == "li" and (
+            is_plugin_heading(current_title) or "plugin de e-commerce" in current_title.lower()
+        ):
+            current_text.append(text)
             continue
 
         # Ignora itens curtos e elementos compostos principalmente por links.
@@ -335,15 +364,20 @@ def main():
             "No pages were ingested. Check network access and source URLs."
         )
 
-    with OUTPUT_PATH.open("w", encoding="utf-8") as file:
+    if failures:
+        print(f"\nWARNING: {len(failures)} source(s) failed.")
+        print("Existing corpus preserved. Fix the failed sources and retry.")
+        raise SystemExit(1)
+
+    temp_path = OUTPUT_PATH.with_suffix(".tmp")
+
+    with temp_path.open("w", encoding="utf-8") as file:
         for record in all_records:
             file.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-    print(f"\nSaved {len(all_records)} chunks to {OUTPUT_PATH}")
+    temp_path.replace(OUTPUT_PATH)
 
-    if failures:
-        print(f"WARNING: {len(failures)} source(s) failed.")
-        raise SystemExit(1)
+    print(f"\nSaved {len(all_records)} chunks to {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

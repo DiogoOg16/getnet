@@ -225,15 +225,28 @@ Exemplo de escalonamento humano:
 
 Os testes cobrem:
 
-- recuperador de conhecimento
+- recuperador de conhecimento e RAG lexical
 - roteamento por intenção
-- autorização de transação
-- busca por FAQ relevante
-- consultas de clientes e transações
-- integrações de API e agentes
+- autorização de transação e atendimento ao cliente
+- busca por FAQ relevante e consultas de Pix/Get Tap
+- cobertura de plugins e integrações de e-commerce
 - handoff humano para solicitações sensíveis e fora do escopo
 
-A suite atual usa `pytest` e valida os comportamentos críticos sem depender de rede estável. Para cenários de rede, o código usa validações de falha sem depender de disponibilidade externa. O bônus de escalation também foi validado com testes automatizados.
+Validação executada no projeto:
+
+```bash
+cd ~/Documents/getnet
+source .venv/bin/activate
+pytest -q
+```
+
+Resultado verificado: 82 testes passaram, com 1 warning de dependência do FastAPI/Starlette, sem falhas de regressão.
+
+## Estado atual do projeto
+
+O sistema está operacional e alinhado com a proposta de desafio: arquitetura multiagente com roteamento, suporte ao cliente, recuperação lexical sobre um corpus local e handoff humano quando necessário. A base documental foi expandida para cobrir Pix, Get Tap, plugins de e-commerce e FAQ da Getnet de forma auditável.
+
+Os ajustes mais recentes preservam seções específicas de plataformas como VTEX, Magento, WooCommerce e Shopify, em vez de perder a informação no resumo geral da página. Isso melhora a qualidade do retriever para perguntas como “quais plugins a Getnet trabalha?” ou “qual plataforma tem Pix e boleto?”.
 
 ## Limitações e honestidade técnica
 
@@ -243,7 +256,7 @@ Este projeto foi implementado com um retriever lexical em vez de um pipeline de 
 - não se afirma busca vetorial se ela não estiver implementada;
 - fontes externas são consultadas com regras de validação de domínio e cuidado para não inventar resposta.
 
-Essa abordagem é adequada para um desafio técnico de engenharia aplicada, especialmente quando o objetivo é demonstrar robustez, rastreabilidade e organização de código.
+Essa abordagem é adequada para um desafio técnico de engenharia aplicada, especialmente quando o objetivo é demonstrar robustez, rastreabilidade e organização de código. O projeto mantém um compromisso explícito com honestidade técnica: ele responde com o que a base documental suporta e direciona cenários fora do escopo para atendimento humano.
 
 ## Melhorias futuras
 

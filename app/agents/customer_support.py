@@ -10,6 +10,21 @@ class CustomerSupportAgent:
     def answer(self, message: str, user_id: str) -> dict:
         text = message.casefold()
 
+        settlement_timing = any(
+            term in text
+            for term in (
+                "quando o dinheiro",
+                "quando vai cair",
+                "prazo de recebimento",
+                "prazo de deposito",
+                "depositado",
+                "recebimento",
+                "vendas de ontem",
+                "dinheiro das vendas",
+                "quando o valor",
+            )
+        )
+
         transaction_id = next(
             (
                 token.strip(".,!?;:")
@@ -18,6 +33,19 @@ class CustomerSupportAgent:
             ),
             None,
         )
+
+        if settlement_timing and not transaction_id:
+            return {
+                "agent": "customer_support",
+                "response": (
+                    "O prazo de recebimento depende do canal e do tipo de venda. "
+                    "Em geral, o crédito costuma ocorrer em prazo de dias úteis, "
+                    "mas a data exata pode variar conforme a operação e o produto. "
+                    "Se quiser confirmar um caso específico, informe o identificador "
+                    "da transação ou o canal em que a venda foi feita."
+                ),
+                "tool_used": "settlement_timeline",
+            }
 
         if transaction_id:
             result = lookup_transaction(transaction_id, user_id)

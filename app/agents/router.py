@@ -96,6 +96,13 @@ WEB = _compile((
     r"\batualizado hoje\b",
 ))
 
+GENERAL_CONCEPT = _compile((
+    r"\bo que e\b",
+    r"\bwhat is\b",
+    r"\bdefinicao\b",
+    r"\bdefinition\b",
+))
+
 HUMAN_ESCALATION = _compile((
     r"\b(?:dados? pessoais|informacoes? pessoais|dados sensiveis)\b",
     r"\b(?:sensivel|sensíveis|sensitive)\b",
@@ -167,6 +174,15 @@ class RouterAgent:
             return RoutingDecision(
                 agent="customer_support",
                 reason="The message appears to concern a customer account or transaction.",
+            )
+
+        if GENERAL_CONCEPT.search(text) and not re.search(
+            r"\b(?:habilitar|desabilitar|vender|configur|antecip|status|recus|consultar|pagamento|pix no|portal|get tap|getnet)\b",
+            text,
+        ):
+            return RoutingDecision(
+                agent="web_search",
+                reason="The message is a general concept question, not a Getnet-specific procedure.",
             )
 
         if WEB.search(text):
