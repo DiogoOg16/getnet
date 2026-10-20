@@ -104,12 +104,21 @@ GENERAL_CONCEPT = _compile((
 ))
 
 HUMAN_ESCALATION = _compile((
-    r"\b(?:dados? pessoais|informacoes? pessoais|dados sensiveis)\b",
-    r"\b(?:sensivel|sensíveis|sensitive)\b",
-    r"\b(?:atendimento humano|falar com humano|contato humano)\b",
-    r"\b(?:nao consigo continuar|nao posso continuar|preciso de ajuda urgente)\b",
-    r"\b(?:cpf|rg|senha|cartao|numero do cartao|chave pix)\b",
-    r"\b(?:my personal data|sensitive data|human agent|talk to a human)\b",
+    # pedido explícito de atendimento humano
+    r"\batendimento humano\b",
+    r"\bfalar com (?:um |uma )?(?:humano|atendente|pessoa)\b",
+    r"\bcontato humano\b",
+    r"\bhuman agent\b",
+    r"\btalk to (?:a )?(?:human|person|agent)\b",
+    # usuário sem condições de continuar
+    r"\bnao (?:consigo|posso) (?:continuar|prosseguir)\b",
+    r"\bajuda urgente\b",
+    # pedido envolvendo dados pessoais sensíveis do próprio usuário
+    r"\bdados pessoais sensiveis\b",
+    r"\bmy (?:personal|sensitive) data\b",
+    # guardrail: dado sensível colado na mensagem (CPF ou número de cartão)
+    r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b",
+    r"\b(?:\d[ -]?){13,19}\b",
 ))
 
 KNOWLEDGE = _compile((
