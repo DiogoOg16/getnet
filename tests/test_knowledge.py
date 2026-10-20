@@ -128,6 +128,7 @@ def test_plugin_page_covers_plugins_question_with_domain_answer():
     assert "plugin" in content or "vtex" in content or "magento" in content or "shopify" in content
 
 
+@pytest.mark.network
 def test_plugins_page_keeps_platform_feature_lists():
     from app.rag.ingest import ingest_source
 
