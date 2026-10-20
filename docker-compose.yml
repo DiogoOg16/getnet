@@ -1,4 +1,8 @@
-version: "3.9"
+# Uso:
+#   docker compose up --build                        -> API sem LLM (respostas extrativas)
+#   docker compose --profile llm up --build          -> API + Ollama (baixa o modelo na 1a vez)
+#   OLLAMA_URL=http://host.docker.internal:11434 docker compose up --build
+#                                                    -> API usando um Ollama já rodando no host
 
 services:
   api:
@@ -10,4 +14,45 @@ services:
       - "8000:8000"
     environment:
       - PYTHONPATH=/app
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+      interval: 15s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
+
+  ollama:
+    profiles: ["llm"]
+    image: ollama/ollama:latest
+    container_name: getnet-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  ollama-pull:
+    profiles: ["llm"]
+    image: ollama/ollama:latest
+    container_name: getnet-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen2.5:7b}"]
+    restart: "no"
+
+volumes:
+  ollama_data:
