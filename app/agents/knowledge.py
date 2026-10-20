@@ -364,6 +364,21 @@ class KnowledgeAgent:
 
         return None
 
+    @staticmethod
+    def _extractive_answer(sources: list[dict], max_chars: int = 600) -> str:
+        """Resposta sem LLM: trechos recuperados, com título e limite de tamanho."""
+        parts = []
+        for source in sources:
+            content = source["content"].strip()
+            if len(content) > max_chars:
+                content = content[:max_chars].rsplit(" ", 1)[0] + "…"
+            parts.append(f"• {source['title']}: {content}")
+        return (
+            "O modelo de linguagem não está disponível agora, então seguem "
+            "os trechos mais relevantes da base de conhecimento da Getnet:\n\n"
+            + "\n\n".join(parts)
+        )
+
     def _generate(self, message: str, context: str) -> str:
         response = requests.post(
             f"{self.ollama_url}/api/chat",
@@ -444,15 +459,15 @@ class KnowledgeAgent:
 
         try:
             answer = self._generate(message, context)
+            tool_used = "ollama"
         except (requests.RequestException, ValueError, KeyError):
-            answer = (
-                "Não consegui gerar uma resposta agora. "
-                "Tente novamente ou consulte a documentação oficial da Getnet."
-            )
+            answer = self._extractive_answer(sources)
+            tool_used = "retrieval_only"
 
         return {
             "agent": "knowledge",
             "response": answer,
+            "tool_used": tool_used,
             "sources": [source["title"] for source in sources],
             "source_sections": self._group_sources_by_section(sources),
         }
