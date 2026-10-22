@@ -1,0 +1,21 @@
+{
+  "user_id": "cliente1988",
+  "message": "Como funciona o Pix?",
+  "response": "Com base no contexto fornecido, a funcionalidade do Pix na Getnet funciona da seguinte maneira:\n\n- Na Getnet, é possível gerar QR Code direto nos meios de captura para receber pagamentos com Pix.\n- A funcionalidade está disponível nos terminais físicos, no TEF Autar e no E-commerce.\n- A Getnet oferece mais uma forma de pagamento para os clientes dos comerciantes que utilizam seus serviços.\n\nNão há informações específicas sobre como Pix é agendado ou como funciona Pix Saque e Pix Troco no contexto fornecido. Portanto, não posso fornecer detalhes sobre essas funcionalidades com base nessas informações.",
+  "agent": "knowledge",
+  "routing_reason": "The message appears to ask about a Getnet product or service.",
+  "sources": [
+    "O que é Pix agendado? Como faço o agendamento do Pix?",
+    "O que é Pix Saque e Pix Troco?",
+    "Como funciona o Pix na Getnet?"
+  ],
+  "source_sections": {
+    "Pix": [
+      "O que é Pix agendado? Como faço o agendamento do Pix?",
+      "O que é Pix Saque e Pix Troco?",
+      "Como funciona o Pix na Getnet?"
+    ]
+  },
+  "tool_used": "ollama",
+  "handoff_required": false
+}

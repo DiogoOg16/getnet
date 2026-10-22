@@ -1,0 +1,17 @@
+{
+  "user_id": "cliente1988",
+  "message": "Qual é o significado do erro ADQ 4-83 na maquininha?",
+  "response": "Erro ADQ 4-83: erro de integração com as bandeiras. Caso sua maquininha apresente um ‘Erro ADQ’ na tela, você mesmo pode solucioná-lo rapidamente. Verifique o código apresentado e siga as instruções abaixo. Quando ocorre: No momento da transação. Solução: 1. Clique na tecla de Função; 2. Insira o número 38; 3. A tela ficará verde confirmando a ação; 4. Selecione a opção: Inicialização; 5. A tela ficará verde confirmando a ação, novamente; 6. Em seguida, faça uma venda teste.",
+  "agent": "knowledge",
+  "routing_reason": "The message describes a card machine problem; answered from troubleshooting knowledge.",
+  "sources": [
+    "Erro ADQ 4-83: erro de integração com as bandeiras - Getnet"
+  ],
+  "source_sections": {
+    "Maquininha": [
+      "Erro ADQ 4-83: erro de integração com as bandeiras - Getnet"
+    ]
+  },
+  "tool_used": null,
+  "handoff_required": false
+}

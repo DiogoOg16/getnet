@@ -1,10 +1,15 @@
+import logging
+
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from app.agents.router import RouterAgent
-from app.agents.knowledge import KnowledgeAgent
-from app.agents.customer_support import CustomerSupportAgent
-from app.agents.web_search import WebSearchAgent
+from app.orchestrator import ChatOrchestrator
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger("getnet_api")
 
 
 app = FastAPI(
@@ -13,10 +18,7 @@ app = FastAPI(
     version="0.3.0",
 )
 
-router_agent = RouterAgent()
-knowledge_agent = KnowledgeAgent()
-support_agent = CustomerSupportAgent()
-web_search_agent = WebSearchAgent()
+orchestrator = ChatOrchestrator()
 
 
 class ChatRequest(BaseModel):
@@ -43,47 +45,24 @@ def health_check():
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-    decision = router_agent.route(request.message)
+    logger.info(
+        "chat_request user_id=%s message=%s",
+        request.user_id,
+        request.message,
+    )
 
-    if decision.agent == "knowledge":
-        result = knowledge_agent.answer(request.message)
+    execution = orchestrator.handle(request.message, request.user_id)
+    decision = execution.decision
+    result = execution.result
 
-    elif decision.agent == "customer_support":
-        result = support_agent.answer(
-            message=request.message,
-            user_id=request.user_id,
-        )
+    logger.info(
+        "router_decision user_id=%s agent=%s reason=%s",
+        request.user_id,
+        decision.agent,
+        decision.reason,
+    )
 
-    elif decision.agent == "web_search":
-        result = web_search_agent.answer(request.message)
-
-    elif decision.agent == "human_escalation":
-        result = {
-            "agent": "human_escalation",
-            "response": (
-                "Solicitação fora do escopo ou sensível. "
-                "Encaminho para atendimento humano para continuidade segura."
-            ),
-            "sources": [],
-            "tool_used": "human_escalation",
-            "handoff_required": True,
-        }
-
-    else:
-        result = {
-            "agent": "fallback",
-            "response": (
-                "Não consegui identificar sua solicitação com segurança. "
-                "Você pode perguntar sobre produtos e serviços Getnet, "
-                "informações externas ou um problema específico da sua "
-                "conta ou transação."
-            ),
-            "sources": [],
-            "tool_used": None,
-            "handoff_required": False,
-        }
-
-    return ChatResponse(
+    response = ChatResponse(
         user_id=request.user_id,
         message=request.message,
         response=result["response"],
@@ -94,3 +73,12 @@ def chat(request: ChatRequest):
         tool_used=result.get("tool_used"),
         handoff_required=result.get("handoff_required", False),
     )
+
+    logger.info(
+        "chat_response user_id=%s agent=%s tool_used=%s handoff_required=%s",
+        request.user_id,
+        response.agent,
+        response.tool_used,
+        response.handoff_required,
+    )
+    return response

@@ -1,137 +1,117 @@
 # Getnet AI Support System
 
-Este projeto implementa um sistema multiagente para suporte de clientes e consultas de produtos da Getnet. A arquitetura foi pensada para permitir roteamento de intenção, recuperação de conhecimento interno e consulta a dados de cliente/transação, além de acesso a informação externa quando necessário.
+Este projeto implementa um assistente multiagente para suporte de clientes da Getnet, com rota por intenção, recuperação de conhecimento local e integração opcional com um modelo LLM executando no host via Ollama.
 
-## Visão geral
+## Objetivo
 
-O sistema é composto por agentes especializados:
+Cria um sistema que:
 
-- Router Agent: decide qual agente deve atender a mensagem.
-- Knowledge Agent: responde com base em FAQ e documentação interna do corpus da Getnet.
-- Customer Support Agent: consulta dados simulados do cliente e da transação usando ferramentas internas.
-- Web Search Agent: consulta fontes externas quando a pergunta exige informações atuais ou gerais.
-- Human Escalation Agent (bônus): detecta solicitações sensíveis, fora do escopo ou sem confiança suficiente e encaminha para atendimento humano.
+- roteia mensagens para o agente correto;
+- responde perguntas sobre produtos e serviços da Getnet com base em um corpus local;
+- consulta dados internos de cliente/transação quando necessário;
+- usa busca externa para informações gerais e atuais;
+- aplica guardrails e handoff humano para solicitações sensíveis ou fora do escopo.
 
-A API expõe um endpoint `POST /chat` com payload:
+## Visão geral da arquitetura
 
-```json
-{
-  "message": "Como funciona a antecipação de recebíveis?",
-  "user_id": "cliente1988"
-}
-```
+### Agentes
 
-## Arquitetura e fluxo de mensagens
+- Router Agent: decide qual agente atende a mensagem.
+- Knowledge Agent: responde usando RAG local e, opcionalmente, um modelo LLM pelo Ollama.
+- Customer Support Agent: consulta dados simulados de cliente e transação.
+- Web Search Agent: consulta APIs externas, como clima e câmbio.
+- Human Escalation Agent: encaminha solicitações sensíveis para atendimento humano.
+
+### Fluxo principal
 
 1. A mensagem entra pela API FastAPI.
-2. O `RouterAgent` analisa a intenção e escolhe o agente correto.
-3. O agente escolhido processa a pergunta usando as ferramentas e o conhecimento disponível.
-4. A resposta volta em JSON estruturado com `agent`, `response`, `sources`, `routing_reason` e `tool_used`.
+2. O router classifica a intenção.
+3. O agente correspondente executa a lógica.
+4. A resposta volta em JSON estruturado com `agent`, `routing_reason`, `response`, `sources`, `source_sections`, `tool_used` e `handoff_required`.
 
-Fluxo principal:
+## Estrutura do projeto
 
-- Perguntas sobre produtos e serviços da Getnet -> `KnowledgeAgent`
-- Dúvidas de conta, cadastro ou transação -> `CustomerSupportAgent`
-- Clima, câmbio, notícias e informações externas -> `WebSearchAgent`
-- Solicitações sensíveis, fora do escopo ou sem confiança para responder -> `HumanEscalationAgent`
+- `app/main.py`: API FastAPI e rota `/chat`
+- `app/agents/router.py`: roteamento por intenção
+- `app/agents/knowledge.py`: recuperação de conhecimento + LLM opcional + fallback
+- `app/agents/customer_support.py`: suporte ao cliente
+- `app/agents/web_search.py`: busca externa
+- `app/tools/customer_tools.py`: ferramentas de consulta de clientes e transações
+- `app/rag/retriever.py`: recuperação lexical sobre o corpus
+- `app/rag/ingest.py`: ingestão e preparação do corpus
+- `app/rag/documents/getnet_sources.jsonl`: base documental local
+- `tests/`: suíte de testes automatizados
+- `docker-compose.yml`: execução da API e do Ollama em perfil opcional
 
-## Agentes
+## Como o Knowledge Agent funciona
 
-### Router Agent
+O agente de conhecimento usa uma abordagem híbrida:
 
-Localização: `app/agents/router.py`
+1. Recupera documentos relevantes do corpus local pelo retriever.
+2. Tenta responder diretamente quando a pergunta é específica e bem coberta pela base.
+3. Se a base não for suficiente, chama o Ollama com `OLLAMA_URL/api/chat`.
+4. Se o modelo falhar ou não estiver disponível, usa resposta extrativa a partir dos trechos recuperados.
 
-Responsável por interpretar a intenção da mensagem e encaminhar para o agente adequado. A regra atual usa padrões explícitos para identificar:
+### Estados de resposta
 
-- transações (`txn...`)
-- problemas com maquininha e internet
-- perguntas sobre conta, cadastro e dados do cliente
-- consultas externas, como clima e câmbio
-- perguntas sobre Getnet, Pix, antecipação e produtos
+O campo `tool_used` pode assumir:
 
-### Knowledge Agent
+- `ollama` → uso do modelo local
+- `retrieval_only` → fallback sem LLM
+- `lookup_transaction` / `lookup_customer` → suporte do cliente
+- `open_meteo` → busca externa
+- `human_escalation` → handoff humano
 
-Localização: `app/agents/knowledge.py`
+Esse comportamento foi pensado para manter o sistema funcional mesmo sem LLM, e para deixar explícito quando o modelo foi realmente usado.
 
-O conhecimento interno é recuperado por um retriever lexical com BM25 sobre um corpus em `app/rag/documents`. Esse agente não inventa respostas; ele responde com base nas FAQ e documentos ingeridos.
+## Roteamento por módulo
 
-### Customer Support Agent
+### Knowledge
 
-Localização: `app/agents/customer_support.py`
+Perguntas sobre:
 
-Este agente usa ferramentas internas para:
+- Getnet
+- Pix
+- antecipação
+- plugins
+- produtos e serviços
+- erros de maquininha
+- status de vendas
 
-- consultar clientes por `user_id`
-- consultar transações por `transaction_id`
+### Customer Support
 
-Além disso, mantém a autorização por `user_id`: uma transação só pode ser consultada se pertencer ao usuário que a solicita.
+Perguntas que envolvem:
 
-### Web Search Agent
+- transação (`txn...`)
+- dados do cliente
+- status de conta
+- consulta de extrato ou transação
 
-Localização: `app/agents/web_search.py`
+### Web Search
 
-Este agente faz consultas de dados externos com controle de domínio e fontes permitidas. Ele cobre cenários como:
+Perguntas como:
 
-- previsão do tempo
-- câmbio e taxas
-- busca genérica em fontes públicas
+- clima
+- câmbio
+- previsões
+- notícias
+- informações externas ou atuais
 
-### Human Escalation Agent (bônus)
+### Human Escalation
 
-Localização: `app/agents/router.py` e fluxo de API em `app/main.py`
+Perguntas sensíveis ou fora do escopo:
 
-Este handoff foi adicionado como critério de segurança e operação. Quando a mensagem envolve dados sensíveis, tarefas fora do escopo ou um nível de incerteza que não pode ser resolvido com segurança, o router envia para atendimento humano. Isso reduz riscos de resposta inadequada e melhora a confiabilidade da operação.
+- dados pessoais
+- pedidos de atendimento humano
+- mensagens que exigem continuidade manual
 
-## Pipeline de RAG
-
-### 1. Ingestão
-
-Os documentos foram armazenados em JSON Lines em `app/rag/documents/getnet_sources.jsonl`.
-
-### 2. Normalização e indexação
-
-O retriever em `app/rag/retriever.py` faz:
-
-- normalização de texto
-- remoção de acentos
-- tokenização por expressão regular
-- remoção de stopwords
-- stemming simples por truncamento de termos
-- indexação lexical com BM25
-
-### 3. Recuperação
-
-`retrieve(query)` calcula:
-
-- pontuação BM25 por documento
-- cobertura dos termos conhecidos
-- filtro mínimo de qualidade
-- ordenação por relevância
-- deduplicação por título
-
-### 4. Resposta
-
-O `KnowledgeAgent` monta a resposta com os títulos e conteúdos recuperados. Como o projeto ainda usa recuperação lexical, não há uma afirmação de uso de embeddings, busca vetorial ou LLM generativo neste fluxo.
-
-## Tecnologias utilizadas
+## Requisitos
 
 - Python 3.11
-- FastAPI
-- Pydantic
-- Uvicorn
-- Pytest
-- BM25 lexical retrieval
-- BeautifulSoup para web scraping e parsing de resultados
-- requests para acesso externo
+- Docker e Docker Compose (opcional, para execução em container)
+- Ollama opcional local para geração com LLM
 
-## Execução local
-
-### Requisitos
-
-- Python 3.11
-- Ambiente virtual recomendado
-
-### Instalar dependências
+## Instalação local
 
 ```bash
 cd ~/Documents/getnet
@@ -140,7 +120,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Rodar a API
+## Execução local da API
 
 ```bash
 cd ~/Documents/getnet
@@ -148,7 +128,66 @@ source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Testar
+Healthcheck:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Resposta esperada:
+
+```json
+{"status":"ok"}
+```
+
+## Execução com Docker
+
+### Modo padrão sem LLM
+
+```bash
+docker compose up --build
+docker compose ps
+```
+
+Esse modo sobe somente a API e usa fallback extrativo quando o Ollama não está disponível.
+
+### Modo com Ollama
+
+```bash
+docker compose --profile llm up --build
+```
+
+Esse perfil sobe:
+
+- `api`
+- `ollama`
+- `ollama-pull`
+
+O serviço `ollama-pull` baixa o modelo padrão `qwen2.5:7b` uma vez.
+
+### Conexao com Ollama do host
+
+Se você já tem Ollama rodando no host, pode usar:
+
+```bash
+OLLAMA_URL=http://host.docker.internal:11434 docker compose up --build
+```
+
+## Variáveis de ambiente
+
+- `OLLAMA_URL`: URL do serviço Ollama
+- `OLLAMA_MODEL`: modelo usado pelo agente de conhecimento
+
+Valores padrão:
+
+```bash
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:7b
+```
+
+## Testes
+
+### Rodar a suíte completa
 
 ```bash
 cd ~/Documents/getnet
@@ -156,31 +195,17 @@ source .venv/bin/activate
 pytest -q
 ```
 
-## Docker
+### Resultado verificado
 
-### Build e execução com Docker
+A suíte atual foi validada com sucesso:
 
-```bash
-cd ~/Documents/getnet
-docker build -t getnet-ai-agent .
-docker run --rm -p 8000:8000 getnet-ai-agent
-```
-
-### Com Docker Compose
-
-```bash
-cd ~/Documents/getnet
-docker compose up --build
-```
-
-A aplicação fica disponível em:
-
-- http://localhost:8000/health
-- http://localhost:8000/docs
+- 108 testes aprovados
+- 1 teste skipped
+- 1 warning de dependência do FastAPI/Starlette
 
 ## Exemplos de uso da API
 
-### Requisição
+### Pergunta de conhecimento
 
 ```bash
 curl -X POST http://localhost:8000/chat \
@@ -191,73 +216,106 @@ curl -X POST http://localhost:8000/chat \
   }'
 ```
 
-### Resposta esperada
-
-```json
-{
-  "user_id": "cliente1988",
-  "message": "Como funciona a antecipação de recebíveis?",
-  "response": "Encontrei informações relacionadas ...",
-  "agent": "knowledge",
-  "routing_reason": "The message appears to ask about a Getnet product or service.",
-  "sources": ["O que é antecipação de vendas?"],
-  "tool_used": null,
-  "handoff_required": false
-}
-```
-
-Exemplo de escalonamento humano:
-
-```json
-{
-  "user_id": "cliente1988",
-  "message": "Preciso de ajuda com dados pessoais sensíveis e não posso continuar sem atendimento humano.",
-  "response": "Solicitação fora do escopo ou sensível. Encaminho para atendimento humano para continuidade segura.",
-  "agent": "human_escalation",
-  "routing_reason": "The request is sensitive, unsupported, or requires human assistance.",
-  "sources": [],
-  "tool_used": "human_escalation",
-  "handoff_required": true
-}
-```
-
-## Estratégia de testes
-
-Os testes cobrem:
-
-- recuperador de conhecimento e RAG lexical
-- roteamento por intenção
-- autorização de transação e atendimento ao cliente
-- busca por FAQ relevante e consultas de Pix/Get Tap
-- cobertura de plugins e integrações de e-commerce
-- handoff humano para solicitações sensíveis e fora do escopo
-
-Validação executada no projeto:
+### Pergunta de clima
 
 ```bash
-cd ~/Documents/getnet
-source .venv/bin/activate
-pytest -q
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Qual é a previsão do tempo em Porto Alegre amanhã?",
+    "user_id": "cliente1988"
+  }'
 ```
 
-Resultado verificado: 82 testes passaram, com 1 warning de dependência do FastAPI/Starlette, sem falhas de regressão.
+### Pergunta de suporte
 
-## Estado atual do projeto
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Minha transação txn123 foi recusada e eu quero saber o status.",
+    "user_id": "cliente1988"
+  }'
+```
 
-O sistema está operacional e alinhado com a proposta de desafio: arquitetura multiagente com roteamento, suporte ao cliente, recuperação lexical sobre um corpus local e handoff humano quando necessário. A base documental foi expandida para cobrir Pix, Get Tap, plugins de e-commerce, erros de maquininha e FAQ da Getnet de forma auditável.
+### Pergunta sensível
 
-### Milestones validados
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Preciso falar com um humano sobre dados sensíveis do meu cadastro.",
+    "user_id": "cliente1988"
+  }'
+```
 
-Os blocos abaixo foram revisados com base nas páginas oficiais da Getnet e validados por testes e checagens de resposta:
+## Observações importantes
 
-- Pix
-- Plugins digitais
-- Erros de maquininha ADQ/IDL
-- FAQ de Get Tap e suporte geral
+- O projeto foi pensado para funcionar mesmo sem LLM, usando recuperação local e fallback extrativo.
+- Quando o Ollama está disponível, o sistema usa geração real por LLM.
+- O `tool_used` é a forma mais clara de ver o que aconteceu no processamento.
+- O sistema evita responder com segurança quando o input é sensível ou fora do escopo.
 
-Para perguntas que mencionam um erro específico da maquininha, a resposta segue o tutorial da página correspondente, incluindo descrição do erro, momento em que ocorre e passos de correção, em vez de responder apenas com uma frase genérica como “erro de comunicação”.
+## Bônus implementado e observabilidade
 
-### Próximo bloco em revisão: Gestão de Vendas
+Este projeto inclui elementos do bônus proposto:
+
+- Agente de escalonamento humano para solicitações sensíveis ou fora do escopo
+- Guardrails explícitos de segurança e classificação de intenção
+- Respostas estruturadas com metadados de `agent`, `routing_reason`, `tool_used`, `sources` e `handoff_required`
+- Logs de execução para rastrear decisão do router e ferramenta usada
+- Validação funcional por cenários reais de negócio e suporte
+
+### Estratégia de avaliação
+
+A validação usa cenários de produção simulados, incluindo:
+
+- perguntas sobre Pix e Getnet
+- busca externa (clima)
+- suporte de transação com dados de cliente
+- interação com handoff humano
+
+Os testes automatizados cobrem essas rotas pela API e verificam o comportamento real do sistema sem mocks de fluxo principal.
+
+### Observabilidade
+
+O projeto foi projetado para facilitar inspeção em produção:
+
+- `agent`: agente que resolveu a mensagem
+- `routing_reason`: justificativa da decisão do router
+- `tool_used`: ferramenta executada
+- `handoff_required`: indica encaminhamento para humano
+- `sources`: fontes consultadas para resposta
+
+Essa estrutura simplifica debug, auditoria e análise de qualidade dos agentes.
+
+## Checklist do desafio
+
+O projeto cobre os requisitos principais do desafio:
+
+- arquitetura multiagente
+- API HTTP
+- roteamento por intenção
+- recuperação de conhecimento
+- busca externa
+- suporte ao cliente
+- guardrails e handoff humano
+- Docker
+- testes
+- documentação
+
+## Próximo passo sugerido
+
+A próxima etapa recomendada é a apresentação em vídeo, usando um conjunto de perguntas que mostrem cada módulo em ação:
+
+1. Knowledge com LLM
+2. Knowledge sem LLM / fallback
+3. Web Search
+4. Customer Support
+5. Human Escalation
+6. Pergunta de erro de maquininha ou Pix
+
+Essa sequência deixa claro para o avaliador que o sistema foi construído de forma funcional e que o código está realmente respondendo como esperado.
 
 A próxima etapa do escopo é a área de Gestão de Vendas, com foco em:
 

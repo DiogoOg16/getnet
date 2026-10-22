@@ -1,0 +1,62 @@
+[
+  {
+    "name": "knowledge_pix",
+    "input": {
+      "message": "Como funciona o Pix?",
+      "user_id": "cliente1988"
+    },
+    "expected_agent": "knowledge",
+    "actual_agent": "knowledge",
+    "tool_used": "ollama",
+    "handoff_required": false,
+    "response": "Não há informações suficientes no contexto fornecido sobre como o Pix funciona em detalhes. O contexto menciona que a Getnet permite receber pagamentos com Pix gerando QR Code nos terminais físicos, TEF Autar e Ecommerce, mas não explica os detalhes do funcionamento desse serviço."
+  },
+  {
+    "name": "knowledge_error_adq",
+    "input": {
+      "message": "Qual é o significado do erro ADQ 4-83 na maquininha?",
+      "user_id": "cliente1988"
+    },
+    "expected_agent": "knowledge",
+    "actual_agent": "knowledge",
+    "tool_used": null,
+    "handoff_required": false,
+    "response": "Erro ADQ 4-83: erro de integração com as bandeiras. Caso sua maquininha apresente um ‘Erro ADQ’ na tela, você mesmo pode solucioná-lo rapidamente. Verifique o código apresentado e siga as instruções abaixo. Quando ocorre: No momento da transação. Solução: 1. Clique na tecla de Função; 2. Insira o número 38; 3. A tela ficará verde confirmando a ação; 4. Selecione a opção: Inicialização; 5. A tela ficará verde confirmando a ação, novamente; 6. Em seguida, faça uma venda teste."
+  },
+  {
+    "name": "web_search_weather",
+    "input": {
+      "message": "Qual é a previsão do tempo em Porto Alegre amanhã?",
+      "user_id": "cliente1988"
+    },
+    "expected_agent": "web_search",
+    "actual_agent": "web_search",
+    "tool_used": "open_meteo",
+    "handoff_required": false,
+    "response": "Previsão para Porto Alegre, Rio Grande do Sul em 22/10/2026: mínima de 16.4 °C, máxima de 25.5 °C, chance de chuva de 36%. Fonte: Open-Meteo."
+  },
+  {
+    "name": "customer_support_transaction",
+    "input": {
+      "message": "Minha transação txn1001 foi recusada e eu quero saber o status.",
+      "user_id": "cliente1988"
+    },
+    "expected_agent": "customer_support",
+    "actual_agent": "customer_support",
+    "tool_used": "lookup_transaction",
+    "handoff_required": false,
+    "response": "A transação txn1001 está aprovada. Valor: R$ 149.90."
+  },
+  {
+    "name": "human_escalation",
+    "input": {
+      "message": "Preciso falar com um humano sobre dados sensíveis do meu cadastro.",
+      "user_id": "cliente1988"
+    },
+    "expected_agent": "human_escalation",
+    "actual_agent": "human_escalation",
+    "tool_used": "human_escalation",
+    "handoff_required": true,
+    "response": "Solicitação fora do escopo ou sensível. Encaminho para atendimento humano para continuidade segura."
+  }
+]
