@@ -199,8 +199,8 @@ pytest -q
 
 A suíte atual foi validada com sucesso:
 
-- 108 testes aprovados
-- 1 teste skipped
+- mais de 100 testes aprovados (rode `pytest -q` para o número atual)
+- 1 teste skipped (usa a internet; rode com `RUN_NETWORK_TESTS=1`)
 - 1 warning de dependência do FastAPI/Starlette
 
 ## Exemplos de uso da API
@@ -268,18 +268,18 @@ Este projeto inclui elementos do bônus proposto:
 
 ### Estratégia de avaliação
 
-A validação usa cenários de produção simulados, incluindo:
+A validação usa cenários representativos (ainda não há conjunto de avaliação automatizado nem métricas de qualidade das respostas), incluindo:
 
 - perguntas sobre Pix e Getnet
 - busca externa (clima)
 - suporte de transação com dados de cliente
 - interação com handoff humano
 
-Os testes automatizados cobrem essas rotas pela API e verificam o comportamento real do sistema sem mocks de fluxo principal.
+Os testes automatizados cobrem essas rotas pela API. O LLM (Ollama) e as chamadas de rede são simulados nos testes (`tests/conftest.py`), então a suíte roda offline em menos de 1 segundo. A geração real por LLM é conferida manualmente com `scripts/agent_probe.py`.
 
 ### Observabilidade
 
-O projeto foi projetado para facilitar inspeção em produção:
+O projeto expõe metadados que facilitam a inspeção:
 
 - `agent`: agente que resolveu a mensagem
 - `routing_reason`: justificativa da decisão do router
@@ -304,72 +304,43 @@ O projeto cobre os requisitos principais do desafio:
 - testes
 - documentação
 
-## Próximo passo sugerido
+## Pipeline de RAG
 
-A próxima etapa recomendada é a apresentação em vídeo, usando um conjunto de perguntas que mostrem cada módulo em ação:
+1. **Ingestão** (`app/rag/ingest.py`): `requests` e BeautifulSoup baixam artigos de ajuda, páginas de FAQ (`/duvidas/<categoria>/`, um trecho por par pergunta e resposta), páginas de produto e documentação técnica da Getnet. A última ingestão gerou 269 trechos, cada um com `title`, `content`, `source_url`, `category` e `ingested_at`. A base é um retrato da data da ingestão.
+2. **Armazenamento**: arquivo JSONL versionado (`app/rag/documents/getnet_sources.jsonl`). O índice é montado em memória na primeira consulta. Não há banco vetorial.
+3. **Recuperação** (`app/rag/retriever.py`): texto normalizado sem acentos, radical de 5 letras, sinônimos de inglês para português e BM25 (k1=1,5 e b=0,75) com o título pesando em dobro. Um trecho só é devolvido se passar de um score mínimo, cobrir pelo menos 45% do peso dos termos da pergunta e conter o termo mais raro dela. Abaixo disso o agente diz que não encontrou, em vez de arriscar uma resposta.
+4. **Geração** (`app/agents/knowledge.py`): para algumas perguntas específicas já cobertas pela base há respostas diretas por regras (`_direct_answer`). Nos demais casos o contexto recuperado vai para o Ollama (`qwen2.5:7b`) com um prompt de sistema que manda responder só com o contexto, não inventar regras, taxas ou procedimentos, e dizer quando não há informação suficiente. Se o Ollama não estiver disponível, a resposta é extrativa, com os trechos recuperados. O prompt pede respostas em português, por isso perguntas em inglês também voltam em português.
 
-1. Knowledge com LLM
-2. Knowledge sem LLM / fallback
-3. Web Search
-4. Customer Support
-5. Human Escalation
-6. Pergunta de erro de maquininha ou Pix
+## Estratégia de testes
 
-Essa sequência deixa claro para o avaliador que o sistema foi construído de forma funcional e que o código está realmente respondendo como esperado.
+**O que existe hoje**
 
-A próxima etapa do escopo é a área de Gestão de Vendas, com foco em:
+- Testes unitários por agente e por ferramenta, com rede simulada (câmbio, clima, busca na web e suporte ao cliente).
+- Roteamento: tabela parametrizada com os 10 cenários do desafio, equivalentes em português, falsos positivos e casos de escalação.
+- Recuperação: testes de regressão com perguntas conhecidas, incluindo casos em que nada deve ser devolvido.
+- Integração pela API: `TestClient` percorre o fluxo completo (router, agente e resposta JSON), incluindo a propriedade da transação e o handoff humano.
+- Isolamento: `tests/conftest.py` simula o LLM em todos os testes, e o único teste que usa a internet fica pulado por padrão.
+- Verificação manual: `scripts/agent_probe.py` mostra a resposta exata (com Ollama real, se estiver ligado), `scripts/validate_functionality.py` grava respostas de cenários em `logs/`, e o Docker Compose sobe a API para testes de ponta a ponta.
 
-- acesso às vendas realizadas
-- status das vendas
-- cancelamento e exportação
-- consulta de vendas Pix
-- entendimento de status e estados de autorização
+**Como eu aprofundaria a integração** (ainda não implementado)
 
-Validação executada no projeto:
-
-- consulta da rota `/chat` em blocos-chave do suporte Getnet
-- verificação de respostas em português brasileiro e sem inventar passos
-- confirmação de agrupamento por seção em `source_sections`
-- testes focados em recuperação e API para os blocos já validados
-
-Estrutura esperada da resposta:
-
-```json
-{
-  "source_sections": {
-    "Pix": [
-      "Como habilitar o recebimento de vendas via pix no aplicativo Getnet Brasil - Getnet",
-      "Como desabilitar o recebimento de vendas via pix no aplicativo Getnet Brasil? - Getnet",
-      "Como fazer uma venda com Pix na maquininha? - Getnet"
-    ]
-  }
-}
-```
-
-Esse padrão mostra que o Pix está sendo tratado como um bloco identificado, sem misturar o escopo do restante do catálogo.
-
-### Próximo bloco: Get Tap / maquininha / plugins
-
-Como segunda etapa, o foco agora é continuar com blocos específicos de produto e processo, sem abrir o escopo do sistema como um todo de forma genérica.
-
-Próximos blocos em ordem de priorização:
-
-1. Get Tap
-2. Maquininha
-3. Plugins de e-commerce
-4. demais categorias de ajuda da Getnet
-
-A regra daqui em diante é manter a separação por bloco de conhecimento e evitar misturar respostas de diferentes categoriais em uma única bagunça de fontes.
-
-Os ajustes mais recentes preservam seções específicas de plataformas como VTEX, Magento, WooCommerce e Shopify, em vez de perder a informação no resumo geral da página. Isso melhora a qualidade do retriever para perguntas como “quais plugins a Getnet trabalha?” ou “qual plataforma tem Pix e boleto?”.
+- Um conjunto de perguntas de referência (as 10 do desafio mais variações em português e inglês) com o agente e a fonte esperados, medindo acurácia de roteamento e acerto da recuperação em CI.
+- Avaliação da geração com o Ollama real em um job separado: fidelidade ao contexto e taxa de recusa correta quando a base não tem a resposta.
+- Testes de contrato agendados contra as APIs do Banco Central e do Open-Meteo, para detectar mudanças.
+- Rodar esse conjunto contra o container no Compose antes de cada entrega.
 
 ## Limitações e honestidade técnica
 
 Este projeto foi implementado com um retriever lexical em vez de um pipeline de embeddings completo. Portanto:
 
-- não se afirma uso de LLM generativo no fluxo de recuperação interno;
+- a recuperação é lexical (BM25 com radical de 5 letras); a geração com LLM (Ollama, `qwen2.5:7b`) é opcional: sem ele a resposta é extrativa (`tool_used=retrieval_only`);
 - não se afirma busca vetorial se ela não estiver implementada;
-- fontes externas são consultadas com regras de validação de domínio e cuidado para não inventar resposta.
+- fontes externas são consultadas com regras de validação de domínio e cuidado para não inventar resposta;
+- dados de clientes e transações são simulados;
+- a base não tem artigo sobre falha de conexão nem sobre recusa de transação na maquininha, e nesses casos a resposta é fraca ou diz que não há informação;
+- as respostas saem em português, mesmo quando a pergunta é em inglês;
+- câmbio é a PTAX de fechamento do Banco Central (não é tempo real) e a busca geral via DuckDuckGo é instável por causa do bloqueio anti-robô;
+- a base é um retrato da data da ingestão e preços e condições podem mudar.
 
 Essa abordagem é adequada para um desafio técnico de engenharia aplicada, especialmente quando o objetivo é demonstrar robustez, rastreabilidade e organização de código. O projeto mantém um compromisso explícito com honestidade técnica: ele responde com o que a base documental suporta e direciona cenários fora do escopo para atendimento humano.
 
@@ -379,7 +350,8 @@ Essa abordagem é adequada para um desafio técnico de engenharia aplicada, espe
 - implementar avaliação automatizada por conjunto de perguntas
 - ampliar guardrails para outros tipos de conteúdo sensível
 - expandir o corpus documental
-- evoluir para um pipeline com LLM real, se houver necessidade de geração mais sofisticada
+- embeddings e busca vetorial para recuperação semântica
+- detectar o idioma da pergunta e responder no mesmo idioma
 
 ## Observações finais
 
@@ -388,6 +360,7 @@ O projeto está organizado em módulos bem separados:
 - `app/agents/`
 - `app/rag/`
 - `app/tools/`
+- `app/orchestrator.py`
 - `app/main.py`
 - `tests/`
 
