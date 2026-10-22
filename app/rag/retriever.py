@@ -90,6 +90,9 @@ def _words(text: str) -> list[str]:
 
 
 def _stem(word: str) -> str:
+    # "crediário" e "crédito" compartilham as 5 primeiras letras e se confundiam.
+    if word.startswith("crediar"):
+        return "crediar"
     return word[:STEM_LEN]
 
 

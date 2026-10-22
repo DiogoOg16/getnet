@@ -14,6 +14,11 @@ class CustomerSupportAgent:
             term in text
             for term in (
                 "quando o dinheiro",
+                "when will the money",
+                "be deposited",
+                "yesterday's sales",
+                "yesterday’s sales",
+                "when will i receive",
                 "quando vai cair",
                 "prazo de recebimento",
                 "prazo de deposito",
