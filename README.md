@@ -1,137 +1,130 @@
 # Getnet AI Support System
 
-Este projeto implementa um assistente multiagente para suporte de clientes da Getnet, com rota por intenção, recuperação de conhecimento local e integração opcional com um modelo LLM executando no host via Ollama.
+Assistente de suporte multiagente desenvolvido como desafio técnico. A aplicação recebe mensagens por uma API HTTP, identifica a intenção e encaminha a solicitação para um agente especializado: conhecimento da Getnet, suporte a cliente/transação, busca externa ou escalonamento humano.
 
-## Objetivo
+> **Escopo do protótipo:** dados de clientes e transações são simulados. O sistema não está conectado aos sistemas internos da Getnet e não deve ser usado para decisões operacionais reais.
 
-Cria um sistema que:
+## Índice
 
-- roteia mensagens para o agente correto;
-- responde perguntas sobre produtos e serviços da Getnet com base em um corpus local;
-- consulta dados internos de cliente/transação quando necessário;
-- usa busca externa para informações gerais e atuais;
-- aplica guardrails e handoff humano para solicitações sensíveis ou fora do escopo.
+- [Principais funcionalidades](#principais-funcionalidades)
+- [Arquitetura e fluxo da mensagem](#arquitetura-e-fluxo-da-mensagem)
+- [Pipeline de RAG](#pipeline-de-rag)
+- [Requisitos](#requisitos)
+- [Execução local](#execução-local)
+- [Execução com Docker](#execução-com-docker)
+- [API HTTP](#api-http)
+- [Testes e avaliação](#testes-e-avaliação)
+- [Observabilidade](#observabilidade)
+- [Limitações conhecidas](#limitações-conhecidas)
+- [Estrutura do projeto](#estrutura-do-projeto)
 
-## Visão geral da arquitetura
+## Principais funcionalidades
+
+- **Roteamento por intenção:** regras explícitas e normalização de texto para direcionar cada mensagem.
+- **Conhecimento da Getnet:** recuperação de trechos de uma base documental local e geração opcional com Ollama.
+- **Suporte ao cliente:** ferramentas para consultar dados simulados de clientes e transações.
+- **Busca externa:** consultas de clima, câmbio e busca geral na web, com validação de domínios permitidos.
+- **Guardrails e escalonamento:** pedidos sensíveis, solicitações explícitas de atendimento humano e casos que exigem continuidade manual são encaminhados para o agente de escalonamento.
+- **Fallback sem LLM:** o serviço pode funcionar sem Ollama, usando respostas extraídas dos documentos recuperados.
+- **Metadados de execução:** a API informa o agente escolhido, motivo do roteamento, fontes, ferramenta usada e necessidade de handoff.
+
+## Arquitetura e fluxo da mensagem
+
+```text
+Cliente
+  |
+  v
+FastAPI (/chat)
+  |
+  v
+Router Agent
+  |
+  +--> Knowledge Agent ------> Retriever local ------> Ollama (opcional)
+  |
+  +--> Customer Support -----> Ferramentas de cliente/transação simuladas
+  |
+  +--> Web Search -----------> Clima / câmbio / busca web
+  |
+  +--> Human Escalation -----> Resposta de encaminhamento
+  |
+  v
+Resposta JSON + metadados
+```
 
 ### Agentes
 
-- Router Agent: decide qual agente atende a mensagem.
-- Knowledge Agent: responde usando RAG local e, opcionalmente, um modelo LLM pelo Ollama.
-- Customer Support Agent: consulta dados simulados de cliente e transação.
-- Web Search Agent: consulta APIs externas, como clima e câmbio.
-- Human Escalation Agent: encaminha solicitações sensíveis para atendimento humano.
+| Componente | Responsabilidade |
+|---|---|
+| `RouterAgent` | Normaliza a mensagem e classifica a intenção por regras explícitas. |
+| `KnowledgeAgent` | Recupera informações da base local, aplica respostas diretas em casos específicos e pode consultar o Ollama. |
+| `CustomerSupportAgent` | Atende solicitações sobre clientes e transações usando ferramentas com dados simulados. |
+| `WebSearchAgent` | Trata perguntas de clima, câmbio e pesquisa externa. |
+| Human escalation | Encaminha solicitações sensíveis ou que exigem atendimento humano. É representado pelo fluxo de escalonamento no orquestrador. |
+| `ChatOrchestrator` | Executa o agente indicado pelo roteador e padroniza o fluxo de resposta. |
 
-### Fluxo principal
+O roteador é baseado em regras, não em uma chamada de LLM. Isso torna a decisão principal previsível e testável, embora regras lexicais possam não reconhecer todas as formas possíveis de uma intenção.
 
-1. A mensagem entra pela API FastAPI.
-2. O router classifica a intenção.
-3. O agente correspondente executa a lógica.
-4. A resposta volta em JSON estruturado com `agent`, `routing_reason`, `response`, `sources`, `source_sections`, `tool_used` e `handoff_required`.
+### Fluxo de uma requisição
 
-## Estrutura do projeto
+1. A API valida `message` e `user_id`.
+2. O orquestrador chama o roteador.
+3. O roteador seleciona o agente de conhecimento, suporte, busca externa, escalonamento ou fallback.
+4. O agente executa sua lógica e, quando aplicável, consulta ferramentas ou documentos.
+5. A API devolve uma resposta JSON com metadados para inspeção e depuração.
 
-- `app/main.py`: API FastAPI e rota `/chat`
-- `app/agents/router.py`: roteamento por intenção
-- `app/agents/knowledge.py`: recuperação de conhecimento + LLM opcional + fallback
-- `app/agents/customer_support.py`: suporte ao cliente
-- `app/agents/web_search.py`: busca externa
-- `app/tools/customer_tools.py`: ferramentas de consulta de clientes e transações
-- `app/rag/retriever.py`: recuperação lexical sobre o corpus
-- `app/rag/ingest.py`: ingestão e preparação do corpus
-- `app/rag/documents/getnet_sources.jsonl`: base documental local
-- `tests/`: suíte de testes automatizados
-- `docker-compose.yml`: execução da API e do Ollama em perfil opcional
+## Pipeline de RAG
 
-## Como o Knowledge Agent funciona
+O agente de conhecimento utiliza recuperação lexical; **não há embeddings nem banco vetorial implementados**.
 
-O agente de conhecimento usa uma abordagem híbrida:
+1. **Ingestão:** `app/rag/ingest.py` reúne páginas públicas de ajuda e documentação da Getnet, extrai o conteúdo e prepara os registros.
+2. **Armazenamento:** os documentos ficam versionados em `app/rag/documents/getnet_sources.jsonl`. A base representa um retrato da data da ingestão e pode ficar desatualizada.
+3. **Recuperação:** `app/rag/retriever.py` normaliza os termos da consulta e usa BM25, com ajustes lexicais e critérios mínimos de relevância, para selecionar trechos.
+4. **Resposta:** `app/agents/knowledge.py` pode responder diretamente em casos específicos, enviar o contexto recuperado ao Ollama ou usar um fallback extrativo se o modelo estiver indisponível.
 
-1. Recupera documentos relevantes do corpus local pelo retriever.
-2. Tenta responder diretamente quando a pergunta é específica e bem coberta pela base.
-3. Se a base não for suficiente, chama o Ollama com `OLLAMA_URL/api/chat`.
-4. Se o modelo falhar ou não estiver disponível, usa resposta extrativa a partir dos trechos recuperados.
+O prompt usado com o Ollama orienta o modelo a responder com base no contexto recuperado e a reconhecer quando as informações disponíveis não são suficientes. Isso reduz, mas não elimina, o risco de respostas incorretas.
 
-### Estados de resposta
+### Comportamento do agente de conhecimento
 
-O campo `tool_used` pode assumir:
+- `tool_used: "ollama"`: o modelo local foi chamado.
+- `tool_used: "retrieval_only"`: resposta sem geração pelo LLM.
+- Respostas diretas por regras podem ser produzidas para perguntas específicas cobertas pela implementação.
 
-- `ollama` → uso do modelo local
-- `retrieval_only` → fallback sem LLM
-- `lookup_transaction` / `lookup_customer` → suporte do cliente
-- `open_meteo` → busca externa
-- `human_escalation` → handoff humano
-
-Esse comportamento foi pensado para manter o sistema funcional mesmo sem LLM, e para deixar explícito quando o modelo foi realmente usado.
-
-## Roteamento por módulo
-
-### Knowledge
-
-Perguntas sobre:
-
-- Getnet
-- Pix
-- antecipação
-- plugins
-- produtos e serviços
-- erros de maquininha
-- status de vendas
-
-### Customer Support
-
-Perguntas que envolvem:
-
-- transação (`txn...`)
-- dados do cliente
-- status de conta
-- consulta de extrato ou transação
-
-### Web Search
-
-Perguntas como:
-
-- clima
-- câmbio
-- previsões
-- notícias
-- informações externas ou atuais
-
-### Human Escalation
-
-Perguntas sensíveis ou fora do escopo:
-
-- dados pessoais
-- pedidos de atendimento humano
-- mensagens que exigem continuidade manual
+O modelo padrão é `qwen2.5:7b`. O uso do Ollama é opcional.
 
 ## Requisitos
 
-- Python 3.11
-- Docker e Docker Compose (opcional, para execução em container)
-- Ollama opcional local para geração com LLM
+- Python 3.11 ou compatível.
+- `pip` e ambiente virtual Python.
+- Docker Engine e Docker Compose v2, se preferir executar em containers.
+- Ollama e o modelo configurado, somente se quiser usar geração por LLM.
 
-## Instalação local
+## Execução local
+
+Execute os comandos a partir da raiz do repositório, onde estão `requirements.txt` e `app/`.
+
+### 1. Criar e instalar o ambiente
 
 ```bash
-cd ~/Documents/getnet
-python -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Execução local da API
+### 2. Iniciar a API
 
 ```bash
-cd ~/Documents/getnet
-source .venv/bin/activate
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Healthcheck:
+A API ficará disponível em `http://127.0.0.1:8000`. A documentação interativa do FastAPI fica em `http://127.0.0.1:8000/docs`.
+
+### 3. Verificar a aplicação
+
+Em outro terminal:
 
 ```bash
-curl http://localhost:8000/health
+curl -s http://127.0.0.1:8000/health
 ```
 
 Resposta esperada:
@@ -140,228 +133,262 @@ Resposta esperada:
 {"status":"ok"}
 ```
 
+Para encerrar a API iniciada no terminal, pressione `Ctrl+C`.
+
 ## Execução com Docker
 
-### Modo padrão sem LLM
+O arquivo de Compose do projeto é `docker-compose.yml`.
+
+### API sem LLM
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 docker compose ps
+curl -s http://localhost:8000/health
 ```
 
-Esse modo sobe somente a API e usa fallback extrativo quando o Ollama não está disponível.
+Nesse modo, a API sobe sem iniciar um serviço Ollama próprio. Se não houver Ollama acessível na URL configurada, o agente de conhecimento usa seu fallback.
 
-### Modo com Ollama
+Para acompanhar os logs:
 
 ```bash
-docker compose --profile llm up --build
+docker compose logs -f api
 ```
 
-Esse perfil sobe:
-
-- `api`
-- `ollama`
-- `ollama-pull`
-
-O serviço `ollama-pull` baixa o modelo padrão `qwen2.5:7b` uma vez.
-
-### Conexao com Ollama do host
-
-Se você já tem Ollama rodando no host, pode usar:
+Para parar os serviços:
 
 ```bash
-OLLAMA_URL=http://host.docker.internal:11434 docker compose up --build
+docker compose down
 ```
 
-## Variáveis de ambiente
-
-- `OLLAMA_URL`: URL do serviço Ollama
-- `OLLAMA_MODEL`: modelo usado pelo agente de conhecimento
-
-Valores padrão:
+### API com Ollama no Compose
 
 ```bash
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=qwen2.5:7b
+docker compose --profile llm up --build -d
+docker compose ps
+docker compose logs -f api
 ```
 
-## Testes
+O perfil `llm` inicia a API, o serviço Ollama e o serviço que baixa o modelo configurado. O primeiro download do modelo pode demorar e exige acesso à internet, além de espaço em disco e memória suficientes.
 
-### Rodar a suíte completa
+Para parar os serviços:
 
 ```bash
-cd ~/Documents/getnet
-source .venv/bin/activate
-pytest -q
+docker compose --profile llm down
 ```
 
-### Resultado verificado
+### Usar um Ollama que já esteja rodando no host
 
-A suíte atual foi validada com sucesso:
-
-- mais de 100 testes aprovados (rode `pytest -q` para o número atual)
-- 1 teste skipped (usa a internet; rode com `RUN_NETWORK_TESTS=1`)
-- 1 warning de dependência do FastAPI/Starlette
-
-## Exemplos de uso da API
-
-### Pergunta de conhecimento
+Se o Ollama estiver instalado e rodando no host, configure a URL antes de subir a API:
 
 ```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
+OLLAMA_URL=http://host.docker.internal:11434 docker compose up --build -d
+```
+
+Esse endereço é configurado para o cenário Docker previsto no `docker-compose.yml`. Em execução local fora do Docker, o padrão do código é `http://localhost:11434`.
+
+### Variáveis de ambiente
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `OLLAMA_URL` | `http://localhost:11434` no processo local; o Compose define `http://ollama:11434` como padrão do serviço | Endereço base do Ollama. |
+| `OLLAMA_MODEL` | `qwen2.5:7b` | Nome do modelo usado para geração. |
+
+Exemplo para execução local:
+
+```bash
+export OLLAMA_URL=http://localhost:11434
+export OLLAMA_MODEL=qwen2.5:7b
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+## API HTTP
+
+### `GET /health`
+
+Verifica se a API está respondendo.
+
+```bash
+curl -s http://127.0.0.1:8000/health
+```
+
+### `POST /chat`
+
+Recebe uma mensagem e o identificador do usuário.
+
+Exemplo de requisição:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Content-Type: application/json' \
   -d '{
-    "message": "Como funciona a antecipação de recebíveis?",
+    "message": "Qual o status da transação txn1001?",
     "user_id": "cliente1988"
   }'
 ```
 
-### Pergunta de clima
+A resposta inclui os campos abaixo (o conteúdo exato depende da rota e dos dados disponíveis):
 
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Qual é a previsão do tempo em Porto Alegre amanhã?",
-    "user_id": "cliente1988"
-  }'
+```json
+{
+  "user_id": "cliente1988",
+  "message": "Qual o status da transação txn1001?",
+  "response": "Resposta produzida pelo agente selecionado",
+  "agent": "customer_support",
+  "routing_reason": "The message references a specific transaction ID.",
+  "sources": [],
+  "source_sections": {},
+  "tool_used": "lookup_transaction",
+  "handoff_required": false
+}
 ```
 
-### Pergunta de suporte
+O exemplo ilustra o contrato da resposta; a mensagem, o status da transação e outros valores dependem dos dados simulados disponíveis na versão executada.
+
+### Exemplos adicionais
+
+**Pergunta sobre conhecimento local:**
 
 ```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Minha transação txn123 foi recusada e eu quero saber o status.",
-    "user_id": "cliente1988"
-  }'
+curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Como funciona o Pix?","user_id":"cliente1988"}'
 ```
 
-### Pergunta sensível
+**Previsão do tempo:**
 
 ```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Preciso falar com um humano sobre dados sensíveis do meu cadastro.",
-    "user_id": "cliente1988"
-  }'
+curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Qual é a previsão do tempo em Porto Alegre amanhã?","user_id":"cliente1988"}'
 ```
 
-## Observações importantes
+**Pedido de atendimento humano:**
 
-- O projeto foi pensado para funcionar mesmo sem LLM, usando recuperação local e fallback extrativo.
-- Quando o Ollama está disponível, o sistema usa geração real por LLM.
-- O `tool_used` é a forma mais clara de ver o que aconteceu no processamento.
-- O sistema evita responder com segurança quando o input é sensível ou fora do escopo.
+```bash
+curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Preciso falar com um humano sobre dados sensíveis do meu cadastro.","user_id":"cliente1988"}'
+```
 
-## Bônus implementado e observabilidade
+No caso de escalonamento, espera-se que `agent` seja `human_escalation` e `handoff_required` seja `true`. No protótipo, isso representa o sinal de encaminhamento na resposta; não integra automaticamente com uma fila ou sistema real de atendimento.
 
-Este projeto inclui elementos do bônus proposto:
+## Testes e avaliação
 
-- Agente de escalonamento humano para solicitações sensíveis ou fora do escopo
-- Guardrails explícitos de segurança e classificação de intenção
-- Respostas estruturadas com metadados de `agent`, `routing_reason`, `tool_used`, `sources` e `handoff_required`
-- Logs de execução para rastrear decisão do router e ferramenta usada
-- Validação funcional por cenários reais de negócio e suporte
+### Executar os testes automatizados
+
+Com o ambiente virtual ativado:
+
+```bash
+python -m pytest -v
+```
+
+Ou, em formato compacto:
+
+```bash
+python -m pytest -q
+```
+
+A suíte cobre API, roteamento, agentes, ferramentas, fallback de conhecimento, integração e escalonamento. Os testes automatizados simulam o LLM e as dependências de rede para manter a execução previsível. Um teste dependente de internet é ignorado por padrão.
+
+Para habilitar os testes de rede que reconhecem essa opção:
+
+```bash
+RUN_NETWORK_TESTS=1 python -m pytest -v
+```
+
+Esses testes exigem conectividade e podem falhar se serviços externos estiverem indisponíveis ou alterarem seu comportamento.
+
+**Resultado registrado durante a validação deste projeto:** 111 testes passaram e 1 foi ignorado por depender de rede. O resultado pode variar após alterações no código ou no ambiente. Foi observado também um aviso de depreciação relacionado a dependências de teste.
+
+### Scripts auxiliares
+
+```bash
+python scripts/agent_probe.py
+python scripts/validate_functionality.py
+python scripts/check_scenarios.py
+```
+
+- `agent_probe.py`: permite inspecionar respostas de agentes; a geração real depende da disponibilidade do Ollama.
+- `validate_functionality.py`: executa cenários de validação funcional e grava resultados em `logs/`.
+- `check_scenarios.py`: auxilia na verificação de cenários de roteamento.
+
+Consulte o código dos scripts para opções e comportamento detalhados.
 
 ### Estratégia de avaliação
 
-A validação usa cenários representativos (ainda não há conjunto de avaliação automatizado nem métricas de qualidade das respostas), incluindo:
+A validação combina testes unitários, testes de integração via API, cenários representativos e inspeção manual. A cobertura atual verifica o comportamento implementado, mas não equivale a uma avaliação quantitativa completa da qualidade das respostas geradas por um LLM real.
 
-- perguntas sobre Pix e Getnet
-- busca externa (clima)
-- suporte de transação com dados de cliente
-- interação com handoff humano
+Melhorias futuras incluem um conjunto versionado de perguntas e respostas esperadas, métricas de acurácia de roteamento e recuperação, avaliação de fidelidade ao contexto e testes periódicos de contratos com serviços externos.
 
-Os testes automatizados cobrem essas rotas pela API. O LLM (Ollama) e as chamadas de rede são simulados nos testes (`tests/conftest.py`), então a suíte roda offline em menos de 1 segundo. A geração real por LLM é conferida manualmente com `scripts/agent_probe.py`.
+## Observabilidade
 
-### Observabilidade
+A API registra eventos de requisição, decisão de roteamento e resposta. A resposta JSON expõe:
 
-O projeto expõe metadados que facilitam a inspeção:
+| Campo | Finalidade |
+|---|---|
+| `agent` | Agente que processou a mensagem. |
+| `routing_reason` | Justificativa registrada pelo roteador. |
+| `tool_used` | Ferramenta ou caminho de execução utilizado, quando aplicável. |
+| `sources` | URLs ou fontes usadas pelo agente. |
+| `source_sections` | Agrupamento dos documentos recuperados por seção. |
+| `handoff_required` | Indica se a solicitação deve ser encaminhada para atendimento humano. |
 
-- `agent`: agente que resolveu a mensagem
-- `routing_reason`: justificativa da decisão do router
-- `tool_used`: ferramenta executada
-- `handoff_required`: indica encaminhamento para humano
-- `sources`: fontes consultadas para resposta
+Para observar logs no Docker:
 
-Essa estrutura simplifica debug, auditoria e análise de qualidade dos agentes.
+```bash
+docker compose logs -f api
+```
 
-## Checklist do desafio
+Os logs atuais são voltados à depuração. O projeto ainda não implementa dashboard, tracing distribuído, alertas operacionais ou persistência dedicada de eventos. Em um ambiente real, também seria necessário revisar a política de logging para evitar registrar mensagens ou dados pessoais desnecessários.
 
-O projeto cobre os requisitos principais do desafio:
+## Limitações conhecidas
 
-- arquitetura multiagente
-- API HTTP
-- roteamento por intenção
-- recuperação de conhecimento
-- busca externa
-- suporte ao cliente
-- guardrails e handoff humano
-- Docker
-- testes
-- documentação
+- **Dados simulados:** as consultas de clientes e transações não acessam sistemas reais da Getnet.
+- **Recuperação lexical:** o RAG usa BM25 e normalização de texto, não embeddings ou busca vetorial; perguntas semanticamente distantes dos termos da base podem não recuperar bons trechos.
+- **Corpus estático:** o JSONL reflete a data de ingestão; informações de produtos, taxas e procedimentos podem mudar.
+- **Dependência opcional do LLM:** o Ollama pode não estar disponível ou pode produzir respostas incorretas apesar das instruções de contexto.
+- **Busca externa:** a pesquisa geral via DuckDuckGo pode ser instável ou bloqueada. Resumos do mecanismo de busca não são verificação independente das páginas.
+- **Câmbio:** a fonte e o tipo de cotação seguem a implementação da ferramenta; não se deve interpretar o valor como uma cotação comercial em tempo real sem verificar a resposta e a fonte.
+- **Idioma:** a geração foi orientada principalmente para respostas em português; não há garantia de responder no mesmo idioma de toda mensagem recebida.
+- **Escalonamento:** o protótipo sinaliza a necessidade de atendimento humano, mas não cria um chamado nem transfere a conversa para um operador real.
+- **Guardrails por regras:** a detecção de intenções sensíveis usa padrões explícitos e não substitui uma solução completa de segurança ou revisão humana.
 
-## Pipeline de RAG
+## Estrutura do projeto
 
-1. **Ingestão** (`app/rag/ingest.py`): `requests` e BeautifulSoup baixam artigos de ajuda, páginas de FAQ (`/duvidas/<categoria>/`, um trecho por par pergunta e resposta), páginas de produto e documentação técnica da Getnet. A última ingestão gerou 269 trechos, cada um com `title`, `content`, `source_url`, `category` e `ingested_at`. A base é um retrato da data da ingestão.
-2. **Armazenamento**: arquivo JSONL versionado (`app/rag/documents/getnet_sources.jsonl`). O índice é montado em memória na primeira consulta. Não há banco vetorial.
-3. **Recuperação** (`app/rag/retriever.py`): texto normalizado sem acentos, radical de 5 letras, sinônimos de inglês para português e BM25 (k1=1,5 e b=0,75) com o título pesando em dobro. Um trecho só é devolvido se passar de um score mínimo, cobrir pelo menos 45% do peso dos termos da pergunta e conter o termo mais raro dela. Abaixo disso o agente diz que não encontrou, em vez de arriscar uma resposta.
-4. **Geração** (`app/agents/knowledge.py`): para algumas perguntas específicas já cobertas pela base há respostas diretas por regras (`_direct_answer`). Nos demais casos o contexto recuperado vai para o Ollama (`qwen2.5:7b`) com um prompt de sistema que manda responder só com o contexto, não inventar regras, taxas ou procedimentos, e dizer quando não há informação suficiente. Se o Ollama não estiver disponível, a resposta é extrativa, com os trechos recuperados. O prompt pede respostas em português, por isso perguntas em inglês também voltam em português.
-
-## Estratégia de testes
-
-**O que existe hoje**
-
-- Testes unitários por agente e por ferramenta, com rede simulada (câmbio, clima, busca na web e suporte ao cliente).
-- Roteamento: tabela parametrizada com os 10 cenários do desafio, equivalentes em português, falsos positivos e casos de escalação.
-- Recuperação: testes de regressão com perguntas conhecidas, incluindo casos em que nada deve ser devolvido.
-- Integração pela API: `TestClient` percorre o fluxo completo (router, agente e resposta JSON), incluindo a propriedade da transação e o handoff humano.
-- Isolamento: `tests/conftest.py` simula o LLM em todos os testes, e o único teste que usa a internet fica pulado por padrão.
-- Verificação manual: `scripts/agent_probe.py` mostra a resposta exata (com Ollama real, se estiver ligado), `scripts/validate_functionality.py` grava respostas de cenários em `logs/`, e o Docker Compose sobe a API para testes de ponta a ponta.
-
-**Como eu aprofundaria a integração** (ainda não implementado)
-
-- Um conjunto de perguntas de referência (as 10 do desafio mais variações em português e inglês) com o agente e a fonte esperados, medindo acurácia de roteamento e acerto da recuperação em CI.
-- Avaliação da geração com o Ollama real em um job separado: fidelidade ao contexto e taxa de recusa correta quando a base não tem a resposta.
-- Testes de contrato agendados contra as APIs do Banco Central e do Open-Meteo, para detectar mudanças.
-- Rodar esse conjunto contra o container no Compose antes de cada entrega.
-
-## Limitações e honestidade técnica
-
-Este projeto foi implementado com um retriever lexical em vez de um pipeline de embeddings completo. Portanto:
-
-- a recuperação é lexical (BM25 com radical de 5 letras); a geração com LLM (Ollama, `qwen2.5:7b`) é opcional: sem ele a resposta é extrativa (`tool_used=retrieval_only`);
-- não se afirma busca vetorial se ela não estiver implementada;
-- fontes externas são consultadas com regras de validação de domínio e cuidado para não inventar resposta;
-- dados de clientes e transações são simulados;
-- a base não tem artigo sobre falha de conexão nem sobre recusa de transação na maquininha, e nesses casos a resposta é fraca ou diz que não há informação;
-- as respostas saem em português, mesmo quando a pergunta é em inglês;
-- câmbio é a PTAX de fechamento do Banco Central (não é tempo real) e a busca geral via DuckDuckGo é instável por causa do bloqueio anti-robô;
-- a base é um retrato da data da ingestão e preços e condições podem mudar.
-
-Essa abordagem é adequada para um desafio técnico de engenharia aplicada, especialmente quando o objetivo é demonstrar robustez, rastreabilidade e organização de código. O projeto mantém um compromisso explícito com honestidade técnica: ele responde com o que a base documental suporta e direciona cenários fora do escopo para atendimento humano.
+```text
+.
+├── app/
+│   ├── agents/
+│   │   ├── router.py
+│   │   ├── knowledge.py
+│   │   ├── customer_support.py
+│   │   └── web_search.py
+│   ├── rag/
+│   │   ├── documents/
+│   │   │   └── getnet_sources.jsonl
+│   │   ├── ingest.py
+│   │   └── retriever.py
+│   ├── tools/
+│   ├── orchestrator.py
+│   └── main.py
+├── scripts/
+├── tests/
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+└── README.md
+```
 
 ## Melhorias futuras
 
-- adicionar persistência de logs estruturados
-- implementar avaliação automatizada por conjunto de perguntas
-- ampliar guardrails para outros tipos de conteúdo sensível
-- expandir o corpus documental
-- embeddings e busca vetorial para recuperação semântica
-- detectar o idioma da pergunta e responder no mesmo idioma
+- Criar um dataset de avaliação versionado para os cenários do desafio.
+- Medir separadamente acurácia do roteamento, qualidade da recuperação e fidelidade da geração.
+- Avaliar embeddings e recuperação semântica como complemento ao BM25.
+- Detectar o idioma da entrada e responder no mesmo idioma.
+- Persistir logs estruturados com política explícita de retenção e privacidade.
+- Integrar o handoff com uma fila ou ferramenta de atendimento real, se houver autorização e infraestrutura.
 
-## Observações finais
+---
 
-O projeto está organizado em módulos bem separados:
-
-- `app/agents/`
-- `app/rag/`
-- `app/tools/`
-- `app/orchestrator.py`
-- `app/main.py`
-- `tests/`
-
-Essa separação facilita manutenção, extensão e entendimento do sistema multiagente.
+Este projeto demonstra uma arquitetura multiagente modular, recuperação documental local, uso opcional de LLM, ferramentas externas, guardrails, testes e metadados para inspeção. As limitações acima são intencionais na documentação para distinguir o que está implementado do que seria necessário para uma implantação de produção.
