@@ -79,3 +79,21 @@ def test_chat_groups_plugin_sources_with_plugin_section():
     assert response.status_code == 200
     payload = response.json()
     assert any("plugin" in key.lower() for key in payload.get("source_sections", {}))
+
+
+def test_chat_does_not_log_message_content(caplog):
+    import logging
+
+    secret_marker = "PRIVACY_TEST_MARKER_938271"
+    caplog.set_level(logging.INFO)
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": f"Preciso de ajuda {secret_marker}",
+            "user_id": "cliente1988",
+        },
+    )
+
+    assert response.status_code == 200
+    assert secret_marker not in caplog.text

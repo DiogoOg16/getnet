@@ -45,11 +45,8 @@ def health_check():
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-    logger.info(
-        "chat_request user_id=%s message=%s",
-        request.user_id,
-        request.message,
-    )
+    # Nunca registrar o conteúdo da mensagem: pode conter dados pessoais.
+    logger.info("chat_request_received")
 
     execution = orchestrator.handle(request.message, request.user_id)
     decision = execution.decision
