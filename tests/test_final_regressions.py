@@ -22,4 +22,4 @@ def test_settlement_timing_question_in_english_is_answered():
         "cliente1988",
     )
 
-    assert result["tool_used"] == "settlement_timeline"
+    assert result["tool_used"] == "lookup_settlement"

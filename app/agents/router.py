@@ -170,7 +170,21 @@ class RouterAgent:
                 reason="The message references a specific transaction ID.",
             )
 
+
         if DEVICE.search(text) and DEVICE_PROBLEM.search(text):
+            if re.search(
+                r"\b(?:declin|recus|transaction decline|"
+                r"transacao recusad[ao])",
+                text,
+            ):
+                return RoutingDecision(
+                    agent="customer_support",
+                    reason=(
+                        "The message reports a declined transaction "
+                        "and requires operational support."
+                    ),
+                )
+
             return RoutingDecision(
                 agent="knowledge",
                 reason=(
@@ -178,6 +192,7 @@ class RouterAgent:
                     "answered from troubleshooting knowledge."
                 ),
             )
+
 
         if SUPPORT.search(text):
             return RoutingDecision(

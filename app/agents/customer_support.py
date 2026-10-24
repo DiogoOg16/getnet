@@ -1,14 +1,42 @@
 from app.tools.customer_tools import (
     lookup_customer,
+    lookup_settlement,
     lookup_transaction,
 )
-
 
 class CustomerSupportAgent:
     """Handles customer-specific questions using support tools."""
 
     def answer(self, message: str, user_id: str) -> dict:
         text = message.casefold()
+        declined_transaction = any(
+            term in text
+            for term in (
+                "transaction decline",
+                "transaction declined",
+                "declined transaction",
+                "transação recusada",
+                "transacao recusada",
+                "transação negada",
+                "transacao negada",
+                "cartão recusado",
+                "cartao recusado",
+            )
+        )
+
+        if declined_transaction:
+            return {
+                "agent": "customer_support",
+                "response": (
+                    "A transação parece ter sido recusada, mas ainda não "
+                    "consultei uma operação específica. Confira se os dados "
+                    "do cartão e as informações da venda estão corretos e "
+                    "tente novamente, se apropriado. Se o problema persistir, "
+                    "informe o identificador da transação (por exemplo, "
+                    "txn2001) para que eu possa consultar o status."
+                ),
+                "tool_used": None,
+            }
 
         settlement_timing = any(
             term in text
@@ -40,16 +68,26 @@ class CustomerSupportAgent:
         )
 
         if settlement_timing and not transaction_id:
+            result = lookup_settlement(user_id)
+
+            if not result["found"]:
+                return {
+                    "agent": "customer_support",
+                    "response": (
+                        "Não consegui localizar o cadastro na base simulada "
+                        "para consultar as orientações de recebimento."
+                    ),
+                    "tool_used": "lookup_settlement",
+                }
+
             return {
                 "agent": "customer_support",
                 "response": (
-                    "O prazo de recebimento depende do canal e do tipo de venda. "
-                    "Em geral, o crédito costuma ocorrer em prazo de dias úteis, "
-                    "mas a data exata pode variar conforme a operação e o produto. "
-                    "Se quiser confirmar um caso específico, informe o identificador "
-                    "da transação ou o canal em que a venda foi feita."
+                    f"{result['message']} "
+                    "Para verificar uma operação específica, informe o "
+                    "identificador da transação, por exemplo txn1001."
                 ),
-                "tool_used": "settlement_timeline",
+                "tool_used": "lookup_settlement",
             }
 
         if transaction_id:

@@ -67,3 +67,30 @@ def lookup_transaction(
         }
 
     return {"found": True, "transaction": transaction.copy()}
+
+def lookup_settlement(user_id: str) -> dict:
+    """Return simulated settlement guidance for a known customer.
+
+    This tool does not access real Getnet settlement records or predict
+    an actual deposit date.
+    """
+    customer = CUSTOMERS.get(user_id)
+
+    if customer is None:
+        return {
+            "found": False,
+            "simulated": True,
+            "message": "Cliente não encontrado na base de dados simulada.",
+        }
+
+    return {
+        "found": True,
+        "simulated": True,
+        "customer_id": user_id,
+        "message": (
+            "O prazo de recebimento depende do canal de pagamento e do "
+            "produto contratado. Este ambiente utiliza dados simulados e "
+            "não possui registros reais de recebimento nem permite confirmar "
+            "a data de depósito das vendas."
+        ),
+    }

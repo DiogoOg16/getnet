@@ -1,6 +1,7 @@
 from app.agents.customer_support import CustomerSupportAgent
 from app.tools.customer_tools import (
     lookup_customer,
+    lookup_settlement,
     lookup_transaction,
 )
 
@@ -61,3 +62,31 @@ def test_agent_handles_settlement_timing_question_without_transaction_id():
     assert result["agent"] == "customer_support"
     assert "prazo" in result["response"].lower()
     assert "transação" in result["response"].lower() or "txn" in result["response"].lower()
+
+def test_agent_gives_guidance_for_declined_transaction_without_id():
+    result = CustomerSupportAgent().answer(
+        "My card machine is showing a transaction decline error.",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert result["tool_used"] is None
+    assert (
+        "recus" in result["response"].lower()
+        or "declin" in result["response"].lower()
+    )
+    assert "txn" in result["response"].lower()
+
+def test_lookup_settlement_returns_simulated_data():
+    result = lookup_settlement("cliente1988")
+
+    assert result["found"] is True
+    assert result["simulated"] is True
+    assert result["customer_id"] == "cliente1988"
+    assert "message" in result
+
+
+def test_lookup_settlement_rejects_unknown_customer():
+    result = lookup_settlement("cliente_inexistente")
+
+    assert result["found"] is False

@@ -11,7 +11,7 @@ CASES = [
     ("My card machine won't connect to the internet, what should I do?", "knowledge"),
     ("How does receivables advance (antecipação) work with Getnet?", "knowledge"),
     ("What's the euro exchange rate today?", "web_search"),
-    ("My card machine is showing a transaction decline error.", "knowledge"),
+    ("My card machine is showing a transaction decline error.", "customer_support"),
     ("How many installments can I split a sale into with the crediário?", "knowledge"),
     ("Can I sell through WhatsApp using the Payment Link?", "knowledge"),
     # Equivalentes em português
