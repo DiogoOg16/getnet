@@ -2,8 +2,48 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
-client = TestClient(app)
+client = TestClient(
+    app,
+    headers={"Authorization": "Bearer test-token-cliente1988"},
+)
 
+def test_chat_rejects_missing_authentication():
+    unauthenticated_client = TestClient(app)
+
+    response = unauthenticated_client.post(
+        "/chat",
+        json={
+            "message": "Preciso de ajuda",
+            "user_id": "cliente1988",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_chat_rejects_invalid_token():
+    response = client.post(
+        "/chat",
+        headers={"Authorization": "Bearer token-invalido"},
+        json={
+            "message": "Preciso de ajuda",
+            "user_id": "cliente1988",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_chat_rejects_mismatched_authenticated_user():
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Qual o status da minha conta?",
+            "user_id": "cliente2001",
+        },
+    )
+
+    assert response.status_code == 403
 
 def test_health_check():
     response = client.get("/health")

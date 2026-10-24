@@ -1,8 +1,11 @@
+import hmac
 import logging
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
+from app.auth import authenticate_user
 from app.orchestrator import ChatOrchestrator
 
 logging.basicConfig(
@@ -11,7 +14,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("getnet_api")
 
-
 app = FastAPI(
     title="Getnet AI Agent",
     description="API para o sistema multiagente de suporte.",
@@ -19,6 +21,7 @@ app = FastAPI(
 )
 
 orchestrator = ChatOrchestrator()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 class ChatRequest(BaseModel):
@@ -44,23 +47,33 @@ def health_check():
 
 
 @app.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest):
+def chat(
+    request: ChatRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+):
+    authenticated_user_id = authenticate_user(credentials)
+
+    if not hmac.compare_digest(authenticated_user_id, request.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="O usuário informado não corresponde à identidade autenticada.",
+        )
+
     # Nunca registrar o conteúdo da mensagem: pode conter dados pessoais.
     logger.info("chat_request_received")
 
-    execution = orchestrator.handle(request.message, request.user_id)
+    execution = orchestrator.handle(request.message, authenticated_user_id)
     decision = execution.decision
     result = execution.result
 
     logger.info(
-        "router_decision user_id=%s agent=%s reason=%s",
-        request.user_id,
+        "router_decision agent=%s reason=%s",
         decision.agent,
         decision.reason,
     )
 
     response = ChatResponse(
-        user_id=request.user_id,
+        user_id=authenticated_user_id,
         message=request.message,
         response=result["response"],
         agent=result["agent"],
@@ -72,8 +85,7 @@ def chat(request: ChatRequest):
     )
 
     logger.info(
-        "chat_response user_id=%s agent=%s tool_used=%s handoff_required=%s",
-        request.user_id,
+        "chat_response agent=%s tool_used=%s handoff_required=%s",
         response.agent,
         response.tool_used,
         response.handoff_required,

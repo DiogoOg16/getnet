@@ -1,3 +1,4 @@
+import json
 import os
 
 import pytest
@@ -15,6 +16,19 @@ def no_real_llm(monkeypatch):
     monkeypatch.setattr(KnowledgeAgent, "_generate", fake_generate)
 
 
+@pytest.fixture(autouse=True)
+def configure_demo_auth_tokens(monkeypatch):
+    tokens = {
+        "test-token-cliente1988": "cliente1988",
+        "test-token-cliente2001": "cliente2001",
+    }
+
+    monkeypatch.setenv(
+        "GETNET_DEMO_AUTH_TOKENS",
+        json.dumps(tokens),
+    )
+
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers", "network: usa a internet; rode com RUN_NETWORK_TESTS=1"
@@ -24,6 +38,7 @@ def pytest_configure(config):
 def pytest_collection_modifyitems(config, items):
     if os.getenv("RUN_NETWORK_TESTS") == "1":
         return
+
     skip = pytest.mark.skip(reason="teste de rede; use RUN_NETWORK_TESTS=1")
     for item in items:
         if "network" in item.keywords:

@@ -3,7 +3,10 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-client = TestClient(app)
+client = TestClient(
+    app,
+    headers={"Authorization": "Bearer test-token-cliente1988"},
+)
 
 
 def test_chat_routes_product_question_to_knowledge():

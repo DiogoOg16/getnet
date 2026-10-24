@@ -16,6 +16,7 @@ services:
       - PYTHONPATH=/app
       - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b}
+      - GETNET_DEMO_AUTH_TOKENS=${GETNET_DEMO_AUTH_TOKENS:?Configure GETNET_DEMO_AUTH_TOKENS no arquivo .env}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
