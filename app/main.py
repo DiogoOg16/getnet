@@ -39,6 +39,7 @@ class ChatResponse(BaseModel):
     source_sections: dict[str, list[str]] = Field(default_factory=dict)
     tool_used: str | None = None
     handoff_required: bool = False
+    trace: list[dict] = Field(default_factory=list)
 
 
 @app.get("/health")
@@ -82,6 +83,15 @@ def chat(
         source_sections=result.get("source_sections", {}),
         tool_used=result.get("tool_used"),
         handoff_required=result.get("handoff_required", False),
+        trace=[
+        {
+            "agent": step.agent,
+            "reason": step.reason,
+            "status": step.status,
+            "tool_used": step.tool_used,
+        }
+        for step in execution.trace
+    ],
     )
 
     logger.info(

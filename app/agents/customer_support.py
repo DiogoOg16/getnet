@@ -1,95 +1,39 @@
+
 from app.tools.customer_tools import (
     lookup_customer,
     lookup_settlement,
     lookup_transaction,
 )
 
+
 class CustomerSupportAgent:
     """Handles customer-specific questions using support tools."""
 
+    @staticmethod
+    def _extract_transaction_id(message: str) -> str | None:
+        for token in message.split():
+            candidate = token.strip(".,!?;:()[]{}").lower()
+            if candidate.startswith("txn") and len(candidate) > 3:
+                return candidate
+        return None
+
     def answer(self, message: str, user_id: str) -> dict:
         text = message.casefold()
+
+        transaction_id = self._extract_transaction_id(message)
+
         declined_transaction = any(
             term in text
             for term in (
-                "transaction decline",
-                "transaction declined",
-                "declined transaction",
-                "transação recusada",
-                "transacao recusada",
-                "transação negada",
-                "transacao negada",
-                "cartão recusado",
-                "cartao recusado",
+                "recusad",
+                "negad",
+                "declin",
+                "declined",
+                "decline",
             )
         )
 
-        if declined_transaction:
-            return {
-                "agent": "customer_support",
-                "response": (
-                    "A transação parece ter sido recusada, mas ainda não "
-                    "consultei uma operação específica. Confira se os dados "
-                    "do cartão e as informações da venda estão corretos e "
-                    "tente novamente, se apropriado. Se o problema persistir, "
-                    "informe o identificador da transação (por exemplo, "
-                    "txn2001) para que eu possa consultar o status."
-                ),
-                "tool_used": None,
-            }
-
-        settlement_timing = any(
-            term in text
-            for term in (
-                "quando o dinheiro",
-                "when will the money",
-                "be deposited",
-                "yesterday's sales",
-                "yesterday’s sales",
-                "when will i receive",
-                "quando vai cair",
-                "prazo de recebimento",
-                "prazo de deposito",
-                "depositado",
-                "recebimento",
-                "vendas de ontem",
-                "dinheiro das vendas",
-                "quando o valor",
-            )
-        )
-
-        transaction_id = next(
-            (
-                token.strip(".,!?;:")
-                for token in message.split()
-                if token.lower().startswith("txn")
-            ),
-            None,
-        )
-
-        if settlement_timing and not transaction_id:
-            result = lookup_settlement(user_id)
-
-            if not result["found"]:
-                return {
-                    "agent": "customer_support",
-                    "response": (
-                        "Não consegui localizar o cadastro na base simulada "
-                        "para consultar as orientações de recebimento."
-                    ),
-                    "tool_used": "lookup_settlement",
-                }
-
-            return {
-                "agent": "customer_support",
-                "response": (
-                    f"{result['message']} "
-                    "Para verificar uma operação específica, informe o "
-                    "identificador da transação, por exemplo txn1001."
-                ),
-                "tool_used": "lookup_settlement",
-            }
-
+        # If a transaction ID is provided, always verify ownership and status.
         if transaction_id:
             result = lookup_transaction(transaction_id, user_id)
 
@@ -114,13 +58,76 @@ class CustomerSupportAgent:
                 transaction["status"],
             )
 
+            response = (
+                f"A transação {transaction['transaction_id']} está "
+                f"{status}. Valor: R$ {transaction['amount']:.2f}."
+            )
+
+            if declined_transaction and transaction["status"] == "declined":
+                response += (
+                    " A base simulada não contém o motivo específico da recusa. "
+                    "Consulte os detalhes da venda no sistema de origem ou "
+                    "solicite atendimento especializado."
+                )
+
+            return {
+                "agent": "customer_support",
+                "response": response,
+                "tool_used": "lookup_transaction",
+            }
+
+        if declined_transaction:
             return {
                 "agent": "customer_support",
                 "response": (
-                    f"A transação {transaction['transaction_id']} está "
-                    f"{status}. Valor: R$ {transaction['amount']:.2f}."
+                    "Para verificar uma venda recusada, preciso do identificador "
+                    "da transação (por exemplo, txn1001). Sem esse identificador, "
+                    "não consigo confirmar o status nem o motivo da recusa."
                 ),
-                "tool_used": "lookup_transaction",
+                "tool_used": None,
+            }
+
+        settlement_timing = any(
+            term in text
+            for term in (
+                "quando o dinheiro",
+                "when will the money",
+                "be deposited",
+                "yesterday's sales",
+                "yesterday’s sales",
+                "when will i receive",
+                "quando vai cair",
+                "prazo de recebimento",
+                "prazo de deposito",
+                "depositado",
+                "recebimento",
+                "vendas de ontem",
+                "dinheiro das vendas",
+                "quando o valor",
+            )
+        )
+
+        if settlement_timing:
+            result = lookup_settlement(user_id)
+
+            if not result["found"]:
+                return {
+                    "agent": "customer_support",
+                    "response": (
+                        "Não consegui localizar o cadastro na base simulada "
+                        "para consultar as orientações de recebimento."
+                    ),
+                    "tool_used": "lookup_settlement",
+                }
+
+            return {
+                "agent": "customer_support",
+                "response": (
+                    f"{result['message']} "
+                    "Para verificar uma operação específica, informe o "
+                    "identificador da transação, por exemplo txn1001."
+                ),
+                "tool_used": "lookup_settlement",
             }
 
         if any(
@@ -139,9 +146,7 @@ class CustomerSupportAgent:
             if not result["found"]:
                 return {
                     "agent": "customer_support",
-                    "response": (
-                        "Não encontrei esse cliente na base simulada."
-                    ),
+                    "response": "Não encontrei esse cliente na base simulada.",
                     "tool_used": "lookup_customer",
                 }
 
@@ -158,9 +163,9 @@ class CustomerSupportAgent:
         return {
             "agent": "customer_support",
             "response": (
-                "Posso consultar dados cadastrais ou uma transação específica. "
-                "Para consultar uma transação, informe seu identificador, "
-                "por exemplo txn1001."
+                "Posso consultar dados cadastrais, recebimentos simulados "
+                "ou uma transação específica. Para consultar uma transação, "
+                "informe seu identificador, por exemplo txn1001."
             ),
             "tool_used": None,
         }

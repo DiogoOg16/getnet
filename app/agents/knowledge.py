@@ -425,6 +425,7 @@ class KnowledgeAgent:
                     "Se a sua dúvida for sobre conexão sem internet, verifique a rede, o sinal e a autenticação do Wi-Fi do ponto de venda e, se necessário, consulte o atendimento oficial da Getnet para o modelo da sua maquininha."
                 ),
                 "sources": [],
+                "resolved": False,
                 "source_sections": {},
             }
 
@@ -439,6 +440,7 @@ class KnowledgeAgent:
                     "a documentação oficial da Getnet ou o atendimento."
                 ),
                 "sources": [],
+                "resolved": False,
                 "source_sections": {},
             }
 
@@ -448,6 +450,7 @@ class KnowledgeAgent:
                 "agent": "knowledge",
                 "response": direct_answer,
                 "sources": [source["title"] for source in sources],
+                "resolved": True,
                 "source_sections": self._group_sources_by_section(sources),
             }
 
@@ -469,5 +472,6 @@ class KnowledgeAgent:
             "response": answer,
             "tool_used": tool_used,
             "sources": [source["title"] for source in sources],
+            "resolved": False,
             "source_sections": self._group_sources_by_section(sources),
         }

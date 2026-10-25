@@ -4,9 +4,27 @@ from app.agents.knowledge import KnowledgeAgent
 from app.rag.retriever import retrieve
 
 
+
 @pytest.fixture(autouse=True)
 def mock_llm(monkeypatch):
     def fake_generate(self, message, context):
+        query = message.lower()
+
+        if "qr code" in query or "qr-code" in query or "qrcode" in query:
+            return (
+                "Para receber via Pix utilizando QR Code, acesse a opção "
+                "Pix na Get Conta, entre em Conta e selecione "
+                "Vender com QR Code. Se necessário, informe o valor "
+                "que deseja receber."
+            )
+
+        if "get tap" in query and "pix" in query:
+            return (
+                "Para habilitar e vender via Pix usando o Get Tap, "
+                "verifique se a função Pix está habilitada e siga o "
+                "fluxo de venda no aplicativo Getnet Brasil."
+            )
+
         return "Resposta simulada baseada nos documentos recuperados."
 
     monkeypatch.setattr(KnowledgeAgent, "_generate", fake_generate)
@@ -221,3 +239,17 @@ def test_anticipation_definition_ranks_before_secondary_details():
 
     assert definition in titles
     assert titles.index(definition) == 0
+
+def test_returns_unresolved_when_no_sources(monkeypatch):
+    monkeypatch.setattr(
+        "app.agents.knowledge.retrieve",
+        lambda message: [],
+    )
+
+    result = KnowledgeAgent().answer(
+        "Como configuro um serviço que não existe na documentação?"
+    )
+
+    assert result["agent"] == "knowledge"
+    assert result["sources"] == []
+    assert result["resolved"] is False

@@ -25,11 +25,20 @@ class ExecutionPlan:
 
 
 @dataclass(frozen=True)
+class StepTrace:
+    agent: str
+    reason: str
+    status: str
+    tool_used: str | None = None
+
+
+@dataclass(frozen=True)
 class ChatExecution:
     decision: RoutingDecision
     result: dict
     plan: ExecutionPlan
     executed_steps: tuple[str, ...]
+    trace: tuple[StepTrace, ...] = ()
 
 
 class ChatOrchestrator:
@@ -137,7 +146,9 @@ class ChatOrchestrator:
     @staticmethod
     def _combine_results(results: list[dict]) -> dict:
         if len(results) == 1:
-            return results[0]
+            merged = dict(results[0])
+            merged["resolved"] = bool(results[0].get("resolved", False))
+            return merged
 
         responses = [
             result["response"].strip()
@@ -168,31 +179,71 @@ class ChatOrchestrator:
 
         return {
             "agent": "multi_agent",
-            "response": "\\n\\nOrientações da base de conhecimento:\\n".join(
+            "response": "\n\nOrientações da base de conhecimento:\n".join(
                 responses
             ),
             "sources": sources,
             "source_sections": source_sections,
             "tool_used": ", ".join(tools) if tools else None,
+            "resolved": any(
+                result.get("resolved", False) is True for result in results
+            ),
             "handoff_required": any(
                 result.get("handoff_required", False)
                 for result in results
             ),
         }
 
+    
     def handle(self, message: str, user_id: str) -> ChatExecution:
         decision, plan = self.create_plan(message)
 
         executed_steps: list[str] = []
         results: list[dict] = []
+        trace: list[StepTrace] = []
 
         for step in plan.steps[:plan.max_steps]:
-            result = self._execute_step(step, message, user_id)
-            results.append(result)
-            executed_steps.append(step.agent)
+            try:
+                step_result = self._execute_step(step, message, user_id)
+                results.append(step_result)
+                executed_steps.append(step.agent)
 
-            # A human handoff is terminal: do not run further agents.
-            if result.get("handoff_required", False):
+                trace.append(
+                    StepTrace(
+                        agent=step.agent,
+                        reason=step.reason,
+                        status="success",
+                        tool_used=step_result.get("tool_used"),
+                    )
+                )
+
+                # A human handoff is terminal.
+                if step_result.get("handoff_required", False):
+                    break
+
+                if step_result.get("resolved") is True:
+                    break
+
+            except Exception:
+                trace.append(
+                    StepTrace(
+                        agent=step.agent,
+                        reason=step.reason,
+                        status="error",
+                    )
+                )
+                results.append(
+                    {
+                        "agent": "fallback",
+                        "response": (
+                            "Ocorreu uma falha durante o atendimento. "
+                            "Tente novamente ou solicite atendimento humano."
+                        ),
+                        "sources": [],
+                        "tool_used": None,
+                        "handoff_required": True,
+                    }
+                )
                 break
 
         if results:
@@ -214,4 +265,6 @@ class ChatOrchestrator:
             result=result,
             plan=plan,
             executed_steps=tuple(executed_steps),
+            trace=tuple(trace),
         )
+

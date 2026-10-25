@@ -33,7 +33,8 @@ STOPWORDS = {
     "nao", "sua", "seu", "suas", "seus", "esta", "isso", "ja", "onde",
     "quando", "quantas", "quanto", "quantos", "preciso", "precisa",
     "ontem", "hoje", "amanha", "informacoes", "informacao", "existem",
-    "existe", "tem", "sao", "foi", "vou", "ha",
+    "existe", "tem", "sao", "foi", "vou", "ha", "fiz", "explicar", "explica", "motivo", "motivos",
+    "resolver", "resolvo", "possiveis",
     # inglês
     "the", "an", "of", "to", "in", "is", "are", "do", "does", "did",
     "my", "me", "can", "what", "how", "with", "and", "or", "for", "on",
@@ -71,6 +72,7 @@ SYNONYMS = {
     "recusado": "venda negada",
     "recusadas": "venda negada",
     "recusados": "venda negada",
+    "recusa": "negada", "recusas": "negada",
     "error": "erro", "difference": "diferenca", "card": "cartao",
     "fee": "taxa", "fees": "taxas", "rate": "taxa", "rates": "taxas",
     "wifi": "wi fi",
@@ -90,7 +92,9 @@ def _words(text: str) -> list[str]:
 
 
 def _stem(word: str) -> str:
-    # "crediário" e "crédito" compartilham as 5 primeiras letras e se confundiam.
+    # Normalização explícita para variações comuns em consultas de cartão.
+    if word in {"cartao", "cartoes"}:
+        return "cartao"
     if word.startswith("crediar"):
         return "crediar"
     return word[:STEM_LEN]
@@ -216,7 +220,6 @@ def retrieve(query: str, limit: int = 3) -> list[dict]:
 
     idf = {t: _idf(df, len(docs), t) for t in known}
     total_idf = sum(idf.values())
-    key_term = max(known, key=lambda t: idf[t])
 
     results = []
     for doc in docs:
@@ -257,8 +260,7 @@ def retrieve(query: str, limit: int = 3) -> list[dict]:
                 title_matched += idf[term]
 
         coverage = matched / total_idf
-        if key_term not in tf:
-            continue
+        
         if score < MIN_SCORE or coverage < MIN_COVERAGE:
             continue
 
