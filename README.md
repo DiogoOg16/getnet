@@ -220,6 +220,7 @@ Exemplo de requisição:
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Authorization: Bearer test-token-cliente1988' \
   -H 'Content-Type: application/json' \
   -d '{
     "message": "Qual o status da transação txn1001?",
@@ -239,11 +240,27 @@ A resposta inclui os campos abaixo (o conteúdo exato depende da rota e dos dado
   "sources": [],
   "source_sections": {},
   "tool_used": "lookup_transaction",
-  "handoff_required": false
+  "flow_completed": true,
+  "response_delivered": true,
+  "issue_resolved": true,
+  "resolved": true,
+  "handoff_required": false,
+  "awaiting_user_input": false,
+  "step_status": "success",
+  "handoff": null
 }
 ```
 
 O exemplo ilustra o contrato da resposta; a mensagem, o status da transação e outros valores dependem dos dados simulados disponíveis na versão executada.
+
+### Endpoints de handoff humano
+
+- `GET /human-handoff`: lista tickets visíveis para o usuário autenticado.
+- `GET /human-handoff/{ticket_id}`: consulta um ticket específico.
+- `POST /human-handoff/{ticket_id}/assume`: um atendente assume o ticket.
+- `POST /human-handoff/{ticket_id}/complete`: um atendente conclui o ticket.
+
+Os endpoints exigem autenticação Bearer. Usuários cliente só podem acessar tickets próprios; atendentes podem operar tickets conforme as regras de transição implementadas.
 
 ### Exemplos adicionais
 
@@ -251,6 +268,7 @@ O exemplo ilustra o contrato da resposta; a mensagem, o status da transação e 
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Authorization: Bearer test-token-cliente1988' \
   -H 'Content-Type: application/json' \
   -d '{"message":"Como funciona o Pix?","user_id":"cliente1988"}'
 ```
@@ -259,6 +277,7 @@ curl -s -X POST http://127.0.0.1:8000/chat \
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Authorization: Bearer test-token-cliente1988' \
   -H 'Content-Type: application/json' \
   -d '{"message":"Qual é a previsão do tempo em Porto Alegre amanhã?","user_id":"cliente1988"}'
 ```
@@ -267,6 +286,7 @@ curl -s -X POST http://127.0.0.1:8000/chat \
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Authorization: Bearer test-token-cliente1988' \
   -H 'Content-Type: application/json' \
   -d '{"message":"Preciso falar com um humano sobre dados sensíveis do meu cadastro.","user_id":"cliente1988"}'
 ```
@@ -299,7 +319,13 @@ RUN_NETWORK_TESTS=1 python -m pytest -v
 
 Esses testes exigem conectividade e podem falhar se serviços externos estiverem indisponíveis ou alterarem seu comportamento.
 
-**Resultado registrado durante a validação deste projeto:** 111 testes passaram e 1 foi ignorado por depender de rede. O resultado pode variar após alterações no código ou no ambiente. Foi observado também um aviso de depreciação relacionado a dependências de teste.
+Para validar o estado atual do projeto no seu ambiente, execute a suíte completa:
+
+```bash
+python -m pytest -q
+```
+
+O resultado pode variar conforme alterações no código, dependências externas e configuração do ambiente.
 
 ### Scripts auxiliares
 
@@ -332,7 +358,14 @@ A API registra eventos de requisição, decisão de roteamento e resposta. A res
 | `tool_used` | Ferramenta ou caminho de execução utilizado, quando aplicável. |
 | `sources` | URLs ou fontes usadas pelo agente. |
 | `source_sections` | Agrupamento dos documentos recuperados por seção. |
+| `flow_completed` | Indica término do ciclo da requisição atual. |
+| `response_delivered` | Indica se uma resposta textual foi entregue. |
+| `issue_resolved` | Resultado de resolução do problema no nível de negócio. |
+| `resolved` | Campo legado de compatibilidade, espelhando `issue_resolved`. |
+| `awaiting_user_input` | Indica suspensão aguardando informação obrigatória do usuário. |
+| `step_status` | Estado operacional final (`success`, `failed`, `waiting_for_user_input`, `handoff`). |
 | `handoff_required` | Indica se a solicitação deve ser encaminhada para atendimento humano. |
+| `handoff` | Ticket de handoff quando criado ou consultado no fluxo. |
 
 Para observar logs no Docker:
 
@@ -351,7 +384,7 @@ Os logs atuais são voltados à depuração. O projeto ainda não implementa das
 - **Busca externa:** a pesquisa geral via DuckDuckGo pode ser instável ou bloqueada. Resumos do mecanismo de busca não são verificação independente das páginas.
 - **Câmbio:** a fonte e o tipo de cotação seguem a implementação da ferramenta; não se deve interpretar o valor como uma cotação comercial em tempo real sem verificar a resposta e a fonte.
 - **Idioma:** a geração foi orientada principalmente para respostas em português; não há garantia de responder no mesmo idioma de toda mensagem recebida.
-- **Escalonamento:** o protótipo sinaliza a necessidade de atendimento humano, mas não cria um chamado nem transfere a conversa para um operador real.
+- **Escalonamento:** o protótipo cria e persiste tickets de handoff em armazenamento local de arquivo JSON; não há integração com plataforma externa de atendimento.
 - **Guardrails por regras:** a detecção de intenções sensíveis usa padrões explícitos e não substitui uma solução completa de segurança ou revisão humana.
 
 ## Estrutura do projeto

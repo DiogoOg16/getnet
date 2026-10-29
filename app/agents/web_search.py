@@ -60,9 +60,16 @@ class WebSearchAgent:
             )
             response.raise_for_status()
         except requests.RequestException:
-            return self._unavailable(
+            result = self._unavailable(
                 "Não foi possível acessar a busca na web neste momento."
             )
+            result["flow_completed"] = True
+            result["response_delivered"] = True
+            result["issue_resolved"] = False
+            result["awaiting_user_input"] = False
+            result["step_status"] = "failed"
+            result["resolved"] = False
+            return result
 
         soup = BeautifulSoup(response.text, "html.parser")
         result_elements = soup.select(".result")
@@ -70,9 +77,16 @@ class WebSearchAgent:
         # A successful HTTP response does not guarantee that the search
         # engine returned a usable results page.
         if not result_elements:
-            return self._unavailable(
+            result = self._unavailable(
                 "O mecanismo de busca não retornou resultados utilizáveis."
             )
+            result["flow_completed"] = True
+            result["response_delivered"] = True
+            result["issue_resolved"] = False
+            result["awaiting_user_input"] = False
+            result["step_status"] = "failed"
+            result["resolved"] = False
+            return result
 
         results = []
         seen_urls = set()
@@ -115,6 +129,12 @@ class WebSearchAgent:
                 ),
                 "sources": [],
                 "tool_used": "duckduckgo_search",
+                "flow_completed": True,
+                "response_delivered": True,
+                "issue_resolved": False,
+                "awaiting_user_input": False,
+                "step_status": "failed",
+                "resolved": False,
             }
 
         formatted = "\n\n".join(
@@ -136,6 +156,12 @@ class WebSearchAgent:
             ),
             "sources": [item["url"] for item in results],
             "tool_used": "duckduckgo_search",
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": True,
+            "awaiting_user_input": False,
+            "step_status": "success",
+            "resolved": True,
         }
 
     @staticmethod

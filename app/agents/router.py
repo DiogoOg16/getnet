@@ -34,21 +34,34 @@ DEVICE = _compile((
     r"\bterminal\b",
 ))
 
-DEVICE_PROBLEM = _compile((
+DEVICE_OPERATIONAL_FAILURE = _compile((
     r"\bnao conecta",
     r"\bnao liga",
     r"\bnao funciona",
+    r"\bcai toda hora",
+    r"\bconexao instavel",
+    r"\bdesconecta",
+    r"\bsem internet",
     r"\btravou",
-    r"\binternet\b",
-    r"\bwi-?fi\b",
     r"\berro\b",
     r"\berror\b",
     r"\bdeclin",
     r"\brecus",
     r"\bwon'?t\b",
+    r"\bcan'?t\b",
     r"\bnot working\b",
-    r"\bconnect",
+    r"\bcannot connect\b",
     r"\bfreez",
+))
+
+DEVICE_PROCEDURAL = _compile((
+    r"\bconfigur",
+    r"\btrocar",
+    r"\bcomo usar",
+    r"\bhow to use",
+    r"\bhabilitar",
+    r"\bsetup",
+    r"\brede wi-?fi\b",
 ))
 
 SUPPORT = _compile((
@@ -59,6 +72,10 @@ SUPPORT = _compile((
     r"\bmeu saldo\b",
     r"\bmeu dinheiro\b",
     r"\bmeu recebimento\b",
+    r"\bmeu pagamento\b",
+    r"\b(?:cade|cadê)\b",
+    r"\b(?:nao|não) entrou\b",
+    r"\b(?:dinheiro|pagamento|recebimento) (?:das vendas|da venda|de ontem)\b",
     r"\bdeposit",
     r"\btransac",
     r"\bnao recebi\b",
@@ -171,7 +188,7 @@ class RouterAgent:
             )
 
 
-        if DEVICE.search(text) and DEVICE_PROBLEM.search(text):
+        if DEVICE.search(text):
             if re.search(
                 r"\b(?:declin|recus|transaction decline|"
                 r"transacao recusad[ao])",
@@ -185,13 +202,23 @@ class RouterAgent:
                     ),
                 )
 
-            return RoutingDecision(
-                agent="knowledge",
-                reason=(
-                    "The message describes a card machine problem; "
-                    "answered from troubleshooting knowledge."
-                ),
-            )
+            if DEVICE_OPERATIONAL_FAILURE.search(text):
+                return RoutingDecision(
+                    agent="customer_support",
+                    reason=(
+                        "The message describes an operational card machine "
+                        "failure and requires support diagnostics."
+                    ),
+                )
+
+            if DEVICE_PROCEDURAL.search(text):
+                return RoutingDecision(
+                    agent="knowledge",
+                    reason=(
+                        "The message requests procedural card machine guidance "
+                        "that can be answered from documented knowledge."
+                    ),
+                )
 
 
         if SUPPORT.search(text):

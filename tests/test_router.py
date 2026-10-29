@@ -11,14 +11,14 @@ def test_routes_product_question_to_knowledge():
     assert result.agent == "knowledge"
 
 
-def test_routes_device_problem_to_knowledge():
+def test_routes_device_problem_to_support():
     router = RouterAgent()
 
     result = router.route(
         "Minha máquina não conecta à internet"
     )
 
-    assert result.agent == "knowledge"
+    assert result.agent == "customer_support"
 
 
 def test_routes_payment_problem_to_support():
@@ -82,6 +82,38 @@ def test_routes_generic_pix_concept_to_web_search():
 def test_routes_how_it_works_pix_question_to_knowledge():
     result = RouterAgent().route("Como funciona o Pix?")
     assert result.agent == "knowledge"
+
+
+def test_routes_settlement_paraphrases_to_support():
+    for message in [
+        "O dinheiro das vendas de ontem não entrou",
+        "cadê meu pagamento?",
+        "Não entrou o dinheiro das vendas de ontem",
+    ]:
+        assert RouterAgent().route(message).agent == "customer_support"
+
+
+def test_distinguishes_declined_sale_from_installment_context():
+    assert RouterAgent().route("Minha venda foi recusada").agent == "customer_support"
+    assert RouterAgent().route("quero saber como funciona uma venda parcelada").agent == "knowledge"
+    assert RouterAgent().route("MINHA MAQUININHA NÃO CONECTA NA INTERNET!").agent == "customer_support"
+
+
+def test_audit_examples_for_configuration_vs_operational_failures():
+    cases = [
+        ("Minha maquininha não conecta na internet e não funciona.", "customer_support"),
+        ("Minha maquininha não conecta na internet.", "customer_support"),
+        ("Como configurar o Wi-Fi na maquininha Getnet?", "knowledge"),
+        ("Como trocar a rede Wi-Fi da maquininha?", "knowledge"),
+        ("Minha maquininha conecta, mas cai toda hora.", "customer_support"),
+        ("Como usar a maquininha Getnet?", "knowledge"),
+        ("Minha venda foi recusada.", "customer_support"),
+        ("Como funciona uma venda parcelada?", "knowledge"),
+    ]
+
+    router = RouterAgent()
+    for message, expected_agent in cases:
+        assert router.route(message).agent == expected_agent
 
 
 def test_routes_unsupported_sensitive_request_to_human_escalation():

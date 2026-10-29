@@ -45,9 +45,15 @@ class CustomerSupportAgent:
                         "Confirme o identificador e tente novamente."
                     ),
                     "tool_used": "lookup_transaction",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "waiting_for_user_input",
                 }
 
             transaction = result["transaction"]
+
             status_messages = {
                 "approved": "aprovada",
                 "pending": "pendente",
@@ -74,6 +80,11 @@ class CustomerSupportAgent:
                 "agent": "customer_support",
                 "response": response,
                 "tool_used": "lookup_transaction",
+                "flow_completed": True,
+                "response_delivered": True,
+                "issue_resolved": True,
+                "awaiting_user_input": False,
+                "step_status": "success",
             }
 
         if declined_transaction:
@@ -85,6 +96,11 @@ class CustomerSupportAgent:
                     "não consigo confirmar o status nem o motivo da recusa."
                 ),
                 "tool_used": None,
+                "flow_completed": True,
+                "response_delivered": True,
+                "issue_resolved": False,
+                "awaiting_user_input": True,
+                "step_status": "waiting_for_user_input",
             }
 
         settlement_timing = any(
@@ -118,6 +134,11 @@ class CustomerSupportAgent:
                         "para consultar as orientações de recebimento."
                     ),
                     "tool_used": "lookup_settlement",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": False,
+                    "step_status": "failed",
                 }
 
             return {
@@ -128,6 +149,11 @@ class CustomerSupportAgent:
                     "identificador da transação, por exemplo txn1001."
                 ),
                 "tool_used": "lookup_settlement",
+                "flow_completed": True,
+                "response_delivered": True,
+                "issue_resolved": True,
+                "awaiting_user_input": False,
+                "step_status": "success",
             }
 
         if any(
@@ -148,6 +174,11 @@ class CustomerSupportAgent:
                     "agent": "customer_support",
                     "response": "Não encontrei esse cliente na base simulada.",
                     "tool_used": "lookup_customer",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": False,
+                    "step_status": "failed",
                 }
 
             customer = result["customer"]
@@ -158,6 +189,11 @@ class CustomerSupportAgent:
                     f"Status da conta: {customer['account_status']}."
                 ),
                 "tool_used": "lookup_customer",
+                "flow_completed": True,
+                "response_delivered": True,
+                "issue_resolved": True,
+                "awaiting_user_input": False,
+                "step_status": "success",
             }
 
         return {
@@ -168,4 +204,9 @@ class CustomerSupportAgent:
                 "informe seu identificador, por exemplo txn1001."
             ),
             "tool_used": None,
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": False,
+            "awaiting_user_input": True,
+            "step_status": "waiting_for_user_input",
         }

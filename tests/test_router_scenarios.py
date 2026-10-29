@@ -8,7 +8,7 @@ CASES = [
     ("What's the weather forecast in Porto Alegre tomorrow?", "web_search"),
     ("When will the money from yesterday's sales be deposited?", "customer_support"),
     ("Do I need a bank account to receive my sales via Pix?", "knowledge"),
-    ("My card machine won't connect to the internet, what should I do?", "knowledge"),
+    ("My card machine won't connect to the internet, what should I do?", "customer_support"),
     ("How does receivables advance (antecipação) work with Getnet?", "knowledge"),
     ("What's the euro exchange rate today?", "web_search"),
     ("My card machine is showing a transaction decline error.", "customer_support"),
@@ -18,7 +18,7 @@ CASES = [
     ("Qual a diferença entre a Get Clássica e a Get Smart?", "knowledge"),
     ("Quando o dinheiro das vendas de ontem será depositado?", "customer_support"),
     ("Preciso de conta bancária para receber vendas por Pix?", "knowledge"),
-    ("Minha maquininha não conecta na internet, o que fazer?", "knowledge"),
+    ("Minha maquininha não conecta na internet, o que fazer?", "customer_support"),
     ("Como funciona a antecipação de recebíveis?", "knowledge"),
     ("Qual é a cotação do euro hoje?", "web_search"),
     # Transação, fallback e falsos positivos

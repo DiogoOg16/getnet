@@ -32,6 +32,18 @@ def test_customer_cannot_lookup_another_customers_transaction():
     assert result["found"] is False
 
 
+def test_agent_does_not_reveal_other_customers_transaction_details():
+    result = CustomerSupportAgent().answer(
+        "Por que a transação txn2001 foi recusada e como resolver?",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert result["issue_resolved"] is False
+    assert "não encontrei" in result["response"].lower()
+    assert "R$ 250.00" not in result["response"]
+
+
 def test_agent_answers_transaction_question():
     result = CustomerSupportAgent().answer(
         "Qual o status da transação txn1001?",

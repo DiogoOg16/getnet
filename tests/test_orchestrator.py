@@ -67,7 +67,7 @@ def test_two_agents_cooperate_and_merge_results(monkeypatch):
     assert execution.result["tool_used"] == "lookup_transaction, retrieval_only"
 
 
-def test_orchestrator_stops_when_a_step_marks_the_answer_as_resolved(monkeypatch):
+def test_orchestrator_continues_when_next_step_is_valid_even_after_success(monkeypatch):
     orchestrator = ChatOrchestrator()
     custom_plan = ExecutionPlan(
         steps=(
@@ -121,8 +121,11 @@ def test_orchestrator_stops_when_a_step_marks_the_answer_as_resolved(monkeypatch
 
     execution = orchestrator.handle("Como acesso a minha Get Conta?", "cliente2001")
 
-    assert execution.executed_steps == ("customer_support", "knowledge")
-    assert execution.result["resolved"] is True
+    assert execution.executed_steps == (
+        "customer_support",
+        "knowledge",
+        "web_search",
+    )
     assert "Get Conta" in execution.result["response"]
     assert execution.result["agent"] == "multi_agent"
 
@@ -149,6 +152,7 @@ def test_human_handoff_stops_the_execution():
 
     assert execution.executed_steps == ("human_escalation",)
     assert execution.result["handoff_required"] is True
+    assert execution.result["step_status"] == "handoff"
 
 
 def test_execution_trace_records_each_agent_and_tool(monkeypatch):
@@ -219,5 +223,61 @@ def test_agent_exception_is_traced_and_stops_execution(monkeypatch):
     assert execution.trace[0].tool_used is None
     assert execution.executed_steps == ()
     assert knowledge_called == []
-    assert execution.result["handoff_required"] is True
+    assert execution.result["handoff_required"] is False
+    assert execution.result["step_status"] == "failed"
     assert "internal details" not in execution.result["response"]
+
+
+def test_intermediate_success_does_not_block_valid_next_step(monkeypatch):
+    orchestrator = ChatOrchestrator()
+
+    custom_plan = ExecutionPlan(
+        steps=(
+            PlanStep(agent="customer_support", reason="support"),
+            PlanStep(agent="knowledge", reason="knowledge"),
+        ),
+        max_steps=2,
+    )
+
+    monkeypatch.setattr(
+        orchestrator,
+        "create_plan",
+        lambda message: (
+            RoutingDecision(agent="customer_support", reason="support"),
+            custom_plan,
+        ),
+    )
+    monkeypatch.setattr(
+        orchestrator.support,
+        "answer",
+        lambda *, message, user_id: {
+            "agent": "customer_support",
+            "response": "A transação foi localizada.",
+            "tool_used": "lookup_transaction",
+            "sources": [],
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": True,
+            "awaiting_user_input": False,
+            "step_status": "success",
+        },
+    )
+    monkeypatch.setattr(
+        orchestrator.knowledge,
+        "answer",
+        lambda message: {
+            "agent": "knowledge",
+            "response": "Orientação adicional da base.",
+            "tool_used": "retrieval_only",
+            "sources": ["Guia"],
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": False,
+            "awaiting_user_input": False,
+            "step_status": "success",
+        },
+    )
+
+    execution = orchestrator.handle("msg", "cliente2001")
+
+    assert execution.executed_steps == ("customer_support", "knowledge")

@@ -1,0 +1,84 @@
+{
+  "cases": [
+    {
+      "id": "EVAL-001",
+      "category": "prazo_recebimento",
+      "question": "Meu recebimento de vendas ainda não caiu na conta.",
+      "expected_agent": "customer_support",
+      "expected_handoff": false,
+      "expected_resolved": true,
+      "expected_response_contains": ["prazo", "recebimento"],
+      "should_resolve": true
+    },
+    {
+      "id": "EVAL-002",
+      "category": "conectividade_maquininha",
+      "question": "Minha maquininha não conecta na internet e não funciona.",
+      "expected_agent": "customer_support",
+      "expected_handoff": false,
+      "expected_resolved": false,
+      "expected_response_contains": ["transação", "txn1001"],
+      "should_resolve": false
+    },
+    {
+      "id": "EVAL-003",
+      "category": "transacao_recusada",
+      "question": "Minha transação foi recusada e eu quero saber o motivo.",
+      "expected_agent": "customer_support",
+      "expected_handoff": false,
+      "expected_resolved": false,
+      "expected_response_contains": ["transação", "identificador"],
+      "should_resolve": false
+    },
+    {
+      "id": "EVAL-004",
+      "category": "pix_produtos",
+      "question": "Como funciona o Pix da Getnet?",
+      "expected_agent": "knowledge",
+      "expected_handoff": false,
+      "expected_resolved": false,
+      "expected_response_contains": ["simulada", "documentos"],
+      "should_resolve": false
+    },
+    {
+      "id": "EVAL-005",
+      "category": "pix_produtos",
+      "question": "Quais produtos a Getnet oferece para pequenos negócios?",
+      "expected_agent": "knowledge",
+      "expected_handoff": false,
+      "expected_resolved": false,
+      "expected_response_contains": ["simulada", "documentos"],
+      "should_resolve": false
+    },
+    {
+      "id": "EVAL-006",
+      "category": "encaminhamento_humano",
+      "question": "Não consigo continuar e preciso falar com um humano.",
+      "expected_agent": "human_escalation",
+      "expected_handoff": true,
+      "expected_resolved": false,
+      "expected_response_contains": ["atendimento humano", "encaminho"],
+      "should_resolve": false
+    },
+    {
+      "id": "EVAL-007",
+      "category": "fora_base",
+      "question": "Qual é o melhor filme de ficção científica de 2024?",
+      "expected_agent": "fallback",
+      "expected_handoff": false,
+      "expected_resolved": false,
+      "expected_response_contains": ["não consegui", "identificar"],
+      "should_resolve": false
+    },
+    {
+      "id": "EVAL-008",
+      "category": "externa",
+      "question": "Qual a cotação do dólar hoje?",
+      "expected_agent": "web_search",
+      "expected_handoff": false,
+      "expected_resolved": false,
+      "expected_response_contains": ["dólar", "cotação"],
+      "should_resolve": false
+    }
+  ]
+}

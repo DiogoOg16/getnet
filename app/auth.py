@@ -40,6 +40,14 @@ def authenticate_user(
     credentials: HTTPAuthorizationCredentials | None,
 ) -> str:
     """Validate a Bearer token and return its associated user ID."""
+    try:
+        tokens = _load_auth_tokens()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Configuração de autenticação indisponível.",
+        ) from exc
+
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -47,7 +55,6 @@ def authenticate_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    tokens = _load_auth_tokens()
     authenticated_user_id = None
 
     for token, user_id in tokens.items():

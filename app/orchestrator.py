@@ -128,6 +128,11 @@ class ChatOrchestrator:
                 "sources": [],
                 "tool_used": "human_escalation",
                 "handoff_required": True,
+                "flow_completed": True,
+                "response_delivered": True,
+                "issue_resolved": False,
+                "awaiting_user_input": False,
+                "step_status": "handoff",
             }
 
         return {
@@ -141,13 +146,35 @@ class ChatOrchestrator:
             "sources": [],
             "tool_used": None,
             "handoff_required": False,
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": False,
+            "awaiting_user_input": False,
+            "step_status": "failed",
         }
 
-    @staticmethod
-    def _combine_results(results: list[dict]) -> dict:
+    def _combine_results(self, results: list[dict]) -> dict:
         if len(results) == 1:
             merged = dict(results[0])
-            merged["resolved"] = bool(results[0].get("resolved", False))
+            merged.setdefault("flow_completed", True)
+            merged.setdefault(
+                "response_delivered",
+                bool(merged.get("response", "").strip()),
+            )
+            merged.setdefault("issue_resolved", bool(merged.get("resolved", False)))
+            merged["resolved"] = bool(
+                merged.get("issue_resolved", merged.get("resolved", False))
+            )
+            merged.setdefault("awaiting_user_input", False)
+            if not merged.get("step_status"):
+                if merged.get("handoff_required", False):
+                    merged["step_status"] = "handoff"
+                elif merged.get("awaiting_user_input", False):
+                    merged["step_status"] = "waiting_for_user_input"
+                elif merged.get("response_delivered", False):
+                    merged["step_status"] = "success"
+                else:
+                    merged["step_status"] = "failed"
             return merged
 
         responses = [
@@ -156,9 +183,9 @@ class ChatOrchestrator:
             if result.get("response", "").strip()
         ]
 
-        sources = []
-        source_sections = {}
-        tools = []
+        sources: list[str] = []
+        source_sections: dict[str, list[str]] = {}
+        tools: list[str] = []
 
         for result in results:
             for item in result.get("sources", []):
@@ -177,6 +204,31 @@ class ChatOrchestrator:
                     if name not in tools:
                         tools.append(name)
 
+        any_awaiting = any(
+            result.get("awaiting_user_input", False) for result in results
+        )
+        any_handoff = any(
+            result.get("handoff_required", False) for result in results
+        )
+        any_failed = any(
+            result.get("step_status") == "failed" for result in results
+        )
+        any_resolution = any(
+            result.get("issue_resolved", result.get("resolved", False)) is True
+            for result in results
+        )
+
+        if any_failed:
+            step_status = "failed"
+        elif any_handoff:
+            step_status = "handoff"
+        elif any_awaiting:
+            step_status = "waiting_for_user_input"
+        elif any_resolution or responses:
+            step_status = "success"
+        else:
+            step_status = "failed"
+
         return {
             "agent": "multi_agent",
             "response": "\n\nOrientações da base de conhecimento:\n".join(
@@ -185,16 +237,15 @@ class ChatOrchestrator:
             "sources": sources,
             "source_sections": source_sections,
             "tool_used": ", ".join(tools) if tools else None,
-            "resolved": any(
-                result.get("resolved", False) is True for result in results
-            ),
-            "handoff_required": any(
-                result.get("handoff_required", False)
-                for result in results
-            ),
+            "flow_completed": True,
+            "response_delivered": bool(responses),
+            "issue_resolved": any_resolution,
+            "resolved": any_resolution,
+            "handoff_required": any_handoff,
+            "awaiting_user_input": any_awaiting,
+            "step_status": step_status,
         }
 
-    
     def handle(self, message: str, user_id: str) -> ChatExecution:
         decision, plan = self.create_plan(message)
 
@@ -217,11 +268,18 @@ class ChatOrchestrator:
                     )
                 )
 
-                # A human handoff is terminal.
                 if step_result.get("handoff_required", False):
                     break
 
-                if step_result.get("resolved") is True:
+                if step_result.get("awaiting_user_input", False):
+                    break
+
+                if step_result.get("step_status") == "failed":
+                    break
+
+                # Keep progressing while there are planned valid steps unless
+                # an operational terminal state was reached.
+                if step_result.get("step_status") in {"handoff", "waiting_for_user_input"}:
                     break
 
             except Exception:
@@ -241,7 +299,12 @@ class ChatOrchestrator:
                         ),
                         "sources": [],
                         "tool_used": None,
-                        "handoff_required": True,
+                        "handoff_required": False,
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": False,
+                        "awaiting_user_input": False,
+                        "step_status": "failed",
                     }
                 )
                 break
@@ -258,6 +321,11 @@ class ChatOrchestrator:
                 "sources": [],
                 "tool_used": None,
                 "handoff_required": False,
+                "flow_completed": True,
+                "response_delivered": False,
+                "issue_resolved": False,
+                "awaiting_user_input": False,
+                "step_status": "failed",
             }
 
         return ChatExecution(

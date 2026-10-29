@@ -4,6 +4,7 @@ import os
 import pytest
 
 from app.agents.knowledge import KnowledgeAgent
+from app.main import handoff_store, session_memory
 
 
 @pytest.fixture(autouse=True)
@@ -21,12 +22,17 @@ def configure_demo_auth_tokens(monkeypatch):
     tokens = {
         "test-token-cliente1988": "cliente1988",
         "test-token-cliente2001": "cliente2001",
+        "test-token-atendente_01": "atendente_01",
     }
 
     monkeypatch.setenv(
         "GETNET_DEMO_AUTH_TOKENS",
         json.dumps(tokens),
     )
+    session_memory._store = {}
+    session_memory.storage_path.unlink(missing_ok=True)
+    handoff_store._records = {}
+    handoff_store.storage_path.unlink(missing_ok=True)
 
 
 def pytest_configure(config):
