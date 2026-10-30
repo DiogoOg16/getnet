@@ -1,0 +1,520 @@
+{
+  "dataset": "behavior_cases_v1",
+  "generated_at": "2026-10-30T14:16:29.130379+00:00",
+  "summary": {
+    "total_cases": 24,
+    "all_checks_passed": 24,
+    "all_checks_pass_rate": 1.0,
+    "routing_correct_cases": 24,
+    "routing_correct_rate": 1.0,
+    "source_evidence_cases": 4,
+    "source_evidence_passed": 4,
+    "source_evidence_pass_rate": 1.0
+  },
+  "results": [
+    {
+      "id": "BEH-001",
+      "category": "support_transaction_lookup",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "customer_support",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": true,
+      "observed_sources_count": 0,
+      "response_excerpt": "A transação txn1001 está aprovada. Valor: R$ 149.90."
+    },
+    {
+      "id": "BEH-002",
+      "category": "knowledge_pix",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "knowledge",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 3,
+      "response_excerpt": "A Pix na Getnet funciona de forma que você pode gerar QR Code diretamente nos meios de captura (terminais físicos, TEF Autar e Ecommerce) para receber pagamentos via Pix. Para realizar uma venda com P"
+    },
+    {
+      "id": "BEH-003",
+      "category": "web_weather",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "web_search",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 1,
+      "response_excerpt": "Previsão para Porto Alegre, Rio Grande do Sul em 31/10/2026: mínima de 14.8 °C, máxima de 23.9 °C, chance de chuva de 22%. Fonte: Open-Meteo."
+    },
+    {
+      "id": "BEH-004",
+      "category": "human_sensitive_request",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "human_escalation",
+      "observed_handoff_required": true,
+      "observed_step_status": "handoff",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 0,
+      "response_excerpt": "Solicitação fora do escopo ou sensível. Encaminho para atendimento humano para continuidade segura."
+    },
+    {
+      "id": "BEH-005",
+      "category": "fallback_out_of_domain",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "fallback",
+      "observed_handoff_required": false,
+      "observed_step_status": "failed",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 0,
+      "response_excerpt": "Não consegui identificar sua solicitação com segurança. Você pode perguntar sobre produtos e serviços Getnet, informações externas ou um problema específico da sua conta ou transação."
+    },
+    {
+      "id": "BEH-006",
+      "category": "ambiguous_short_request",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "fallback",
+      "observed_handoff_required": false,
+      "observed_step_status": "failed",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 0,
+      "response_excerpt": "Não consegui identificar sua solicitação com segurança. Você pode perguntar sobre produtos e serviços Getnet, informações externas ou um problema específico da sua conta ou transação."
+    },
+    {
+      "id": "BEH-007",
+      "category": "mixed_intent_transaction_precedence",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "customer_support",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": true,
+      "observed_sources_count": 0,
+      "response_excerpt": "A transação txn1001 está aprovada. Valor: R$ 149.90."
+    },
+    {
+      "id": "BEH-008",
+      "category": "multi_step_declined_guidance",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "multi_agent",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": true,
+      "observed_sources_count": 3,
+      "response_excerpt": "A transação txn1001 está aprovada. Valor: R$ 149.90.\n\nOrientações da base de conhecimento:\nNão há informação suficiente no contexto fornecido para responder especificamente à transação txn1001. O cont"
+    },
+    {
+      "id": "BEH-009",
+      "category": "support_settlement_missing_context",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "customer_support",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": true,
+      "observed_sources_count": 0,
+      "response_excerpt": "O prazo de recebimento depende do canal de pagamento e do produto contratado. Este ambiente utiliza dados simulados e não possui registros reais de recebimento nem permite confirmar a data de depósito"
+    },
+    {
+      "id": "BEH-010",
+      "category": "web_exchange_rate",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "web_search",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 1,
+      "response_excerpt": "Cotação do euro (PTAX de fechamento do Banco Central, 29/10/2026 13:11): compra R$ 5,9988, venda R$ 6,0000. Não é uma cotação em tempo real; bancos e casas de câmbio praticam valores diferentes."
+    },
+    {
+      "id": "BEH-011",
+      "category": "knowledge_payment_link",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "knowledge",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 3,
+      "response_excerpt": "Sim, você pode vender pelo WhatsApp usando o Link de Pagamento. De acordo com o contexto fornecido, o vendedor pode enviar o Link de Pagamento para seus clientes por redes sociais, WhatsApp, email e S"
+    },
+    {
+      "id": "BEH-012",
+      "category": "knowledge_product_comparison",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "knowledge",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 3,
+      "response_excerpt": "Com base nas informações fornecidas, as principais diferenças entre Get Clássica e Get Smart são:\n\n1. Valor mensal de utilização:\n   - Get Clássica: R$ 79,90/mês (com faturamento < R$ 20 mil)\n   - Get"
+    },
+    {
+      "id": "BEH-013",
+      "category": "support_device_offline",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "customer_support",
+      "observed_handoff_required": false,
+      "observed_step_status": "waiting_for_user_input",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 0,
+      "response_excerpt": "Posso consultar dados cadastrais, recebimentos simulados ou uma transação específica. Para consultar uma transação, informe seu identificador, por exemplo txn1001."
+    },
+    {
+      "id": "BEH-014",
+      "category": "sensitive_number_guardrail",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "human_escalation",
+      "observed_handoff_required": true,
+      "observed_step_status": "handoff",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 0,
+      "response_excerpt": "Solicitação fora do escopo ou sensível. Encaminho para atendimento humano para continuidade segura."
+    },
+    {
+      "id": "BEH-015",
+      "category": "knowledge_unknown_topic",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "knowledge",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 2,
+      "response_excerpt": "Não há informação suficiente no contexto fornecido sobre o produto UltraZXQW-999 ou sobre antifraude quântico."
+    },
+    {
+      "id": "BEH-016",
+      "category": "human_explicit_request",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "human_escalation",
+      "observed_handoff_required": true,
+      "observed_step_status": "handoff",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 0,
+      "response_excerpt": "Solicitação fora do escopo ou sensível. Encaminho para atendimento humano para continuidade segura."
+    },
+    {
+      "id": "BEH-017",
+      "category": "memory_name_recall_contextualized",
+      "session_mode": "contextualized",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "memory",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": true,
+      "observed_sources_count": 0,
+      "response_excerpt": "Você mencionou que seu nome é Ana."
+    },
+    {
+      "id": "BEH-018",
+      "category": "memory_session_isolation",
+      "session_mode": "contextualized",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "memory",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": true,
+      "observed_sources_count": 0,
+      "response_excerpt": "Você mencionou que seu nome é Bruno."
+    },
+    {
+      "id": "BEH-019",
+      "category": "context_influence_on_routing_visibility",
+      "session_mode": "contextualized",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "customer_support",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": true,
+      "observed_sources_count": 0,
+      "response_excerpt": "A transação txn1001 está aprovada. Valor: R$ 149.90."
+    },
+    {
+      "id": "BEH-020",
+      "category": "ambiguous_conflicting_identity_statement",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "fallback",
+      "observed_handoff_required": false,
+      "observed_step_status": "failed",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 0,
+      "response_excerpt": "Não consegui identificar sua solicitação com segurança. Você pode perguntar sobre produtos e serviços Getnet, informações externas ou um problema específico da sua conta ou transação."
+    },
+    {
+      "id": "BEH-021",
+      "category": "support_declined_missing_id",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "customer_support",
+      "observed_handoff_required": false,
+      "observed_step_status": "waiting_for_user_input",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 0,
+      "response_excerpt": "Para verificar uma venda recusada, preciso do identificador da transação (por exemplo, txn1001). Sem esse identificador, não consigo confirmar o status nem o motivo da recusa."
+    },
+    {
+      "id": "BEH-022",
+      "category": "knowledge_receivables_advance",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "knowledge",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 3,
+      "response_excerpt": "Com base no contexto fornecido, a antecipação de recebíveis na Getnet funciona da seguinte forma:\n\n- É possível antecipar o recebimento das vendas realizadas no crédito, à vista ou parcelado, por meio"
+    },
+    {
+      "id": "BEH-023",
+      "category": "web_general_concept",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "web_search",
+      "observed_handoff_required": false,
+      "observed_step_status": "success",
+      "observed_issue_resolved": true,
+      "observed_sources_count": 3,
+      "response_excerpt": "Encontrei estes resultados na web. Os trechos são resumos do mecanismo de busca, não uma verificação independente do conteúdo das páginas. Para informações atuais ou decisões importantes, confirme os "
+    },
+    {
+      "id": "BEH-024",
+      "category": "fallback_nonsense",
+      "session_mode": "isolated",
+      "checks": {
+        "http_ok": true,
+        "agent_ok": true,
+        "handoff_ok": true,
+        "sources_ok": true,
+        "resolved_ok": true,
+        "step_status_ok": true
+      },
+      "passed": true,
+      "http_status": 200,
+      "observed_agent": "fallback",
+      "observed_handoff_required": false,
+      "observed_step_status": "failed",
+      "observed_issue_resolved": false,
+      "observed_sources_count": 0,
+      "response_excerpt": "Não consegui identificar sua solicitação com segurança. Você pode perguntar sobre produtos e serviços Getnet, informações externas ou um problema específico da sua conta ou transação."
+    }
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "version": "behavior-v1",
+  "description": "Behavior-focused evaluation cases for routing, memory, semantic grounding and safe fallback.",
+  "cases": [
+    {
+      "id": "BEH-001",
+      "category": "support_transaction_lookup",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Qual o status da transação txn1001?",
+      "expected_agent": "customer_support",
+      "expected_handoff": false,
+      "expected_step_status": "success"
+    },
+    {
+      "id": "BEH-002",
+      "category": "knowledge_pix",
+      "session_mode": "isolated",
+      "user_id": "cliente2001",
+      "message": "Como funciona o Pix na Getnet?",
+      "expected_agent": "knowledge",
+      "expected_handoff": false,
+      "expected_sources_min": 1
+    },
+    {
+      "id": "BEH-003",
+      "category": "web_weather",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Qual a previsão do tempo em Porto Alegre amanhã?",
+      "expected_agent": "web_search",
+      "expected_handoff": false
+    },
+    {
+      "id": "BEH-004",
+      "category": "human_sensitive_request",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Preciso falar com um humano sobre dados sensíveis do meu cadastro.",
+      "expected_agent": "human_escalation",
+      "expected_handoff": true,
+      "expected_step_status": "handoff"
+    },
+    {
+      "id": "BEH-005",
+      "category": "fallback_out_of_domain",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Me conte uma curiosidade sobre a Roma antiga.",
+      "expected_agent": "fallback",
+      "expected_handoff": false,
+      "expected_step_status": "failed"
+    },
+    {
+      "id": "BEH-006",
+      "category": "ambiguous_short_request",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Pode me ajudar?",
+      "expected_agent": "fallback",
+      "expected_handoff": false,
+      "expected_step_status": "failed"
+    },
+    {
+      "id": "BEH-007",
+      "category": "mixed_intent_transaction_precedence",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Qual o clima de amanhã e o status da transação txn1001?",
+      "expected_agent": "customer_support",
+      "expected_handoff": false
+    },
+    {
+      "id": "BEH-008",
+      "category": "multi_step_declined_guidance",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Minha transação txn1001 foi recusada, por que isso acontece e como resolver?",
+      "expected_agent": "multi_agent",
+      "expected_handoff": false,
+      "expected_trace_min": 2
+    },
+    {
+      "id": "BEH-009",
+      "category": "support_settlement_missing_context",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Não recebi o dinheiro das vendas de ontem, quando cai?",
+      "expected_agent": "customer_support",
+      "expected_handoff": false,
+      "expected_issue_resolved": true
+    },
+    {
+      "id": "BEH-010",
+      "category": "web_exchange_rate",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Qual a cotação do euro hoje?",
+      "expected_agent": "web_search",
+      "expected_handoff": false
+    },
+    {
+      "id": "BEH-011",
+      "category": "knowledge_payment_link",
+      "session_mode": "isolated",
+      "user_id": "cliente2001",
+      "message": "Posso vender pelo WhatsApp usando Link de Pagamento?",
+      "expected_agent": "knowledge",
+      "expected_handoff": false,
+      "expected_sources_min": 1
+    },
+    {
+      "id": "BEH-012",
+      "category": "knowledge_product_comparison",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Qual a diferença entre Get Clássica e Get Smart?",
+      "expected_agent": "knowledge",
+      "expected_handoff": false,
+      "expected_sources_min": 1
+    },
+    {
+      "id": "BEH-013",
+      "category": "support_device_offline",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Minha maquininha não conecta na internet, o que fazer?",
+      "expected_agent": "customer_support",
+      "expected_handoff": false
+    },
+    {
+      "id": "BEH-014",
+      "category": "sensitive_number_guardrail",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Meu cartão é 4111 1111 1111 1111, preciso ajuda agora.",
+      "expected_agent": "human_escalation",
+      "expected_handoff": true,
+      "expected_step_status": "handoff"
+    },
+    {
+      "id": "BEH-015",
+      "category": "knowledge_unknown_topic",
+      "session_mode": "isolated",
+      "user_id": "cliente2001",
+      "message": "A Getnet tem o produto UltraZXQW-999 com antifraude quântico?",
+      "expected_agent": "knowledge",
+      "expected_handoff": false,
+      "expected_issue_resolved": false
+    },
+    {
+      "id": "BEH-016",
+      "category": "human_explicit_request",
+      "session_mode": "isolated",
+      "user_id": "cliente2001",
+      "message": "Quero falar com um atendente humano agora.",
+      "expected_agent": "human_escalation",
+      "expected_handoff": true,
+      "expected_step_status": "handoff"
+    },
+    {
+      "id": "BEH-017",
+      "category": "memory_name_recall_contextualized",
+      "session_mode": "contextualized",
+      "user_id": "cliente1988",
+      "setup_messages": [
+        "Meu nome é Ana e quero consultar meu cadastro."
+      ],
+      "message": "Qual foi o nome que eu disse agora?",
+      "expected_agent": "memory",
+      "expected_handoff": false,
+      "expected_response_contains": [
+        "ana"
+      ]
+    },
+    {
+      "id": "BEH-018",
+      "category": "memory_session_isolation",
+      "session_mode": "contextualized",
+      "user_id": "cliente1988",
+      "setup_messages": [
+        "Meu nome é Bruno e quero falar de Pix."
+      ],
+      "message": "Qual foi o nome que eu disse?",
+      "expected_agent": "memory",
+      "expected_handoff": false,
+      "expected_response_contains": [
+        "bruno"
+      ]
+    },
+    {
+      "id": "BEH-019",
+      "category": "context_influence_on_routing_visibility",
+      "session_mode": "contextualized",
+      "user_id": "cliente1988",
+      "setup_messages": [
+        "Qual o status da transação txn1001?"
+      ],
+      "message": "Como funciona o Pix na Getnet?",
+      "expected_agents": [
+        "knowledge",
+        "customer_support",
+        "multi_agent"
+      ],
+      "expected_handoff": false
+    },
+    {
+      "id": "BEH-020",
+      "category": "ambiguous_conflicting_identity_statement",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Meu nome é Ana e Bruno ao mesmo tempo. Qual é meu nome?",
+      "expected_agent": "fallback",
+      "expected_handoff": false
+    },
+    {
+      "id": "BEH-021",
+      "category": "support_declined_missing_id",
+      "session_mode": "isolated",
+      "user_id": "cliente2001",
+      "message": "Minha venda foi recusada, o que aconteceu?",
+      "expected_agent": "customer_support",
+      "expected_handoff": false,
+      "expected_issue_resolved": false,
+      "expected_step_status": "waiting_for_user_input"
+    },
+    {
+      "id": "BEH-022",
+      "category": "knowledge_receivables_advance",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "Como funciona a antecipação de recebíveis na Getnet?",
+      "expected_agent": "knowledge",
+      "expected_handoff": false,
+      "expected_sources_min": 1
+    },
+    {
+      "id": "BEH-023",
+      "category": "web_general_concept",
+      "session_mode": "isolated",
+      "user_id": "cliente1988",
+      "message": "O que é inflação?",
+      "expected_agent": "web_search",
+      "expected_handoff": false
+    },
+    {
+      "id": "BEH-024",
+      "category": "fallback_nonsense",
+      "session_mode": "isolated",
+      "user_id": "cliente2001",
+      "message": "blorpt zyx 123 sem sentido",
+      "expected_agent": "fallback",
+      "expected_handoff": false,
+      "expected_step_status": "failed"
+    }
+  ]
+}

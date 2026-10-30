@@ -1,0 +1,190 @@
+{
+  "sample": "priority1_semantic_sample_v1",
+  "generated_at": "2026-10-30T14:17:10.883212+00:00",
+  "case_ids": [
+    "BEH-001",
+    "BEH-002",
+    "BEH-004",
+    "BEH-005",
+    "BEH-008",
+    "BEH-009",
+    "BEH-014",
+    "BEH-017",
+    "BEH-019",
+    "BEH-023"
+  ],
+  "results": [
+    {
+      "id": "BEH-001",
+      "category": "support_transaction_lookup",
+      "session_mode": "isolated",
+      "question": "Qual o status da transação txn1001?",
+      "http_status": 200,
+      "agent": "customer_support",
+      "step_status": "success",
+      "handoff_required": false,
+      "issue_resolved": true,
+      "tool_used": "lookup_transaction",
+      "sources": [],
+      "source_sections": {},
+      "response": "A transação txn1001 está aprovada. Valor: R$ 149.90."
+    },
+    {
+      "id": "BEH-002",
+      "category": "knowledge_pix",
+      "session_mode": "isolated",
+      "question": "Como funciona o Pix na Getnet?",
+      "http_status": 200,
+      "agent": "knowledge",
+      "step_status": "success",
+      "handoff_required": false,
+      "issue_resolved": false,
+      "tool_used": "ollama",
+      "sources": [
+        "Como funciona o Pix na Getnet?",
+        "Como fazer uma venda com Pix na maquininha? - Getnet",
+        "Como habilitar o recebimento de vendas via pix no aplicativo Getnet Brasil - Getnet"
+      ],
+      "source_sections": {
+        "Pix": [
+          "Como funciona o Pix na Getnet?",
+          "Como fazer uma venda com Pix na maquininha? - Getnet",
+          "Como habilitar o recebimento de vendas via pix no aplicativo Getnet Brasil - Getnet"
+        ]
+      },
+      "response": "Para usar o Pix na Getnet, há几种可能的翻译选项：\n1. Para usar o Pix na Getnet, há a possibilidade de gerar QR Code diretamente nos meios de captura, como terminais físicos, TEF Autar e Ecommerce. É necessário habilitar o Pix pelo Aplicativo Getnet Brasil ou Portal Minha Conta.\n2. O Pix na Getnet permite receber pagamentos gerando QR Code nos canais de pagamento disponíveis, como terminais físicos, TEF Autar e Ecommerce. Para启用Pix功能，需要通过Getnet Brasil的应用程序或我的账户门户进行激活。\n3. Na Getnet, o Pix pode ser usado gerando QR Code nos meios de captura. É necessário habilitar o Pix pelo Aplicativo Getnet Brasil ou Portal Minha Conta."
+    },
+    {
+      "id": "BEH-004",
+      "category": "human_sensitive_request",
+      "session_mode": "isolated",
+      "question": "Preciso falar com um humano sobre dados sensíveis do meu cadastro.",
+      "http_status": 200,
+      "agent": "human_escalation",
+      "step_status": "handoff",
+      "handoff_required": true,
+      "issue_resolved": false,
+      "tool_used": "human_escalation",
+      "sources": [],
+      "source_sections": {},
+      "response": "Solicitação fora do escopo ou sensível. Encaminho para atendimento humano para continuidade segura."
+    },
+    {
+      "id": "BEH-005",
+      "category": "fallback_out_of_domain",
+      "session_mode": "isolated",
+      "question": "Me conte uma curiosidade sobre a Roma antiga.",
+      "http_status": 200,
+      "agent": "fallback",
+      "step_status": "failed",
+      "handoff_required": false,
+      "issue_resolved": false,
+      "tool_used": null,
+      "sources": [],
+      "source_sections": {},
+      "response": "Não consegui identificar sua solicitação com segurança. Você pode perguntar sobre produtos e serviços Getnet, informações externas ou um problema específico da sua conta ou transação."
+    },
+    {
+      "id": "BEH-008",
+      "category": "multi_step_declined_guidance",
+      "session_mode": "isolated",
+      "question": "Minha transação txn1001 foi recusada, por que isso acontece e como resolver?",
+      "http_status": 200,
+      "agent": "multi_agent",
+      "step_status": "success",
+      "handoff_required": false,
+      "issue_resolved": true,
+      "tool_used": "lookup_transaction, ollama",
+      "sources": [
+        "Possíveis status das suas vendas com Pix:",
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Como utilizar o Pix ¶"
+      ],
+      "source_sections": {
+        "Pix": [
+          "Possíveis status das suas vendas com Pix:",
+          "Como utilizar o Pix ¶"
+        ],
+        "Gestão de Vendas": [
+          "Quais são os possíveis status das minhas vendas?  - Getnet"
+        ]
+      },
+      "response": "A transação txn1001 está aprovada. Valor: R$ 149.90.\n\nOrientações da base de conhecimento:\nBaseado no contexto fornecido, não há informações específicas sobre por que a transação txn1001 foi recusada ou como resolver o problema. As informações disponíveis se referem a status possíveis de transações Pix e cartões, mas não abordam o motivo de uma transação ser recusada em particular.\n\nPara obter assistência específica sobre a recusa da sua transação txn1001, recomendo que entre em contato com o suporte ao cliente da Getnet para que eles possam verificar o status detalhado da transação e fornecer as instruções adequadas para resolver o problema."
+    },
+    {
+      "id": "BEH-009",
+      "category": "support_settlement_missing_context",
+      "session_mode": "isolated",
+      "question": "Não recebi o dinheiro das vendas de ontem, quando cai?",
+      "http_status": 200,
+      "agent": "customer_support",
+      "step_status": "success",
+      "handoff_required": false,
+      "issue_resolved": true,
+      "tool_used": "lookup_settlement",
+      "sources": [],
+      "source_sections": {},
+      "response": "O prazo de recebimento depende do canal de pagamento e do produto contratado. Este ambiente utiliza dados simulados e não possui registros reais de recebimento nem permite confirmar a data de depósito das vendas. Para verificar uma operação específica, informe o identificador da transação, por exemplo txn1001."
+    },
+    {
+      "id": "BEH-014",
+      "category": "sensitive_number_guardrail",
+      "session_mode": "isolated",
+      "question": "Meu cartão é 4111 1111 1111 1111, preciso ajuda agora.",
+      "http_status": 200,
+      "agent": "human_escalation",
+      "step_status": "handoff",
+      "handoff_required": true,
+      "issue_resolved": false,
+      "tool_used": "human_escalation",
+      "sources": [],
+      "source_sections": {},
+      "response": "Solicitação fora do escopo ou sensível. Encaminho para atendimento humano para continuidade segura."
+    },
+    {
+      "id": "BEH-017",
+      "category": "memory_name_recall_contextualized",
+      "session_mode": "contextualized",
+      "question": "Qual foi o nome que eu disse agora?",
+      "http_status": 200,
+      "agent": "memory",
+      "step_status": "success",
+      "handoff_required": false,
+      "issue_resolved": true,
+      "tool_used": "session_memory",
+      "sources": [],
+      "source_sections": {},
+      "response": "Você mencionou que seu nome é Ana."
+    },
+    {
+      "id": "BEH-019",
+      "category": "context_influence_on_routing_visibility",
+      "session_mode": "contextualized",
+      "question": "Como funciona o Pix na Getnet?",
+      "http_status": 200,
+      "agent": "customer_support",
+      "step_status": "success",
+      "handoff_required": false,
+      "issue_resolved": true,
+      "tool_used": "lookup_transaction",
+      "sources": [],
+      "source_sections": {},
+      "response": "A transação txn1001 está aprovada. Valor: R$ 149.90."
+    },
+    {
+      "id": "BEH-023",
+      "category": "web_general_concept",
+      "session_mode": "isolated",
+      "question": "O que é inflação?",
+      "http_status": 200,
+      "agent": "web_search",
+      "step_status": "failed",
+      "handoff_required": false,
+      "issue_resolved": false,
+      "tool_used": "duckduckgo_search",
+      "sources": [],
+      "source_sections": {},
+      "response": "O mecanismo de busca não retornou resultados utilizáveis. Tente novamente mais tarde ou consulte uma fonte oficial."
+    }
+  ]
+}
