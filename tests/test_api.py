@@ -1,8 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app.agents.customer_support import CustomerSupportAgent
+from app.agents.router import RoutingDecision
 from app.human_handoff import HumanHandoffStore
 from app.main import app
+from app.orchestrator import ChatOrchestrator
 from app.session_memory import SessionMemory
 
 client = TestClient(
@@ -67,6 +70,364 @@ def test_chat():
     assert response.status_code == 200
     assert response.json()["user_id"] == "cliente1988"
     assert response.json()["message"] == "Preciso de ajuda"
+
+
+def test_chat_returns_unique_request_id_and_latency_metadata():
+    first = client.post(
+        "/chat",
+        json={
+            "message": "Como funciona o Pix da Getnet?",
+            "user_id": "cliente1988",
+        },
+    )
+    second = client.post(
+        "/chat",
+        json={
+            "message": "Preciso de ajuda com meu saldo.",
+            "user_id": "cliente1988",
+        },
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+
+    first_payload = first.json()
+    second_payload = second.json()
+
+    assert first_payload["request_id"]
+    assert second_payload["request_id"]
+    assert first_payload["request_id"] != second_payload["request_id"]
+    assert first_payload["total_latency_ms"] >= 0
+    assert second_payload["total_latency_ms"] >= 0
+
+    assert first_payload["trace"]
+    for step in first_payload["trace"]:
+        assert step["request_id"] == first_payload["request_id"]
+        assert step["duration_ms"] >= 0
+
+
+def test_chat_active_handoff_status_has_request_metadata():
+    first = client.post(
+        "/chat",
+        json={
+            "message": "Preciso de ajuda com dados pessoais sensíveis.",
+            "user_id": "cliente1988",
+            "session_id": "session-active-metadata",
+        },
+    )
+    assert first.status_code == 200
+
+    status_response = client.post(
+        "/chat",
+        json={
+            "message": "Qual o status do meu atendimento humano?",
+            "user_id": "cliente1988",
+            "session_id": "session-active-metadata",
+        },
+    )
+
+    assert status_response.status_code == 200
+    payload = status_response.json()
+    assert payload["request_id"]
+    assert payload["total_latency_ms"] >= 0
+    assert payload["trace"] == []
+
+
+def test_chat_agent_failure_is_handled_without_http_error(monkeypatch, caplog):
+    import logging
+
+    def boom(self, step, message, user_id):
+        raise RuntimeError("agent exploded")
+
+    monkeypatch.setattr(ChatOrchestrator, "_execute_step", boom)
+    caplog.set_level(logging.INFO, logger="getnet_orchestrator")
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Como funciona o Pix da Getnet?",
+            "user_id": "cliente1988",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["agent"] == "fallback"
+    assert any(step["status"] == "error" for step in payload["trace"])
+    assert "request_id" in payload
+    assert "agent" in caplog.text
+    assert "status" in caplog.text
+    assert "duration_ms" in caplog.text
+
+
+def test_chat_propagates_request_id_in_failed_step(monkeypatch):
+    def boom(self, step, message, user_id):
+        raise RuntimeError("agent exploded")
+
+    monkeypatch.setattr(ChatOrchestrator, "_execute_step", boom)
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Preciso de ajuda com meu saldo.",
+            "user_id": "cliente1988",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["request_id"]
+    failed_step = next(step for step in payload["trace"] if step["status"] == "error")
+    assert failed_step["request_id"] == payload["request_id"]
+    assert failed_step["duration_ms"] >= 0
+
+
+def test_chat_routes_current_message_before_session_history_for_pix_question():
+    client.post(
+        "/chat",
+        json={
+            "message": "Qual o status da transação txn1001?",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-pix",
+        },
+    )
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Como funciona o Pix da Getnet?",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-pix",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["agent"] == "knowledge"
+
+
+def test_chat_routes_current_message_before_session_history_for_device_question():
+    client.post(
+        "/chat",
+        json={
+            "message": "Minha maquininha não conecta na internet.",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-device",
+        },
+    )
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Como estornar uma venda?",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-device",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["agent"] == "knowledge"
+
+
+def test_chat_keeps_context_for_implicit_references_without_overriding_current_intent():
+    client.post(
+        "/chat",
+        json={
+            "message": "Como funciona o Pix da Getnet?",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-context",
+        },
+    )
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Essa transação foi aprovada?",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-context",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["agent"] == "customer_support"
+
+
+def test_chat_routes_current_message_before_old_handoff_history():
+    client.post(
+        "/chat",
+        json={
+            "message": "Preciso de atendimento humano para dados pessoais sensíveis.",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-escalation",
+        },
+    )
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Como funciona o Pix da Getnet?",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-escalation",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["agent"] == "knowledge"
+
+
+def test_chat_uses_context_for_ambiguous_guidance_without_old_intent_dominating():
+    client.post(
+        "/chat",
+        json={
+            "message": "Minha maquininha não conecta na internet.",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-guidance",
+        },
+    )
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Como resolvo isso?",
+            "user_id": "cliente1988",
+            "session_id": "session-intent-guidance",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["agent"] == "knowledge"
+
+
+def test_chat_uses_previous_transaction_context_for_anaphora_without_inventing_ids():
+    client.post(
+        "/chat",
+        json={
+            "message": "Qual o status da transação txn1001?",
+            "user_id": "cliente1988",
+            "session_id": "session-context-anaphora",
+        },
+    )
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "E essa?",
+            "user_id": "cliente1988",
+            "session_id": "session-context-anaphora",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["agent"] == "customer_support"
+    assert "txn1001" in payload["response"]
+    assert "txn" in payload["response"].lower()
+
+
+def test_orchestrator_keeps_current_message_and_routing_context_separate(monkeypatch):
+    orchestrator = ChatOrchestrator()
+    observed = {}
+
+    def spy(message: str, routing_context: str | None = None):
+        observed["message"] = message
+        observed["routing_context"] = routing_context
+        return RoutingDecision(
+            agent="customer_support",
+            reason="test explicit separation",
+        )
+
+    monkeypatch.setattr(orchestrator.router, "route", spy)
+
+    execution = orchestrator.handle(
+        "E essa?",
+        "cliente1988",
+        routing_context="Qual o status da transação txn1001?",
+        conversation_context=["Usuário: Qual o status da transação txn1001?"],
+    )
+
+    assert observed["message"] == "E essa?"
+    assert observed["routing_context"] == "Qual o status da transação txn1001?"
+    assert execution.decision.agent == "customer_support"
+
+
+def test_orchestrator_executes_original_message_with_execution_context(monkeypatch):
+    seen = {}
+
+    def fake_answer(self, message: str, user_id: str):
+        seen["message"] = message
+        return {
+            "agent": "customer_support",
+            "response": "A transação txn1001 está aprovada.",
+            "tool_used": "lookup_transaction",
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": True,
+            "awaiting_user_input": False,
+            "step_status": "success",
+        }
+
+    monkeypatch.setattr(CustomerSupportAgent, "answer", fake_answer)
+
+    execution = ChatOrchestrator().handle(
+        "E essa?",
+        "cliente1988",
+        routing_context="Qual o status da transação txn1001?",
+        conversation_context=["Usuário: Qual o status da transação txn1001?"],
+    )
+
+    assert execution.result["agent"] == "customer_support"
+    lower_message = seen["message"].lower()
+    assert "pergunta atual: e essa" in lower_message
+    assert "qual o status da transação txn1001" in lower_message
+    assert lower_message.count("txn1001") >= 1
+
+
+def test_chat_current_intent_wins_after_mixed_history_topics():
+    client.post(
+        "/chat",
+        json={
+            "message": "Qual o status da transação txn1001?",
+            "user_id": "cliente1988",
+            "session_id": "session-context-mixed",
+        },
+    )
+    client.post(
+        "/chat",
+        json={
+            "message": "Minha maquininha não conecta na internet.",
+            "user_id": "cliente1988",
+            "session_id": "session-context-mixed",
+        },
+    )
+    client.post(
+        "/chat",
+        json={
+            "message": "Como funciona o Pix da Getnet?",
+            "user_id": "cliente1988",
+            "session_id": "session-context-mixed",
+        },
+    )
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Como funciona o Pix da Getnet?",
+            "user_id": "cliente1988",
+            "session_id": "session-context-mixed",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["agent"] == "knowledge"
+
+
+def test_orchestrator_does_not_fallback_to_request_unknown():
+    execution = ChatOrchestrator().handle(
+        "Como funciona o Pix da Getnet?",
+        "cliente1988",
+    )
+
+    assert execution.trace
+    assert all(step.request_id is None for step in execution.trace)
 
 
 def test_chat_rejects_missing_user_id():

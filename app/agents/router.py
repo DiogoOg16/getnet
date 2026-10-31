@@ -143,6 +143,9 @@ KNOWLEDGE = _compile((
     r"\bdiferenca entre\b",
     r"\bdifference between\b",
     r"\bcomo funciona",
+    r"\bcomo resolver\b",
+    r"\bcomo resolv",
+    r"\bestorn",
     r"\bhow (?:does|do i|do you|can i)\b",
     r"\bo que (?:e|sao)\b",
     r"\bwhat is\b",
@@ -170,8 +173,37 @@ KNOWLEDGE = _compile((
 class RouterAgent:
     """Routes incoming messages using explicit, rule-based intent patterns."""
 
-    def route(self, message: str) -> RoutingDecision:
+    @staticmethod
+    def _is_short_reference(message: str) -> bool:
         text = normalize(message)
+        text = " ".join(filter(None, re.sub(r"[^a-z0-9\s]", " ", text).split()))
+        return text in {
+            "essa",
+            "isso",
+            "este",
+            "esta",
+            "aquele",
+            "aquela",
+            "aquilo",
+            "e essa",
+            "e isso",
+            "e este",
+            "e esta",
+            "e aquele",
+            "e aquela",
+        }
+
+    def route(
+        self,
+        message: str,
+        routing_context: str | None = None,
+    ) -> RoutingDecision:
+        text = normalize(message)
+        contextual_text = (
+            normalize(f"{routing_context} {message}")
+            if routing_context
+            else text
+        )
 
         if HUMAN_ESCALATION.search(text):
             return RoutingDecision(
@@ -186,7 +218,6 @@ class RouterAgent:
                 agent="customer_support",
                 reason="The message references a specific transaction ID.",
             )
-
 
         if DEVICE.search(text):
             if re.search(
@@ -220,7 +251,6 @@ class RouterAgent:
                     ),
                 )
 
-
         if SUPPORT.search(text):
             return RoutingDecision(
                 agent="customer_support",
@@ -247,6 +277,28 @@ class RouterAgent:
                 agent="knowledge",
                 reason="The message appears to ask about a Getnet product or service.",
             )
+
+        if routing_context and self._is_short_reference(text):
+            if TRANSACTION_ID.search(contextual_text):
+                return RoutingDecision(
+                    agent="customer_support",
+                    reason="The message is a short contextual reference to a recent transaction.",
+                )
+            if SUPPORT.search(contextual_text):
+                return RoutingDecision(
+                    agent="customer_support",
+                    reason="The message uses recent support context to clarify the current request.",
+                )
+            if DEVICE.search(contextual_text):
+                return RoutingDecision(
+                    agent="knowledge",
+                    reason="The message references a recent device topic and should use the related support context.",
+                )
+            if KNOWLEDGE.search(contextual_text):
+                return RoutingDecision(
+                    agent="knowledge",
+                    reason="The message references a recent Getnet topic and should use that contextual intent.",
+                )
 
         return RoutingDecision(
             agent="fallback",

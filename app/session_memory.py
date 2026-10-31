@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -139,6 +140,59 @@ class SessionMemory:
             if response:
                 context.append(f"Assistente: {response}")
         return context
+
+    @staticmethod
+    def _normalize_reference_text(value: str) -> str:
+        return " ".join(
+            filter(None, re.sub(r"[^a-z0-9\s]", " ", value.casefold()).split())
+        )
+
+    def resolve_contextual_reference(
+        self,
+        *,
+        user_id: str,
+        session_id: str | None = None,
+        message: str,
+        limit: int = 5,
+    ) -> str | None:
+        normalized = self._normalize_reference_text(message)
+        if not normalized:
+            return None
+
+        short_reference = normalized in {
+            "essa",
+            "isso",
+            "este",
+            "esta",
+            "aquele",
+            "aquela",
+            "aquilo",
+            "e essa",
+            "e isso",
+            "e este",
+            "e esta",
+            "e aquele",
+            "e aquela",
+        }
+        if not short_reference:
+            return None
+
+        from app.agents.router import RouterAgent
+
+        key = self._session_key(user_id, session_id)
+        entries = self._store.get(key, [])
+
+        for entry in reversed(entries[-limit:]):
+            candidate = str(entry.get("message", "")).strip()
+            if not candidate:
+                continue
+            if self._normalize_reference_text(candidate) == normalized:
+                continue
+            if RouterAgent().route(candidate).agent == "fallback":
+                continue
+            return candidate
+
+        return None
 
     def clear_session(self, *, user_id: str, session_id: str | None = None) -> None:
         key = self._session_key(user_id, session_id)

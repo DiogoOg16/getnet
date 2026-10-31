@@ -1,5 +1,7 @@
 import hmac
 import logging
+import time
+import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -41,6 +43,8 @@ class ChatResponse(BaseModel):
     response: str
     agent: str
     routing_reason: str
+    request_id: str
+    total_latency_ms: int = 0
     sources: list[str] = Field(default_factory=list)
     source_sections: dict[str, list[str]] = Field(default_factory=dict)
     tool_used: str | None = None
@@ -131,6 +135,8 @@ def chat(
     request: ChatRequest,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ):
+    request_id = uuid.uuid4().hex
+    started_at = time.perf_counter()
     authenticated_user_id = authenticate_user(credentials)
 
     if not hmac.compare_digest(authenticated_user_id, request.user_id):
@@ -140,7 +146,7 @@ def chat(
         )
 
     # Nunca registrar o conteúdo da mensagem: pode conter dados pessoais.
-    logger.info("chat_request_received")
+    logger.info("chat_request_received request_id=%s", request_id)
 
     session_key = request.session_id or authenticated_user_id
     active_handoff = handoff_store.find_active_for_session(
@@ -178,12 +184,15 @@ def chat(
             reason="The request is checking the lifecycle of an active human handoff.",
         )
         trace = []
+        total_latency_ms = int((time.perf_counter() - started_at) * 1000)
         response = ChatResponse(
             user_id=authenticated_user_id,
             message=request.message,
             response=result["response"],
             agent=result["agent"],
             routing_reason=decision.reason,
+            request_id=request_id,
+            total_latency_ms=total_latency_ms,
             sources=result.get("sources", []),
             source_sections=result.get("source_sections", {}),
             tool_used=result.get("tool_used"),
@@ -205,21 +214,19 @@ def chat(
         limit=5,
     )
 
+    contextual_reference = session_memory.resolve_contextual_reference(
+        user_id=authenticated_user_id,
+        session_id=session_key,
+        message=request.message,
+        limit=5,
+    )
+    routing_context = contextual_reference
+
     memory_direct_answer = session_memory.answer_from_context(
         user_id=authenticated_user_id,
         session_id=session_key,
         message=request.message,
     )
-
-    if recent_context:
-        prompt_with_context = (
-            "Contexto recente da conversa:\n"
-            + "\n".join(recent_context)
-            + "\n\nPergunta atual: "
-            + request.message
-        )
-    else:
-        prompt_with_context = request.message
 
     if memory_direct_answer:
         # This branch is entered only when session memory produced a direct,
@@ -243,7 +250,13 @@ def chat(
         }
         trace = []
     else:
-        execution = orchestrator.handle(prompt_with_context, authenticated_user_id)
+        execution = orchestrator.handle(
+            request.message,
+            authenticated_user_id,
+            request_id=request_id,
+            routing_context=routing_context,
+            conversation_context=recent_context,
+        )
         decision = execution.decision
         result = execution.result
         trace = [
@@ -252,6 +265,8 @@ def chat(
                 "reason": step.reason,
                 "status": step.status,
                 "tool_used": step.tool_used,
+                "request_id": step.request_id,
+                "duration_ms": step.duration_ms,
             }
             for step in execution.trace
         ]
@@ -293,10 +308,13 @@ def chat(
         response=result.get("response", ""),
     )
 
+    total_latency_ms = int((time.perf_counter() - started_at) * 1000)
+
     logger.info(
-        "router_decision agent=%s reason=%s",
+        "router_decision agent=%s reason=%s request_id=%s",
         decision.agent,
         decision.reason,
+        request_id,
     )
 
     response = ChatResponse(
@@ -305,6 +323,8 @@ def chat(
         response=result["response"],
         agent=result["agent"],
         routing_reason=decision.reason,
+        request_id=request_id,
+        total_latency_ms=total_latency_ms,
         sources=result.get("sources", []),
         source_sections=result.get("source_sections", {}),
         tool_used=result.get("tool_used"),
@@ -320,9 +340,11 @@ def chat(
     )
 
     logger.info(
-        "chat_response agent=%s tool_used=%s handoff_required=%s",
+        "chat_response agent=%s tool_used=%s handoff_required=%s request_id=%s total_latency_ms=%s",
         response.agent,
         response.tool_used,
         response.handoff_required,
+        response.request_id,
+        response.total_latency_ms,
     )
     return response

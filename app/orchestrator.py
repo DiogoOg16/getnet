@@ -1,6 +1,10 @@
+import logging
+import time
 import unicodedata
 
 from dataclasses import dataclass
+
+logger = logging.getLogger("getnet_orchestrator")
 
 from app.agents.customer_support import CustomerSupportAgent
 from app.agents.knowledge import KnowledgeAgent
@@ -30,6 +34,8 @@ class StepTrace:
     reason: str
     status: str
     tool_used: str | None = None
+    request_id: str | None = None
+    duration_ms: int = 0
 
 
 @dataclass(frozen=True)
@@ -49,6 +55,26 @@ class ChatOrchestrator:
         self.knowledge = KnowledgeAgent()
         self.support = CustomerSupportAgent()
         self.web_search = WebSearchAgent()
+
+    @staticmethod
+    def _with_context(message: str, conversation_context: list[str] | None = None) -> str:
+        if not conversation_context:
+            return message
+
+        context_lines = [
+            line.strip()
+            for line in conversation_context
+            if isinstance(line, str) and line.strip()
+        ]
+        if not context_lines:
+            return message
+
+        return (
+            "Contexto recente da conversa:\n"
+            + "\n".join(context_lines)
+            + "\n\nPergunta atual: "
+            + message
+        )
 
     @staticmethod
     def _normalize_text(message: str) -> str:
@@ -77,8 +103,12 @@ class ChatOrchestrator:
 
         return mentions_decline and asks_for_guidance
 
-    def create_plan(self, message: str) -> tuple[RoutingDecision, ExecutionPlan]:
-        decision = self.router.route(message)
+    def create_plan(
+        self,
+        message: str,
+        routing_context: str | None = None,
+    ) -> tuple[RoutingDecision, ExecutionPlan]:
+        decision = self.router.route(message, routing_context)
 
         steps = [
             PlanStep(
@@ -246,26 +276,50 @@ class ChatOrchestrator:
             "step_status": step_status,
         }
 
-    def handle(self, message: str, user_id: str) -> ChatExecution:
-        decision, plan = self.create_plan(message)
+    def handle(
+        self,
+        message: str,
+        user_id: str,
+        request_id: str | None = None,
+        routing_context: str | None = None,
+        conversation_context: list[str] | None = None,
+    ) -> ChatExecution:
+        current_message = message
+        execution_message = self._with_context(current_message, conversation_context)
+        if routing_context is None:
+            decision, plan = self.create_plan(current_message)
+        else:
+            decision, plan = self.create_plan(current_message, routing_context)
 
         executed_steps: list[str] = []
         results: list[dict] = []
         trace: list[StepTrace] = []
 
         for step in plan.steps[:plan.max_steps]:
+            step_started_at = time.perf_counter()
             try:
-                step_result = self._execute_step(step, message, user_id)
+                step_result = self._execute_step(step, execution_message, user_id)
                 results.append(step_result)
                 executed_steps.append(step.agent)
 
+                duration_ms = int((time.perf_counter() - step_started_at) * 1000)
                 trace.append(
                     StepTrace(
                         agent=step.agent,
                         reason=step.reason,
                         status="success",
                         tool_used=step_result.get("tool_used"),
+                        request_id=request_id,
+                        duration_ms=duration_ms,
                     )
+                )
+                logger.info(
+                    "orchestrator_step_complete request_id=%s agent=%s status=%s duration_ms=%s tool_used=%s",
+                    request_id,
+                    step.agent,
+                    "success",
+                    duration_ms,
+                    step_result.get("tool_used"),
                 )
 
                 if step_result.get("handoff_required", False):
@@ -283,12 +337,23 @@ class ChatOrchestrator:
                     break
 
             except Exception:
+                duration_ms = int((time.perf_counter() - step_started_at) * 1000)
                 trace.append(
                     StepTrace(
                         agent=step.agent,
                         reason=step.reason,
                         status="error",
+                        request_id=request_id,
+                        duration_ms=duration_ms,
                     )
+                )
+                logger.info(
+                    "orchestrator_step_complete request_id=%s agent=%s status=%s duration_ms=%s tool_used=%s",
+                    request_id,
+                    step.agent,
+                    "error",
+                    duration_ms,
+                    None,
                 )
                 results.append(
                     {
