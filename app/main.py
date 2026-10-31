@@ -12,6 +12,7 @@ from app.auth import authenticate_user
 from app.human_handoff import HumanHandoffStore, is_attendant_user
 from app.orchestrator import ChatOrchestrator
 from app.session_memory import SessionMemory
+from app.verified_facts import public_fact_conflicts, public_verified_facts
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,6 +57,8 @@ class ChatResponse(BaseModel):
     awaiting_user_input: bool = False
     step_status: str = "success"
     handoff: dict | None = None
+    verified_facts: list[dict] = Field(default_factory=list)
+    fact_conflicts: list[dict] = Field(default_factory=list)
     trace: list[dict] = Field(default_factory=list)
 
 
@@ -317,6 +320,9 @@ def chat(
         request_id,
     )
 
+    sanitized_verified_facts = public_verified_facts(result.get("verified_facts", []))
+    sanitized_fact_conflicts = public_fact_conflicts(result.get("fact_conflicts", []))
+
     response = ChatResponse(
         user_id=authenticated_user_id,
         message=request.message,
@@ -336,6 +342,8 @@ def chat(
         awaiting_user_input=result.get("awaiting_user_input", False),
         step_status=result.get("step_status", "success"),
         handoff=result.get("handoff"),
+        verified_facts=sanitized_verified_facts,
+        fact_conflicts=sanitized_fact_conflicts,
         trace=trace,
     )
 

@@ -4,6 +4,7 @@ import re
 import requests
 
 from app.rag.retriever import retrieve
+from app.verified_facts import PUBLIC_FACT_NAMES, _is_authorized_fact_origin, _validate_fact_value
 
 
 class KnowledgeAgent:
@@ -413,8 +414,40 @@ class KnowledgeAgent:
         data = response.json()
         return data["message"]["content"].strip()
 
-    def answer(self, message: str) -> dict:
+    @staticmethod
+    def _verified_fact_context(verified_facts: list[dict] | None) -> str:
+        if not verified_facts:
+            return ""
+
+        lines = [
+            "Fatos operacionais verificados na execução atual:",
+        ]
+        for fact in verified_facts:
+            if not isinstance(fact, dict):
+                continue
+            if fact.get("verified") is not True:
+                continue
+            if not _is_authorized_fact_origin(fact):
+                continue
+            if fact.get("source_agent") != "customer_support":
+                continue
+            name = str(fact.get("name", "")).strip()
+            if name not in PUBLIC_FACT_NAMES:
+                continue
+            source_tool = str(fact.get("source_tool", "")).strip()
+            if not source_tool:
+                continue
+            if _validate_fact_value(name, fact.get("value")) is None:
+                continue
+            lines.append(
+                f"- entidade={fact.get('entity')} nome={name} "
+                f"valor={fact.get('value')} origem={source_tool}"
+            )
+        return "\n".join(lines) if len(lines) > 1 else ""
+
+    def answer(self, message: str, verified_facts: list[dict] | None = None) -> dict:
         query = message.lower().strip()
+        fact_context = self._verified_fact_context(verified_facts)
 
         if "configurar" in query and "wi" in query and "maquininha" in query:
             return {
@@ -469,11 +502,14 @@ class KnowledgeAgent:
                 "source_sections": self._group_sources_by_section(sources),
             }
 
-        context = "\n\n".join(
-            f"Documento: {source['title']}\n"
-            f"Conteúdo: {source['content']}"
+        context_parts = [
+            f"Documento: {source['title']}\nConteúdo: {source['content']}"
             for source in sources
-        )
+        ]
+        if fact_context:
+            context_parts.insert(0, fact_context)
+
+        context = "\n\n".join(context_parts)
 
         try:
             answer = self._generate(message, context)

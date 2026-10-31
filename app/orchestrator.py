@@ -1,3 +1,4 @@
+import inspect
 import logging
 import time
 import unicodedata
@@ -10,6 +11,7 @@ from app.agents.customer_support import CustomerSupportAgent
 from app.agents.knowledge import KnowledgeAgent
 from app.agents.router import RouterAgent, RoutingDecision
 from app.agents.web_search import WebSearchAgent
+from app.verified_facts import consolidate_verified_facts
 
 
 @dataclass(frozen=True)
@@ -138,8 +140,20 @@ class ChatOrchestrator:
 
         return decision, plan
 
-    def _execute_step(self, step: PlanStep, message: str, user_id: str) -> dict:
+    def _execute_step(
+        self,
+        step: PlanStep,
+        message: str,
+        user_id: str,
+        verified_facts: list[dict] | None = None,
+    ) -> dict:
         if step.agent == "knowledge":
+            parameters = inspect.signature(self.knowledge.answer).parameters
+            if "verified_facts" in parameters or any(
+                parameter.kind == inspect.Parameter.VAR_KEYWORD
+                for parameter in parameters.values()
+            ):
+                return self.knowledge.answer(message, verified_facts=verified_facts)
             return self.knowledge.answer(message)
 
         if step.agent == "customer_support":
@@ -183,7 +197,28 @@ class ChatOrchestrator:
             "step_status": "failed",
         }
 
+    @staticmethod
+    def _summarize_conflicts(conflicts: list[dict]) -> str:
+        summaries: list[str] = []
+        for conflict in conflicts:
+            values: list[str] = []
+            for item in conflict.get("values", []):
+                if isinstance(item, dict):
+                    values.append(str(item.get("value")))
+                else:
+                    values.append(str(item))
+            summaries.append(
+                f"{conflict.get('entity', '')}::{conflict.get('name', '')}={', '.join(values)}"
+            )
+        return "; ".join(summaries)
+
     def _combine_results(self, results: list[dict]) -> dict:
+        all_verified_facts: list[dict] = []
+        for result in results:
+            all_verified_facts.extend(result.get("verified_facts", []))
+
+        consolidated_facts, fact_conflicts = consolidate_verified_facts(all_verified_facts)
+
         if len(results) == 1:
             merged = dict(results[0])
             merged.setdefault("flow_completed", True)
@@ -196,7 +231,18 @@ class ChatOrchestrator:
                 merged.get("issue_resolved", merged.get("resolved", False))
             )
             merged.setdefault("awaiting_user_input", False)
-            if not merged.get("step_status"):
+            merged["verified_facts"] = consolidated_facts
+            merged["fact_conflicts"] = fact_conflicts
+            if fact_conflicts:
+                merged["issue_resolved"] = False
+                merged["resolved"] = False
+                merged["step_status"] = "conflict"
+                merged["response"] = (
+                    "Há um conflito de fatos verificados na execução atual: "
+                    + self._summarize_conflicts(fact_conflicts)
+                    + ". Não foi possível confirmar um valor final sem resolução."
+                )
+            elif not merged.get("step_status"):
                 if merged.get("handoff_required", False):
                     merged["step_status"] = "handoff"
                 elif merged.get("awaiting_user_input", False):
@@ -248,32 +294,45 @@ class ChatOrchestrator:
             for result in results
         )
 
-        if any_failed:
+        if fact_conflicts:
+            step_status = "conflict"
+            any_resolution = False
+            response = (
+                "Há um conflito de fatos verificados na execução atual: "
+                + self._summarize_conflicts(fact_conflicts)
+                + ". Não foi possível confirmar um valor final sem resolução."
+            )
+        elif any_failed:
             step_status = "failed"
+            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
         elif any_handoff:
             step_status = "handoff"
+            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
         elif any_awaiting:
             step_status = "waiting_for_user_input"
+            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
         elif any_resolution or responses:
             step_status = "success"
+            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
         else:
             step_status = "failed"
+            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
 
         return {
             "agent": "multi_agent",
-            "response": "\n\nOrientações da base de conhecimento:\n".join(
-                responses
-            ),
+            "response": response,
             "sources": sources,
             "source_sections": source_sections,
             "tool_used": ", ".join(tools) if tools else None,
             "flow_completed": True,
-            "response_delivered": bool(responses),
-            "issue_resolved": any_resolution,
-            "resolved": any_resolution,
+            "response_delivered": bool(responses) or bool(fact_conflicts),
+            "issue_resolved": not fact_conflicts and any_resolution,
+            "resolved": not fact_conflicts and any_resolution,
             "handoff_required": any_handoff,
             "awaiting_user_input": any_awaiting,
             "step_status": step_status,
+            "verified_facts": consolidated_facts,
+            "fact_conflicts": fact_conflicts,
         }
 
     def handle(
@@ -294,11 +353,18 @@ class ChatOrchestrator:
         executed_steps: list[str] = []
         results: list[dict] = []
         trace: list[StepTrace] = []
+        shared_verified_facts: list[dict] = []
 
         for step in plan.steps[:plan.max_steps]:
             step_started_at = time.perf_counter()
             try:
-                step_result = self._execute_step(step, execution_message, user_id)
+                step_result = self._execute_step(
+                    step,
+                    execution_message,
+                    user_id,
+                    verified_facts=shared_verified_facts,
+                )
+                shared_verified_facts.extend(step_result.get("verified_facts", []))
                 results.append(step_result)
                 executed_steps.append(step.agent)
 

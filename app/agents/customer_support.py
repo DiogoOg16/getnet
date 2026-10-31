@@ -4,6 +4,7 @@ from app.tools.customer_tools import (
     lookup_settlement,
     lookup_transaction,
 )
+from app.verified_facts import make_verified_fact
 
 
 class CustomerSupportAgent:
@@ -50,6 +51,7 @@ class CustomerSupportAgent:
                     "issue_resolved": False,
                     "awaiting_user_input": True,
                     "step_status": "waiting_for_user_input",
+                    "verified_facts": [],
                 }
 
             transaction = result["transaction"]
@@ -76,6 +78,30 @@ class CustomerSupportAgent:
                     "solicite atendimento especializado."
                 )
 
+            verified_facts = [
+                make_verified_fact(
+                    entity=transaction["transaction_id"],
+                    name="status",
+                    value=transaction["status"],
+                    source_agent="customer_support",
+                    source_tool="lookup_transaction",
+                ),
+                make_verified_fact(
+                    entity=transaction["transaction_id"],
+                    name="amount",
+                    value=transaction["amount"],
+                    source_agent="customer_support",
+                    source_tool="lookup_transaction",
+                ),
+                make_verified_fact(
+                    entity=transaction["transaction_id"],
+                    name="currency",
+                    value=transaction["currency"],
+                    source_agent="customer_support",
+                    source_tool="lookup_transaction",
+                ),
+            ]
+
             return {
                 "agent": "customer_support",
                 "response": response,
@@ -85,6 +111,7 @@ class CustomerSupportAgent:
                 "issue_resolved": True,
                 "awaiting_user_input": False,
                 "step_status": "success",
+                "verified_facts": verified_facts,
             }
 
         if declined_transaction:
@@ -101,6 +128,7 @@ class CustomerSupportAgent:
                 "issue_resolved": False,
                 "awaiting_user_input": True,
                 "step_status": "waiting_for_user_input",
+                "verified_facts": [],
             }
 
         settlement_timing = any(
@@ -154,6 +182,7 @@ class CustomerSupportAgent:
                 "issue_resolved": True,
                 "awaiting_user_input": False,
                 "step_status": "success",
+                "verified_facts": [],
             }
 
         if any(
@@ -179,6 +208,7 @@ class CustomerSupportAgent:
                     "issue_resolved": False,
                     "awaiting_user_input": False,
                     "step_status": "failed",
+                    "verified_facts": [],
                 }
 
             customer = result["customer"]
@@ -194,6 +224,7 @@ class CustomerSupportAgent:
                 "issue_resolved": True,
                 "awaiting_user_input": False,
                 "step_status": "success",
+                "verified_facts": [],
             }
 
         return {
@@ -209,4 +240,5 @@ class CustomerSupportAgent:
             "issue_resolved": False,
             "awaiting_user_input": True,
             "step_status": "waiting_for_user_input",
+            "verified_facts": [],
         }
