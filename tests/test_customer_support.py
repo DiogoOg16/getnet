@@ -73,7 +73,75 @@ def test_agent_handles_settlement_timing_question_without_transaction_id():
 
     assert result["agent"] == "customer_support"
     assert "prazo" in result["response"].lower()
+    assert "Registro 1" in result["response"]
+    assert "Registro 2" in result["response"]
+    assert "2026-11-05" in result["response"]
+    assert "2026-11-12" in result["response"]
     assert "transação" in result["response"].lower() or "txn" in result["response"].lower()
+
+
+def test_agent_lists_each_settlement_record_with_available_fields():
+    result = CustomerSupportAgent().answer(
+        "Quando o dinheiro das vendas será depositado?",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert "Registro 1" in result["response"]
+    assert "status scheduled" in result["response"].lower()
+    assert "R$ 149.90" in result["response"]
+    assert "BRL" in result["response"]
+    assert "2026-11-05" in result["response"]
+    assert "Registro 2" in result["response"]
+    assert "status processing" in result["response"].lower()
+    assert "R$ 89.50" in result["response"]
+    assert "2026-11-12" in result["response"]
+
+
+def test_agent_reports_missing_settlement_date_when_not_available(monkeypatch):
+    from app.tools import customer_tools
+
+    monkeypatch.setitem(
+        customer_tools.SETTLEMENTS,
+        "cliente1988",
+        [{
+            "settlement_id": "settlement_003",
+            "customer_id": "cliente1988",
+            "transaction_id": "txn1003",
+            "status": "failed",
+            "amount": 75.00,
+            "currency": "BRL",
+        }],
+    )
+
+    result = CustomerSupportAgent().answer(
+        "Quando o dinheiro será depositado?",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert "data prevista: não disponível" in result["response"].lower()
+    assert "R$ 75.00" in result["response"]
+    assert "status failed" in result["response"].lower()
+
+
+def test_lookup_settlement_empty_records_for_known_customer_without_settlements():
+    result = lookup_settlement("cliente2001")
+
+    assert result["found"] is True
+    assert result["simulated"] is True
+    assert result["customer_id"] == "cliente2001"
+    assert result["records"] == []
+    assert "não há registros" in result["message"].lower()
+
+
+def test_lookup_settlement_rejects_unknown_customer():
+    result = lookup_settlement("cliente_inexistente")
+
+    assert result["found"] is False
+    assert result["simulated"] is True
+    assert result["customer_id"] == "cliente_inexistente"
+
 
 def test_agent_gives_guidance_for_declined_transaction_without_id():
     result = CustomerSupportAgent().answer(
@@ -95,10 +163,47 @@ def test_lookup_settlement_returns_simulated_data():
     assert result["found"] is True
     assert result["simulated"] is True
     assert result["customer_id"] == "cliente1988"
+    assert result["records"]
     assert "message" in result
+
+
+def test_lookup_settlement_returns_empty_records_for_known_customer_without_settlements():
+    result = lookup_settlement("cliente2001")
+
+    assert result["found"] is True
+    assert result["simulated"] is True
+    assert result["customer_id"] == "cliente2001"
+    assert result["records"] == []
+    assert "não há registros" in result["message"].lower()
 
 
 def test_lookup_settlement_rejects_unknown_customer():
     result = lookup_settlement("cliente_inexistente")
 
     assert result["found"] is False
+    assert result["simulated"] is True
+    assert result["customer_id"] == "cliente_inexistente"
+
+
+def test_agent_uses_decline_reason_when_available():
+    result = CustomerSupportAgent().answer(
+        "Qual o status da transação txn2001?",
+        "cliente2001",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert "recusada" in result["response"].lower()
+    assert "Cartão bloqueado pelo emissor" in result["response"]
+    assert all(fact["name"] != "decline_reason" for fact in result["verified_facts"])
+
+
+def test_agent_reports_missing_decline_detail_when_reason_is_not_registered():
+    result = CustomerSupportAgent().answer(
+        "Qual o status da transação txn1003?",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert "recusada" in result["response"].lower()
+    assert "não há detalhes disponíveis" in result["response"].lower()
+    assert all(fact["name"] != "decline_reason" for fact in result["verified_facts"])

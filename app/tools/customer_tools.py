@@ -30,13 +30,48 @@ TRANSACTIONS = {
         "currency": "BRL",
         "status": "pending",
     },
+    "txn1003": {
+        "transaction_id": "txn1003",
+        "customer_id": "cliente1988",
+        "amount": 75.00,
+        "currency": "BRL",
+        "status": "declined",
+    },
     "txn2001": {
         "transaction_id": "txn2001",
         "customer_id": "cliente2001",
         "amount": 250.00,
         "currency": "BRL",
         "status": "declined",
+        "decline_code": "AUTH_DECLINED",
+        "decline_reason": "Cartão bloqueado pelo emissor",
+        "declined_at": "2026-10-20T12:40:00Z",
     },
+}
+
+SETTLEMENTS = {
+    "cliente1988": [{
+        "settlement_id": "settlement_001",
+        "customer_id": "cliente1988",
+        "transaction_id": "txn1001",
+        "status": "scheduled",
+        "amount": 149.90,
+        "currency": "BRL",
+        "estimated_settlement_date": "2026-11-05",
+        "source": "synthetic_fixture",
+        "simulated": True,
+    }, {
+        "settlement_id": "settlement_002",
+        "customer_id": "cliente1988",
+        "transaction_id": "txn1002",
+        "status": "processing",
+        "amount": 89.50,
+        "currency": "BRL",
+        "estimated_settlement_date": "2026-11-12",
+        "source": "synthetic_fixture",
+        "simulated": True,
+    }],
+    "cliente2001": [],
 }
 
 
@@ -69,10 +104,10 @@ def lookup_transaction(
     return {"found": True, "transaction": transaction.copy()}
 
 def lookup_settlement(user_id: str) -> dict:
-    """Return simulated settlement guidance for a known customer.
+    """Return synthetic settlement records for a known customer.
 
-    This tool does not access real Getnet settlement records or predict
-    an actual deposit date.
+    The records are intentionally simulated and do not represent a real
+    Getnet settlement integration.
     """
     customer = CUSTOMERS.get(user_id)
 
@@ -80,17 +115,28 @@ def lookup_settlement(user_id: str) -> dict:
         return {
             "found": False,
             "simulated": True,
+            "customer_id": user_id,
             "message": "Cliente não encontrado na base de dados simulada.",
+        }
+
+    records = [record.copy() for record in SETTLEMENTS.get(user_id, [])]
+
+    if records:
+        return {
+            "found": True,
+            "simulated": True,
+            "customer_id": user_id,
+            "records": records,
+            "message": "Há registros de liquidação disponíveis para este cliente.",
         }
 
     return {
         "found": True,
         "simulated": True,
         "customer_id": user_id,
+        "records": [],
         "message": (
-            "O prazo de recebimento depende do canal de pagamento e do "
-            "produto contratado. Este ambiente utiliza dados simulados e "
-            "não possui registros reais de recebimento nem permite confirmar "
-            "a data de depósito das vendas."
+            "Não há registros de liquidação para este cliente neste "
+            "ambiente simulado."
         ),
     }

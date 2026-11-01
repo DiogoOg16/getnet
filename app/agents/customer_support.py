@@ -71,12 +71,15 @@ class CustomerSupportAgent:
                 f"{status}. Valor: R$ {transaction['amount']:.2f}."
             )
 
-            if declined_transaction and transaction["status"] == "declined":
-                response += (
-                    " A base simulada não contém o motivo específico da recusa. "
-                    "Consulte os detalhes da venda no sistema de origem ou "
-                    "solicite atendimento especializado."
-                )
+            if transaction["status"] == "declined":
+                decline_reason = transaction.get("decline_reason")
+                if decline_reason:
+                    response += f" Motivo da recusa: {decline_reason}."
+                else:
+                    response += (
+                        " Não há detalhes disponíveis sobre o motivo da recusa "
+                        "neste registro."
+                    )
 
             verified_facts = [
                 make_verified_fact(
@@ -169,11 +172,41 @@ class CustomerSupportAgent:
                     "step_status": "failed",
                 }
 
+            if result.get("records"):
+                details = []
+                for index, record in enumerate(result["records"], start=1):
+                    status = record.get("status") or "não disponível"
+                    amount = record.get("amount")
+                    currency = record.get("currency")
+                    date_value = record.get("estimated_settlement_date")
+
+                    item_parts = [
+                        f"Registro {index}: status {status}",
+                    ]
+
+                    if amount is not None:
+                        item_parts.append(f"valor: R$ {float(amount):.2f}")
+                    if currency:
+                        item_parts.append(f"moeda: {currency}")
+                    if date_value:
+                        item_parts.append(f"data prevista: {date_value}")
+                    else:
+                        item_parts.append("data prevista: não disponível")
+
+                    details.append("; ".join(item_parts))
+
+                message = (
+                    "Prazo de recebimento: "
+                    + "; ".join(details)
+                    + "."
+                )
+            else:
+                message = result["message"]
+
             return {
                 "agent": "customer_support",
                 "response": (
-                    f"{result['message']} "
-                    "Para verificar uma operação específica, informe o "
+                    f"{message} Para verificar uma operação específica, informe o "
                     "identificador da transação, por exemplo txn1001."
                 ),
                 "tool_used": "lookup_settlement",
