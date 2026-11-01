@@ -17,7 +17,7 @@
       "expected_agent": "customer_support",
       "expected_handoff": false,
       "expected_resolved": false,
-      "expected_response_contains": ["transação", "txn1001"],
+      "expected_response_contains": ["wi-fi", "rede", "diagnóstico"],
       "should_resolve": false
     },
     {

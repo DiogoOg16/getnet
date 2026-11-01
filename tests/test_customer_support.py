@@ -233,16 +233,41 @@ def test_agent_extracts_explicit_terminal_context_from_message():
     assert "erro de rede" in context["error_hint"] or context["error_hint"]
 
 
-def test_agent_uses_knowledge_when_connectivity_context_is_sufficient():
+def test_agent_uses_knowledge_when_connectivity_context_is_sufficient(monkeypatch):
+    fake_response = {
+        "agent": "knowledge",
+        "response": "Siga os passos de diagnóstico da rede Wi‑Fi e confirme se a maquininha está recebendo sinal.",
+        "sources": ["faq_conectividade.md"],
+        "source_sections": {"Conectividade": ["faq_conectividade.md"]},
+        "tool_used": "knowledge",
+        "flow_completed": True,
+        "response_delivered": True,
+        "issue_resolved": False,
+        "resolved": False,
+        "awaiting_user_input": False,
+        "step_status": "success",
+    }
+
+    def fake_knowledge_answer(self, message):
+        assert message == "Minha maquininha não conecta na internet e a rede Wi‑Fi está indisponível."
+        return fake_response
+
+    monkeypatch.setattr("app.agents.knowledge.KnowledgeAgent.answer", fake_knowledge_answer)
+
     result = CustomerSupportAgent().answer(
         "Minha maquininha não conecta na internet e a rede Wi‑Fi está indisponível.",
         "cliente1988",
     )
 
     assert result["agent"] == "customer_support"
-    assert "rede" in result["response"].lower()
-    assert "wi-fi" in result["response"].lower() or "wifi" in result["response"].lower()
-    assert result["step_status"] in {"success", "waiting_for_user_input"}
+    assert result["handoff_required"] is False
+    assert result["step_status"] == "success"
+    assert result["tool_used"] == "knowledge"
+    assert result["sources"] == fake_response["sources"]
+    assert result["source_sections"] == fake_response["source_sections"]
+    assert "Com base na documentação disponível da Getnet" in result["response"]
+    normalized = result["response"].replace("‑", "-").replace("–", "-").replace("—", "-")
+    assert "Siga os passos de diagnóstico da rede Wi-Fi e confirme se a maquininha está recebendo sinal." in normalized
 
 
 def test_agent_handoff_when_documented_guidance_is_insufficient():

@@ -420,6 +420,59 @@ def test_chat_current_intent_wins_after_mixed_history_topics():
     assert response.json()["agent"] == "knowledge"
 
 
+def test_chat_creates_persisted_handoff_for_terminal_case_without_safe_guidance(monkeypatch):
+    session_id = "session-terminal-handoff"
+
+    def fake_knowledge_answer(self, message):
+        return {
+            "agent": "knowledge",
+            "response": (
+                "Não encontrei informações suficientes na base de conhecimento "
+                "para responder com segurança."
+            ),
+            "sources": [],
+            "source_sections": {},
+            "tool_used": "retrieval_only",
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": False,
+            "resolved": False,
+            "awaiting_user_input": False,
+            "step_status": "failed",
+        }
+
+    monkeypatch.setattr("app.agents.knowledge.KnowledgeAgent.answer", fake_knowledge_answer)
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": (
+                "Minha maquininha não conecta na internet e a rede Wi-Fi está indisponível. "
+                "A mensagem na tela diz 'sem conexão'."
+            ),
+            "user_id": "cliente1988",
+            "session_id": session_id,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["agent"] == "customer_support"
+    assert payload["handoff_required"] is True
+    assert payload["step_status"] == "handoff"
+    assert "atendimento humano" in payload["response"].lower()
+    assert payload["handoff"]["user_id"] == "cliente1988"
+    assert payload["handoff"]["session_id"] == session_id
+    assert payload["handoff"]["status"] == "pending"
+
+    ticket_response = client.get(f"/human-handoff/{payload['handoff']['id']}")
+    assert ticket_response.status_code == 200
+    ticket = ticket_response.json()
+    assert ticket["user_id"] == "cliente1988"
+    assert ticket["session_id"] == session_id
+    assert ticket["status"] == "pending"
+
+
 def test_orchestrator_does_not_fallback_to_request_unknown():
     execution = ChatOrchestrator().handle(
         "Como funciona o Pix da Getnet?",
