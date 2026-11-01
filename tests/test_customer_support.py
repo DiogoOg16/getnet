@@ -207,3 +207,63 @@ def test_agent_reports_missing_decline_detail_when_reason_is_not_registered():
     assert "recusada" in result["response"].lower()
     assert "não há detalhes disponíveis" in result["response"].lower()
     assert all(fact["name"] != "decline_reason" for fact in result["verified_facts"])
+
+
+def test_agent_detects_terminal_connectivity_issue_and_requests_missing_context():
+    result = CustomerSupportAgent().answer(
+        "Minha maquininha não conecta na internet.",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert result["awaiting_user_input"] is True
+    assert result["handoff_required"] is False
+    assert "wi-fi" in result["response"].lower() or "rede" in result["response"].lower()
+    assert "mensagem" in result["response"].lower() or "sinal" in result["response"].lower()
+
+
+def test_agent_extracts_explicit_terminal_context_from_message():
+    context = CustomerSupportAgent()._extract_terminal_context(
+        "Minha maquininha não conecta na internet, Wi‑Fi indisponível e mostra erro de rede.",
+    )
+
+    assert context["issue_type"] == "connectivity"
+    assert context["has_internet_issue"] is True
+    assert context["has_wifi_signal"] is False
+    assert "erro de rede" in context["error_hint"] or context["error_hint"]
+
+
+def test_agent_uses_knowledge_when_connectivity_context_is_sufficient():
+    result = CustomerSupportAgent().answer(
+        "Minha maquininha não conecta na internet e a rede Wi‑Fi está indisponível.",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert "rede" in result["response"].lower()
+    assert "wi-fi" in result["response"].lower() or "wifi" in result["response"].lower()
+    assert result["step_status"] in {"success", "waiting_for_user_input"}
+
+
+def test_agent_handoff_when_documented_guidance_is_insufficient():
+    result = CustomerSupportAgent().answer(
+        "Minha maquininha não conecta na internet e não há orientação segura na base.",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert result["handoff_required"] is True
+    assert result["step_status"] == "handoff"
+    assert "atendimento humano" in result["response"].lower()
+
+
+def test_agent_response_does_not_claim_nonexistent_terminal_telemetry():
+    result = CustomerSupportAgent().answer(
+        "Minha maquininha não conecta na internet e não funciona.",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert "telemetria" not in result["response"].lower()
+    assert "offline" not in result["response"].lower() or "offline" in result["response"].lower()
+    assert "wifi" in result["response"].lower() or "rede" in result["response"].lower() or "sinal" in result["response"].lower()
