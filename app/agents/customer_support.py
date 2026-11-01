@@ -1,16 +1,39 @@
 import re
 import unicodedata
+from typing import Any
 
+from app.llm.ollama_client import OllamaClient
+from app.llm.ollama_function_calling import OllamaFunctionCallingLoop
 from app.tools.customer_tools import (
     lookup_customer,
     lookup_settlement,
     lookup_transaction,
 )
+from app.tools.registry import ToolExecutor, ToolRegistry, tool_registry
 from app.verified_facts import make_verified_fact
 
 
 class CustomerSupportAgent:
     """Handles customer-specific questions using support tools."""
+
+    def __init__(
+        self,
+        *,
+        client: OllamaClient | None = None,
+        registry: ToolRegistry | None = None,
+        executor: ToolExecutor | None = None,
+        loop: OllamaFunctionCallingLoop | None = None,
+    ) -> None:
+        self.client = client or OllamaClient()
+        self.registry = registry if registry is not None else tool_registry
+        if not isinstance(self.registry, ToolRegistry):
+            raise TypeError("registry must be a ToolRegistry instance.")
+        self.executor = executor or ToolExecutor(self.registry)
+        self.loop = loop or OllamaFunctionCallingLoop(
+            client=self.client,
+            registry=self.registry,
+            executor=self.executor,
+        )
 
     @staticmethod
     def _normalize_text(message: str) -> str:
@@ -171,6 +194,106 @@ class CustomerSupportAgent:
             return None
         return knowledge_result
 
+    def _run_function_calling(self, message: str, user_id: str) -> dict[str, Any]:
+        try:
+            result = self.loop.run(
+                [{"role": "user", "content": message}],
+                context={"user_id": user_id},
+            )
+        except Exception as exc:  # pragma: no cover - exercised via tests using fake loop failures
+            return {
+                "status": "tool_call_error",
+                "error": str(exc),
+                "tool_results": [],
+            }
+
+        if not isinstance(result, dict):
+            return {
+                "status": "invalid_result",
+                "error": "Unexpected function-calling result payload.",
+                "tool_results": [],
+            }
+
+        tool_results = result.get("tool_results")
+        if not isinstance(tool_results, list):
+            return {
+                "status": "invalid_result",
+                "error": "Tool-calling result is missing tool_results.",
+                "tool_results": [],
+            }
+
+        if result.get("status") == "max_iterations_exceeded":
+            return {
+                "status": "max_iterations_exceeded",
+                "error": "Function-calling loop exceeded the iteration limit.",
+                "tool_results": tool_results,
+            }
+
+        if not tool_results:
+            return {
+                "status": "no_tool_calls",
+                "tool_results": [],
+            }
+
+        return {
+            "status": "tool_call_success",
+            "tool_results": tool_results,
+        }
+
+    @staticmethod
+    def _tool_payload_from_result(tool_result: dict[str, Any]) -> dict[str, Any] | None:
+        if not isinstance(tool_result, dict):
+            return None
+
+        payload = tool_result.get("result")
+        if not isinstance(payload, dict):
+            return None
+
+        if payload.get("ok") is False:
+            return None
+
+        nested_result = payload.get("result")
+        if isinstance(nested_result, dict):
+            payload = nested_result
+
+        if not isinstance(payload, dict):
+            return None
+
+        if any(key in payload for key in ("found", "transaction", "customer", "records", "message")):
+            return payload
+        return None
+
+    @staticmethod
+    def _verified_facts_from_tool_result(tool_name: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        if tool_name != "lookup_transaction":
+            return []
+
+        transaction = payload.get("transaction") if isinstance(payload, dict) else None
+        if not isinstance(transaction, dict):
+            return []
+
+        facts: list[dict[str, Any]] = []
+        for field_name, value in (
+            ("status", transaction.get("status")),
+            ("amount", transaction.get("amount")),
+            ("currency", transaction.get("currency")),
+        ):
+            if value is None:
+                continue
+            try:
+                facts.append(
+                    make_verified_fact(
+                        entity=str(transaction.get("transaction_id", "unknown")),
+                        name=field_name,
+                        value=value,
+                        source_agent="customer_support",
+                        source_tool="lookup_transaction",
+                    )
+                )
+            except ValueError:
+                continue
+        return facts
+
     def answer(self, message: str, user_id: str) -> dict:
         text = self._normalize_text(message)
 
@@ -277,6 +400,245 @@ class CustomerSupportAgent:
 
         # If a transaction ID is provided, always verify ownership and status.
         if transaction_id:
+            loop_result = self._run_function_calling(message, user_id)
+            loop_status = loop_result.get("status")
+            if loop_status == "tool_call_error":
+                return {
+                    "agent": "customer_support",
+                    "response": "Não foi possível consultar a transação neste momento porque o serviço de ferramentas falhou.",
+                    "tool_used": None,
+                    "function_call_status": "tool_call_error",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "tool_call_error",
+                    "verified_facts": [],
+                }
+            if loop_status == "max_iterations_exceeded":
+                return {
+                    "agent": "customer_support",
+                    "response": "A consulta de transação excedeu o limite de tentativas. Tente novamente com um identificador válido.",
+                    "tool_used": None,
+                    "function_call_status": "max_iterations_exceeded",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "max_iterations_exceeded",
+                    "verified_facts": [],
+                }
+            if loop_status == "invalid_result":
+                return {
+                    "agent": "customer_support",
+                    "response": "A resposta da ferramenta de transação veio incompleta ou inválida, então não posso confirmar o status com segurança.",
+                    "tool_used": None,
+                    "function_call_status": "invalid_result",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "invalid_result",
+                    "verified_facts": [],
+                }
+            if loop_status == "tool_call_success":
+                recognized = False
+                for tool_result in loop_result.get("tool_results") or []:
+                    tool_name = tool_result.get("tool_name")
+                    if tool_name != "lookup_transaction":
+                        continue
+                    recognized = True
+                    payload = self._tool_payload_from_result(tool_result)
+                    if payload is None:
+                        return {
+                            "agent": "customer_support",
+                            "response": "A ferramenta de transação respondeu com dados inválidos e não posso confirmar a operação com segurança.",
+                            "tool_used": None,
+                            "function_call_status": "invalid_result",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "invalid_result",
+                            "verified_facts": [],
+                        }
+                    if "found" in payload and not payload.get("found", False):
+                        return {
+                            "agent": "customer_support",
+                            "response": (
+                                "Não encontrei essa transação para o cliente informado. "
+                                "Confirme o identificador e tente novamente."
+                            ),
+                            "tool_used": "lookup_transaction",
+                            "function_call_status": "tool_call_success",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "waiting_for_user_input",
+                            "verified_facts": [],
+                        }
+                    if "found" not in payload:
+                        return {
+                            "agent": "customer_support",
+                            "response": "A ferramenta de transação respondeu sem a estrutura necessária para confirmar a operação.",
+                            "tool_used": None,
+                            "function_call_status": "invalid_result",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "invalid_result",
+                            "verified_facts": [],
+                        }
+
+                    transaction = payload.get("transaction")
+                    if not isinstance(transaction, dict):
+                        return {
+                            "agent": "customer_support",
+                            "response": "A ferramenta de transação respondeu sem os dados obrigatórios da operação.",
+                            "tool_used": None,
+                            "function_call_status": "invalid_result",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "invalid_result",
+                            "verified_facts": [],
+                        }
+
+                    required_fields = {"transaction_id", "status", "amount", "currency"}
+                    missing = sorted(required_fields - set(transaction))
+                    if missing:
+                        return {
+                            "agent": "customer_support",
+                            "response": "A resposta da ferramenta de transação está incompleta para validar a operação.",
+                            "tool_used": None,
+                            "function_call_status": "invalid_result",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "invalid_result",
+                            "verified_facts": [],
+                        }
+
+                    status_messages = {
+                        "approved": "aprovada",
+                        "pending": "pendente",
+                        "declined": "recusada",
+                    }
+                    status = status_messages.get(transaction["status"], transaction["status"])
+
+                    response = (
+                        f"A transação {transaction['transaction_id']} está "
+                        f"{status}. Valor: R$ {transaction['amount']:.2f}."
+                    )
+
+                    if transaction["status"] == "declined":
+                        decline_reason = transaction.get("decline_reason")
+                        if decline_reason:
+                            response += f" Motivo da recusa: {decline_reason}."
+                        else:
+                            response += (
+                                " Não há detalhes disponíveis sobre o motivo da recusa "
+                                "neste registro."
+                            )
+
+                    verified_facts = self._verified_facts_from_tool_result("lookup_transaction", payload)
+                    return {
+                        "agent": "customer_support",
+                        "response": response,
+                        "tool_used": "lookup_transaction",
+                        "function_call_status": "tool_call_success",
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": True,
+                        "awaiting_user_input": False,
+                        "step_status": "success",
+                        "verified_facts": verified_facts,
+                    }
+                if recognized is False:
+                    result = lookup_transaction(transaction_id, user_id)
+
+                    if not result["found"]:
+                        return {
+                            "agent": "customer_support",
+                            "response": (
+                                "Não encontrei essa transação para o cliente informado. "
+                                "Confirme o identificador e tente novamente."
+                            ),
+                            "tool_used": "lookup_transaction",
+                            "function_call_status": "no_tool_calls",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "waiting_for_user_input",
+                            "verified_facts": [],
+                        }
+
+                    transaction = result["transaction"]
+
+                    status_messages = {
+                        "approved": "aprovada",
+                        "pending": "pendente",
+                        "declined": "recusada",
+                    }
+                    status = status_messages.get(transaction["status"], transaction["status"])
+
+                    response = (
+                        f"A transação {transaction['transaction_id']} está "
+                        f"{status}. Valor: R$ {transaction['amount']:.2f}."
+                    )
+
+                    if transaction["status"] == "declined":
+                        decline_reason = transaction.get("decline_reason")
+                        if decline_reason:
+                            response += f" Motivo da recusa: {decline_reason}."
+                        else:
+                            response += (
+                                " Não há detalhes disponíveis sobre o motivo da recusa "
+                                "neste registro."
+                            )
+
+                    verified_facts = [
+                        make_verified_fact(
+                            entity=transaction["transaction_id"],
+                            name="status",
+                            value=transaction["status"],
+                            source_agent="customer_support",
+                            source_tool="lookup_transaction",
+                        ),
+                        make_verified_fact(
+                            entity=transaction["transaction_id"],
+                            name="amount",
+                            value=transaction["amount"],
+                            source_agent="customer_support",
+                            source_tool="lookup_transaction",
+                        ),
+                        make_verified_fact(
+                            entity=transaction["transaction_id"],
+                            name="currency",
+                            value=transaction["currency"],
+                            source_agent="customer_support",
+                            source_tool="lookup_transaction",
+                        ),
+                    ]
+
+                    return {
+                        "agent": "customer_support",
+                        "response": response,
+                        "tool_used": "lookup_transaction",
+                        "function_call_status": "no_tool_calls",
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": True,
+                        "awaiting_user_input": False,
+                        "step_status": "success",
+                        "verified_facts": verified_facts,
+                    }
+
             result = lookup_transaction(transaction_id, user_id)
 
             if not result["found"]:
@@ -287,6 +649,7 @@ class CustomerSupportAgent:
                         "Confirme o identificador e tente novamente."
                     ),
                     "tool_used": "lookup_transaction",
+                    "function_call_status": "no_tool_calls",
                     "flow_completed": True,
                     "response_delivered": True,
                     "issue_resolved": False,
@@ -350,6 +713,7 @@ class CustomerSupportAgent:
                 "agent": "customer_support",
                 "response": response,
                 "tool_used": "lookup_transaction",
+                "function_call_status": "no_tool_calls",
                 "flow_completed": True,
                 "response_delivered": True,
                 "issue_resolved": True,
@@ -367,6 +731,7 @@ class CustomerSupportAgent:
                     "não consigo confirmar o status nem o motivo da recusa."
                 ),
                 "tool_used": None,
+                "function_call_status": "no_tool_calls",
                 "flow_completed": True,
                 "response_delivered": True,
                 "issue_resolved": False,
@@ -396,6 +761,207 @@ class CustomerSupportAgent:
         )
 
         if settlement_timing:
+            loop_result = self._run_function_calling(message, user_id)
+            loop_status = loop_result.get("status")
+            if loop_status == "tool_call_error":
+                return {
+                    "agent": "customer_support",
+                    "response": "Não foi possível consultar o prazo de recebimento porque a ferramenta falhou.",
+                    "tool_used": None,
+                    "function_call_status": "tool_call_error",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "tool_call_error",
+                    "verified_facts": [],
+                }
+            if loop_status == "max_iterations_exceeded":
+                return {
+                    "agent": "customer_support",
+                    "response": "A consulta de recebimento excedeu o limite de tentativas e não posso confirmar o prazo com segurança.",
+                    "tool_used": None,
+                    "function_call_status": "max_iterations_exceeded",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "max_iterations_exceeded",
+                    "verified_facts": [],
+                }
+            if loop_status == "invalid_result":
+                return {
+                    "agent": "customer_support",
+                    "response": "A resposta da ferramenta de recebimento veio incompleta e não posso confirmar o prazo sem dados válidos.",
+                    "tool_used": None,
+                    "function_call_status": "invalid_result",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "invalid_result",
+                    "verified_facts": [],
+                }
+            if loop_status == "tool_call_success":
+                recognized = False
+                for tool_result in loop_result.get("tool_results") or []:
+                    tool_name = tool_result.get("tool_name")
+                    if tool_name != "lookup_settlement":
+                        continue
+                    recognized = True
+                    payload = self._tool_payload_from_result(tool_result)
+                    if payload is None:
+                        return {
+                            "agent": "customer_support",
+                            "response": "A ferramenta de recebimento respondeu com dados inválidos para confirmar o prazo.",
+                            "tool_used": "lookup_settlement",
+                            "function_call_status": "invalid_result",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "invalid_result",
+                            "verified_facts": [],
+                        }
+                    result = payload
+                    if not result.get("found"):
+                        return {
+                            "agent": "customer_support",
+                            "response": (
+                                "Não consegui localizar o cadastro na base simulada "
+                                "para consultar as orientações de recebimento."
+                            ),
+                            "tool_used": "lookup_settlement",
+                            "function_call_status": "tool_call_success",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": False,
+                            "step_status": "failed",
+                        }
+
+                    if result.get("records"):
+                        details = []
+                        for index, record in enumerate(result["records"], start=1):
+                            if not isinstance(record, dict):
+                                return {
+                                    "agent": "customer_support",
+                                    "response": "A resposta de recebimento inclui registros incompletos e não pode ser usada com segurança.",
+                                    "tool_used": "lookup_settlement",
+                                    "function_call_status": "invalid_result",
+                                    "flow_completed": True,
+                                    "response_delivered": True,
+                                    "issue_resolved": False,
+                                    "awaiting_user_input": True,
+                                    "step_status": "invalid_result",
+                                    "verified_facts": [],
+                                }
+                            status = record.get("status") or "não disponível"
+                            amount = record.get("amount")
+                            currency = record.get("currency")
+                            date_value = record.get("estimated_settlement_date")
+
+                            item_parts = [
+                                f"Registro {index}: status {status}",
+                            ]
+
+                            if amount is not None:
+                                item_parts.append(f"valor: R$ {float(amount):.2f}")
+                            if currency:
+                                item_parts.append(f"moeda: {currency}")
+                            if date_value:
+                                item_parts.append(f"data prevista: {date_value}")
+                            else:
+                                item_parts.append("data prevista: não disponível")
+
+                            details.append("; ".join(item_parts))
+
+                        message_text = (
+                            "Prazo de recebimento: "
+                            + "; ".join(details)
+                            + "."
+                        )
+                    else:
+                        message_text = result.get("message", "Não há registros de liquidação disponíveis.")
+
+                    return {
+                        "agent": "customer_support",
+                        "response": (
+                            f"{message_text} Para verificar uma operação específica, informe o "
+                            "identificador da transação, por exemplo txn1001."
+                        ),
+                        "tool_used": "lookup_settlement",
+                        "function_call_status": "tool_call_success",
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": True,
+                        "awaiting_user_input": False,
+                        "step_status": "success",
+                        "verified_facts": [],
+                    }
+                if recognized is False:
+                    result = lookup_settlement(user_id)
+
+                    if not result.get("found"):
+                        return {
+                            "agent": "customer_support",
+                            "response": (
+                                "Não consegui localizar o cadastro na base simulada "
+                                "para consultar as orientações de recebimento."
+                            ),
+                            "tool_used": "lookup_settlement",
+                            "function_call_status": "no_tool_calls",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": False,
+                            "step_status": "failed",
+                        }
+
+                    if result.get("records"):
+                        details = []
+                        for index, record in enumerate(result["records"], start=1):
+                            status = record.get("status") or "não disponível"
+                            amount = record.get("amount")
+                            currency = record.get("currency")
+                            date_value = record.get("estimated_settlement_date")
+
+                            item_parts = [f"Registro {index}: status {status}"]
+                            if amount is not None:
+                                item_parts.append(f"valor: R$ {float(amount):.2f}")
+                            if currency:
+                                item_parts.append(f"moeda: {currency}")
+                            if date_value:
+                                item_parts.append(f"data prevista: {date_value}")
+                            else:
+                                item_parts.append("data prevista: não disponível")
+
+                            details.append("; ".join(item_parts))
+
+                        message_text = (
+                            "Prazo de recebimento: "
+                            + "; ".join(details)
+                            + "."
+                        )
+                    else:
+                        message_text = result.get("message", "Não há registros de liquidação disponíveis.")
+
+                    return {
+                        "agent": "customer_support",
+                        "response": (
+                            f"{message_text} Para verificar uma operação específica, informe o "
+                            "identificador da transação, por exemplo txn1001."
+                        ),
+                        "tool_used": "lookup_settlement",
+                        "function_call_status": "no_tool_calls",
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": True,
+                        "awaiting_user_input": False,
+                        "step_status": "success",
+                        "verified_facts": [],
+                    }
+
             result = lookup_settlement(user_id)
 
             if not result["found"]:
@@ -406,6 +972,7 @@ class CustomerSupportAgent:
                         "para consultar as orientações de recebimento."
                     ),
                     "tool_used": "lookup_settlement",
+                    "function_call_status": "no_tool_calls",
                     "flow_completed": True,
                     "response_delivered": True,
                     "issue_resolved": False,
@@ -436,21 +1003,22 @@ class CustomerSupportAgent:
 
                     details.append("; ".join(item_parts))
 
-                message = (
+                message_text = (
                     "Prazo de recebimento: "
                     + "; ".join(details)
                     + "."
                 )
             else:
-                message = result["message"]
+                message_text = result["message"]
 
             return {
                 "agent": "customer_support",
                 "response": (
-                    f"{message} Para verificar uma operação específica, informe o "
+                    f"{message_text} Para verificar uma operação específica, informe o "
                     "identificador da transação, por exemplo txn1001."
                 ),
                 "tool_used": "lookup_settlement",
+                "function_call_status": "no_tool_calls",
                 "flow_completed": True,
                 "response_delivered": True,
                 "issue_resolved": True,
@@ -470,6 +1038,157 @@ class CustomerSupportAgent:
                 "status da conta",
             )
         ):
+            loop_result = self._run_function_calling(message, user_id)
+            loop_status = loop_result.get("status")
+            if loop_status == "tool_call_error":
+                return {
+                    "agent": "customer_support",
+                    "response": "Não foi possível consultar o cadastro do cliente porque a ferramenta falhou.",
+                    "tool_used": None,
+                    "function_call_status": "tool_call_error",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "tool_call_error",
+                    "verified_facts": [],
+                }
+            if loop_status == "max_iterations_exceeded":
+                return {
+                    "agent": "customer_support",
+                    "response": "A consulta de cadastro excedeu o limite de tentativas e não posso confirmar a conta com segurança.",
+                    "tool_used": None,
+                    "function_call_status": "max_iterations_exceeded",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "max_iterations_exceeded",
+                    "verified_facts": [],
+                }
+            if loop_status == "invalid_result":
+                return {
+                    "agent": "customer_support",
+                    "response": "A resposta da ferramenta de cadastro veio incompleta e não posso confirmar os dados do cliente sem validação.",
+                    "tool_used": None,
+                    "function_call_status": "invalid_result",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "awaiting_user_input": True,
+                    "step_status": "invalid_result",
+                    "verified_facts": [],
+                }
+            if loop_status == "tool_call_success":
+                recognized = False
+                for tool_result in loop_result.get("tool_results") or []:
+                    if tool_result.get("tool_name") != "lookup_customer":
+                        continue
+                    recognized = True
+                    payload = self._tool_payload_from_result(tool_result)
+                    if payload is None:
+                        return {
+                            "agent": "customer_support",
+                            "response": "A ferramenta de cadastro respondeu com dados inválidos para validar a conta.",
+                            "tool_used": "lookup_customer",
+                            "function_call_status": "invalid_result",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "invalid_result",
+                            "verified_facts": [],
+                        }
+                    if not payload.get("found"):
+                        return {
+                            "agent": "customer_support",
+                            "response": "Não encontrei esse cliente na base simulada.",
+                            "tool_used": "lookup_customer",
+                            "function_call_status": "tool_call_success",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": False,
+                            "step_status": "failed",
+                            "verified_facts": [],
+                        }
+
+                    customer = payload.get("customer")
+                    if not isinstance(customer, dict):
+                        return {
+                            "agent": "customer_support",
+                            "response": "A resposta da ferramenta de cadastro não inclui os dados obrigatórios do cliente.",
+                            "tool_used": "lookup_customer",
+                            "function_call_status": "invalid_result",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "invalid_result",
+                            "verified_facts": [],
+                        }
+                    if not {"name", "account_status"}.issubset(customer):
+                        return {
+                            "agent": "customer_support",
+                            "response": "A resposta da ferramenta de cadastro está incompleta para confirmar a conta do cliente.",
+                            "tool_used": "lookup_customer",
+                            "function_call_status": "invalid_result",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "invalid_result",
+                            "verified_facts": [],
+                        }
+                    return {
+                        "agent": "customer_support",
+                        "response": (
+                            f"Encontrei o cadastro de {customer['name']}. "
+                            f"Status da conta: {customer['account_status']}."
+                        ),
+                        "tool_used": "lookup_customer",
+                        "function_call_status": "tool_call_success",
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": True,
+                        "awaiting_user_input": False,
+                        "step_status": "success",
+                        "verified_facts": [],
+                    }
+                if recognized is False:
+                    result = lookup_customer(user_id)
+
+                    if not result["found"]:
+                        return {
+                            "agent": "customer_support",
+                            "response": "Não encontrei esse cliente na base simulada.",
+                            "tool_used": "lookup_customer",
+                            "function_call_status": "no_tool_calls",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": False,
+                            "step_status": "failed",
+                            "verified_facts": [],
+                        }
+
+                    customer = result["customer"]
+                    return {
+                        "agent": "customer_support",
+                        "response": (
+                            f"Encontrei o cadastro de {customer['name']}. "
+                            f"Status da conta: {customer['account_status']}."
+                        ),
+                        "tool_used": "lookup_customer",
+                        "function_call_status": "no_tool_calls",
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": True,
+                        "awaiting_user_input": False,
+                        "step_status": "success",
+                        "verified_facts": [],
+                    }
+
             result = lookup_customer(user_id)
 
             if not result["found"]:
@@ -477,6 +1196,7 @@ class CustomerSupportAgent:
                     "agent": "customer_support",
                     "response": "Não encontrei esse cliente na base simulada.",
                     "tool_used": "lookup_customer",
+                    "function_call_status": "no_tool_calls",
                     "flow_completed": True,
                     "response_delivered": True,
                     "issue_resolved": False,
@@ -493,6 +1213,7 @@ class CustomerSupportAgent:
                     f"Status da conta: {customer['account_status']}."
                 ),
                 "tool_used": "lookup_customer",
+                "function_call_status": "no_tool_calls",
                 "flow_completed": True,
                 "response_delivered": True,
                 "issue_resolved": True,
@@ -509,6 +1230,7 @@ class CustomerSupportAgent:
                 "informe seu identificador, por exemplo txn1001."
             ),
             "tool_used": None,
+            "function_call_status": "no_tool_calls",
             "flow_completed": True,
             "response_delivered": True,
             "issue_resolved": False,

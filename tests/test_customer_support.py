@@ -292,3 +292,193 @@ def test_agent_response_does_not_claim_nonexistent_terminal_telemetry():
     assert "telemetria" not in result["response"].lower()
     assert "offline" not in result["response"].lower() or "offline" in result["response"].lower()
     assert "wifi" in result["response"].lower() or "rede" in result["response"].lower() or "sinal" in result["response"].lower()
+
+
+class FakeFunctionCallingLoop:
+    def __init__(self, result=None, error=None):
+        self.result = result
+        self.error = error
+        self.calls = []
+
+    def run(self, messages, *, context=None, tools=None):
+        self.calls.append({"messages": messages, "context": context, "tools": tools})
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+
+def test_agent_tracks_successful_function_calling_result():
+    loop = FakeFunctionCallingLoop(
+        {
+            "status": "completed",
+            "tool_results": [
+                {
+                    "tool_name": "lookup_transaction",
+                    "arguments": {"transaction_id": "txn1001"},
+                    "result": {
+                        "ok": True,
+                        "result": {
+                            "found": True,
+                            "transaction": {
+                                "transaction_id": "txn1001",
+                                "status": "approved",
+                                "amount": 49.90,
+                                "currency": "BRL",
+                            },
+                        },
+                    },
+                }
+            ],
+        }
+    )
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn1001?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "tool_call_success"
+    assert result["tool_used"] == "lookup_transaction"
+    assert result["issue_resolved"] is True
+    assert "aprovada" in result["response"].lower()
+
+
+def test_agent_tracks_no_tool_calls_explicitly():
+    loop = FakeFunctionCallingLoop({"status": "completed", "tool_results": []})
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Quero consultar minha conta",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "no_tool_calls"
+    assert result["tool_used"] == "lookup_customer"
+    assert "Cliente de Teste" in result["response"]
+
+
+def test_agent_tracks_ollama_connection_error_without_fallback():
+    loop = FakeFunctionCallingLoop(error=ConnectionError("ollama unavailable"))
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn1001?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "tool_call_error"
+    assert result["tool_used"] is None
+    assert result["issue_resolved"] is False
+    assert result["step_status"] == "tool_call_error"
+
+
+def test_agent_tracks_max_iterations_exceeded_without_fallback():
+    loop = FakeFunctionCallingLoop({"status": "max_iterations_exceeded", "tool_results": []})
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn1001?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "max_iterations_exceeded"
+    assert result["tool_used"] is None
+    assert result["issue_resolved"] is False
+
+
+def test_agent_tracks_malformed_function_calling_result():
+    loop = FakeFunctionCallingLoop(
+        {
+            "status": "completed",
+            "tool_results": [
+                {
+                    "tool_name": "lookup_transaction",
+                    "arguments": {"transaction_id": "txn1001"},
+                    "result": {"ok": True, "result": {"status": "approved"}},
+                }
+            ],
+        }
+    )
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn1001?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "invalid_result"
+    assert result["tool_used"] is None
+    assert result["issue_resolved"] is False
+
+
+def test_agent_does_not_execute_old_handler_twice_when_function_call_succeeds(monkeypatch):
+    loop = FakeFunctionCallingLoop(
+        {
+            "status": "completed",
+            "tool_results": [
+                {
+                    "tool_name": "lookup_transaction",
+                    "arguments": {"transaction_id": "txn1001"},
+                    "result": {
+                        "ok": True,
+                        "result": {
+                            "found": True,
+                            "transaction": {
+                                "transaction_id": "txn1001",
+                                "status": "approved",
+                                "amount": 49.90,
+                                "currency": "BRL",
+                            },
+                        },
+                    },
+                }
+            ],
+        }
+    )
+    calls = []
+
+    def fake_lookup_transaction(transaction_id, user_id):
+        calls.append((transaction_id, user_id))
+        return {"found": True, "transaction": {"transaction_id": transaction_id, "status": "approved", "amount": 49.90, "currency": "BRL"}}
+
+    monkeypatch.setattr("app.agents.customer_support.lookup_transaction", fake_lookup_transaction)
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn1001?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "tool_call_success"
+    assert calls == []
+
+
+def test_agent_does_not_mark_resolution_when_function_calling_failed():
+    loop = FakeFunctionCallingLoop(
+        {
+            "status": "completed",
+            "tool_results": [
+                {
+                    "tool_name": "lookup_transaction",
+                    "arguments": {"transaction_id": "txn1001"},
+                    "result": {"ok": False, "error": "Tool execution failed."},
+                }
+            ],
+        }
+    )
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn1001?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "invalid_result"
+    assert result["issue_resolved"] is False
+    assert "não posso confirmar" in result["response"].lower()
+
+
+def test_agent_keeps_transaction_id_request_when_missing():
+    loop = FakeFunctionCallingLoop({"status": "completed", "tool_results": []})
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Minha transação foi recusada.",
+        "cliente1988",
+    )
+
+    assert result["tool_used"] is None
+    assert "txn" in result["response"].lower()
+    assert result["awaiting_user_input"] is True
