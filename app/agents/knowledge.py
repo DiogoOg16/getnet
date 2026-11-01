@@ -3,6 +3,7 @@ import re
 
 import requests
 
+from app.llm.ollama_client import OllamaClient, OllamaClientError
 from app.rag.retriever import retrieve
 from app.verified_facts import PUBLIC_FACT_NAMES, _is_authorized_fact_origin, _validate_fact_value
 
@@ -33,6 +34,7 @@ class KnowledgeAgent:
             "OLLAMA_URL", "http://localhost:11434"
         )
         self.model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+        self.client = OllamaClient(self.ollama_url, self.model)
 
     @classmethod
     def _group_sources_by_section(cls, sources: list[dict]) -> dict[str, list[str]]:
@@ -381,38 +383,29 @@ class KnowledgeAgent:
         )
 
     def _generate(self, message: str, context: str) -> str:
-        response = requests.post(
-            f"{self.ollama_url}/api/chat",
-            json={
-                "model": self.model,
-                "stream": False,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": (
-                            "Você é um agente de suporte da Getnet. "
-                            "Responda em português brasileiro, de forma "
-                            "clara e direta. Use somente as informações "
-                            "do contexto fornecido. Não invente regras, "
-                            "taxas, procedimentos ou funcionalidades. "
-                            "Se o contexto não responder à pergunta, "
-                            "diga que não há informação suficiente."
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Pergunta: {message}\n\n"
-                            f"Contexto da base de conhecimento:\n{context}"
-                        ),
-                    },
-                ],
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Você é um agente de suporte da Getnet. "
+                    "Responda em português brasileiro, de forma "
+                    "clara e direta. Use somente as informações "
+                    "do contexto fornecido. Não invente regras, "
+                    "taxas, procedimentos ou funcionalidades. "
+                    "Se o contexto não responder à pergunta, "
+                    "diga que não há informação suficiente."
+                ),
             },
-            timeout=60,
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["message"]["content"].strip()
+            {
+                "role": "user",
+                "content": (
+                    f"Pergunta: {message}\n\n"
+                    f"Contexto da base de conhecimento:\n{context}"
+                ),
+            },
+        ]
+        response = self.client.chat(messages)
+        return self.client.parse_message_content(response)
 
     @staticmethod
     def _verified_fact_context(verified_facts: list[dict] | None) -> str:
@@ -514,7 +507,7 @@ class KnowledgeAgent:
         try:
             answer = self._generate(message, context)
             tool_used = "ollama"
-        except (requests.RequestException, ValueError, KeyError):
+        except (requests.RequestException, OllamaClientError, ValueError, KeyError):
             answer = self._extractive_answer(sources)
             tool_used = "retrieval_only"
 
