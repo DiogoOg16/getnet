@@ -1,5 +1,7 @@
 """Tools for retrieving simulated customer and transaction data."""
 
+from app.tools.registry import Tool, tool_registry
+
 CUSTOMERS = {
     "cliente1988": {
         "customer_id": "cliente1988",
@@ -140,3 +142,56 @@ def lookup_settlement(user_id: str) -> dict:
             "ambiente simulado."
         ),
     }
+
+
+def _register_customer_tools() -> None:
+    """Register the customer support tools in the central provider-independent registry."""
+    tool_registry.register(
+        Tool(
+            name="lookup_customer",
+            description="Recupera um cliente pelo ID do usuário autenticado.",
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+            trusted_context=("user_id",),
+            handler=lookup_customer,
+        )
+    )
+
+    tool_registry.register(
+        Tool(
+            name="lookup_transaction",
+            description="Recupera uma transação apenas quando pertence ao cliente autenticado.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "transaction_id": {
+                        "type": "string",
+                        "description": "Identificador da transação.",
+                    }
+                },
+                "required": ["transaction_id"],
+            },
+            trusted_context=("user_id",),
+            handler=lookup_transaction,
+        )
+    )
+
+    tool_registry.register(
+        Tool(
+            name="lookup_settlement",
+            description="Recupera registros simulados de liquidação para o cliente autenticado.",
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+            trusted_context=("user_id",),
+            handler=lookup_settlement,
+        )
+    )
+
+
+_register_customer_tools()
