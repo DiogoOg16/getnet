@@ -8,12 +8,15 @@ Assistente de suporte multiagente desenvolvido como desafio técnico. A aplicaç
 
 - [Principais funcionalidades](#principais-funcionalidades)
 - [Arquitetura e fluxo da mensagem](#arquitetura-e-fluxo-da-mensagem)
+- [Function Calling no Customer Support (Incremento 5B)](#function-calling-no-customer-support-incremento-5b)
 - [Pipeline de RAG](#pipeline-de-rag)
 - [Requisitos](#requisitos)
 - [Execução local](#execução-local)
 - [Execução com Docker](#execução-com-docker)
 - [API HTTP](#api-http)
+- [Memória de sessão](#memória-de-sessão)
 - [Testes e avaliação](#testes-e-avaliação)
+- [Reprodução da validação final](#reprodução-da-validação-final)
 - [Observabilidade](#observabilidade)
 - [Limitações conhecidas](#limitações-conhecidas)
 - [Estrutura do projeto](#estrutura-do-projeto)
@@ -71,6 +74,36 @@ O roteador é baseado em regras, não em uma chamada de LLM. Isso torna a decis�
 3. O roteador seleciona o agente de conhecimento, suporte, busca externa, escalonamento ou fallback.
 4. O agente executa sua lógica e, quando aplicável, consulta ferramentas ou documentos.
 5. A API devolve uma resposta JSON com metadados para inspeção e depuração.
+
+## Function Calling no Customer Support (Incremento 5B)
+
+O fluxo operacional do Customer Support usa Function Calling com validação backend antes de qualquer execução de ferramenta.
+
+### Fluxo completo
+
+1. `CustomerSupportAgent` identifica a operação e define a lista de tools permitidos (`allowed_tools`).
+2. `OllamaTools` converte os schemas do `ToolRegistry` para o formato de tools aceito pelo Ollama.
+3. `OllamaClient` envia mensagens e tools para o modelo (`/api/chat`).
+4. `OllamaFunctionCallingLoop` interpreta os `tool_calls` solicitados pelo modelo.
+5. `ToolExecutor` valida argumentos públicos, contexto confiável e autorização antes de executar o handler.
+6. O resultado da ferramenta volta ao modelo como mensagem com role `tool`.
+7. O loop continua até uma resposta final sem novas tools ou até atingir o limite de iterações.
+
+### Contratos de segurança e inicialização
+
+- As ferramentas de suporte são inicializadas explicitamente com `register_customer_tools` no bootstrap da API.
+- A API, o Orchestrator, o CustomerSupportAgent e o ToolExecutor compartilham a mesma instância de `ToolRegistry`.
+- A identidade do usuário vem do backend autenticado e é injetada como contexto confiável; o modelo não envia `user_id` como argumento público.
+- O backend restringe quais ferramentas podem ser executadas por operação, enviando apenas as autorizadas naquele passo.
+
+### Componentes principais
+
+- Registro e execução: `app/tools/registry.py` e `app/tools/customer_tools.py`
+- Conversão de schema para tools do Ollama: `app/llm/ollama_tools.py`
+- Loop de Function Calling: `app/llm/ollama_function_calling.py`
+- Cliente de chat com Ollama: `app/llm/ollama_client.py`
+- Integração no suporte: `app/agents/customer_support.py`
+- Bootstrap explícito: `app/main.py`
 
 ## Pipeline de RAG
 
@@ -293,6 +326,24 @@ curl -s -X POST http://127.0.0.1:8000/chat \
 
 No caso de escalonamento, espera-se que `agent` seja `human_escalation` e `handoff_required` seja `true`. No protótipo, isso representa o sinal de encaminhamento na resposta; não integra automaticamente com uma fila ou sistema real de atendimento.
 
+## Memória de sessão
+
+A API usa memória de sessão para complementar contexto recente de conversa e resolver referências curtas.
+
+- Chave de sessão: combinação de `user_id` autenticado com `session_id` (ou o próprio `user_id` quando `session_id` não é enviado).
+- Armazenamento: arquivo JSON local (`/tmp/getnet_session_memory.json` por padrão) ou caminho configurado em `GETNET_SESSION_MEMORY_PATH`.
+- Isolamento: cada chave `user_id:session_id` mantém seu próprio histórico, sem mistura entre usuários/sessões diferentes.
+- Limites atuais:
+  - máximo de 20 entradas por sessão;
+  - poda por idade com janela padrão de 7 dias;
+  - persistência em arquivo JSON no filesystem da aplicação (em Docker, depende de volumes; sem um volume persistente, os dados podem ser perdidos ao recriar o contêiner).
+
+Limitações conhecidas da memória:
+
+- não há política avançada de expiração por tenant;
+- não há criptografia dedicada para o arquivo de memória local;
+- não há rotina automática de governança além dos limites de tamanho e idade configurados na aplicação.
+
 ## Testes e avaliação
 
 ### Executar os testes automatizados
@@ -309,7 +360,43 @@ Ou, em formato compacto:
 python -m pytest -q
 ```
 
-A suíte cobre API, roteamento, agentes, ferramentas, fallback de conhecimento, integração e escalonamento. Os testes automatizados simulam o LLM e as dependências de rede para manter a execução previsível. Um teste dependente de internet é ignorado por padrão.
+A suíte cobre API, roteamento, agentes, ferramentas, fallback de conhecimento, integração e escalonamento. Os testes automatizados simulam o LLM e as dependências de rede para manter a execução previsível.
+
+### Testes padrão (sem Ollama real)
+
+Esses testes rodam sem depender de Ollama real ou serviços externos opcionais:
+
+```bash
+python -m pytest -q
+```
+
+Comportamento da suíte padrão:
+
+- `tests/conftest.py` substitui `KnowledgeAgent._generate` por resposta simulada;
+- testes marcados com `network` são pulados quando `RUN_NETWORK_TESTS` não é `1`.
+
+### Testes de integração reais com Ollama
+
+Esses testes exercitam integração real com modelo local e dependem de variáveis de ambiente explícitas.
+
+Pré-requisitos:
+
+- Ollama local disponível;
+- modelo configurado (padrão `qwen2.5:7b`);
+- rede habilitada para testes `network`.
+
+Comandos:
+
+```bash
+RUN_NETWORK_TESTS=1 RUN_OLLAMA_INTEGRATION=1 python -m pytest -v tests/test_ollama_integration_real.py
+RUN_NETWORK_TESTS=1 RUN_OLLAMA_INTEGRATION=1 python -m pytest -v tests/test_customer_support_integration_real.py
+```
+
+`RUN_NETWORK_TESTS=1` habilita todos os testes marcados com `network` (incluindo cenários que podem depender de serviços externos além do Ollama).
+`RUN_OLLAMA_INTEGRATION=1` habilita especificamente os cenários reais de integração com Ollama.
+
+Por padrão, sem `RUN_NETWORK_TESTS=1`, os testes `network` serão pulados.
+Sem `RUN_OLLAMA_INTEGRATION=1`, os testes reais de Ollama serão pulados pelos próprios testes.
 
 Para habilitar os testes de rede que reconhecem essa opção:
 
@@ -347,6 +434,58 @@ A validação combina testes unitários, testes de integração via API, cenári
 
 Melhorias futuras incluem um conjunto versionado de perguntas e respostas esperadas, métricas de acurácia de roteamento e recuperação, avaliação de fidelidade ao contexto e testes periódicos de contratos com serviços externos.
 
+## Reprodução da validação final
+
+Sequência recomendada para validar o estado final do projeto:
+
+1. Preparar ambiente e dependências
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+2. Executar testes padrão
+
+```bash
+python -m pytest -q
+```
+
+3. Executar testes reais com Ollama
+
+```bash
+export RUN_NETWORK_TESTS=1
+export RUN_OLLAMA_INTEGRATION=1
+
+python -m pytest -v tests/test_ollama_integration_real.py
+python -m pytest -v tests/test_customer_support_integration_real.py
+```
+
+4. Subir aplicação com Docker Compose
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+docker compose ps
+```
+
+5. Verificar API autenticada
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Authorization: Bearer demo-token-cliente1988' \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Qual o status da transação txn1001?","user_id":"cliente1988"}'
+```
+
+6. Consultar logs e resultados
+
+```bash
+docker compose logs -f api
+```
+
 ## Observabilidade
 
 A API registra eventos de requisição, decisão de roteamento e resposta. A resposta JSON expõe:
@@ -379,6 +518,7 @@ Os logs atuais são voltados à depuração. O projeto ainda não implementa das
 
 - **Dados simulados:** as consultas de clientes e transações não acessam sistemas reais da Getnet.
 - **Recuperação lexical:** o RAG usa BM25 e normalização de texto, não embeddings ou busca vetorial; perguntas semanticamente distantes dos termos da base podem não recuperar bons trechos.
+- **Sem reranking semântico:** não há reranker dedicado após a recuperação lexical.
 - **Corpus estático:** o JSONL reflete a data de ingestão; informações de produtos, taxas e procedimentos podem mudar.
 - **Dependência opcional do LLM:** o Ollama pode não estar disponível ou pode produzir respostas incorretas apesar das instruções de contexto.
 - **Busca externa:** a pesquisa geral via DuckDuckGo pode ser instável ou bloqueada. Resumos do mecanismo de busca não são verificação independente das páginas.
@@ -386,6 +526,8 @@ Os logs atuais são voltados à depuração. O projeto ainda não implementa das
 - **Idioma:** a geração foi orientada principalmente para respostas em português; não há garantia de responder no mesmo idioma de toda mensagem recebida.
 - **Escalonamento:** o protótipo cria e persiste tickets de handoff em armazenamento local de arquivo JSON; não há integração com plataforma externa de atendimento.
 - **Guardrails por regras:** a detecção de intenções sensíveis usa padrões explícitos e não substitui uma solução completa de segurança ou revisão humana.
+- **Roteamento lexical:** a decisão principal do roteador é baseada em regras de texto, sem classificador semântico dedicado.
+- **Observabilidade avançada ausente:** não há dashboard operacional, tracing distribuído ou alertas automáticos nativos.
 
 ## Estrutura do projeto
 
