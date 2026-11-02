@@ -356,6 +356,20 @@ def test_agent_tracks_no_tool_calls_explicitly():
     assert "Cliente de Teste" in result["response"]
 
 
+def test_agent_passes_only_authorized_tools_to_function_calling_loop():
+    loop = FakeFunctionCallingLoop({"status": "completed", "tool_results": []})
+
+    CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn1001?",
+        "cliente1988",
+    )
+
+    tool_names = {tool["function"]["name"] for tool in loop.calls[0]["tools"]}
+    assert tool_names == {"lookup_transaction"}
+    assert "lookup_settlement" not in tool_names
+    assert "lookup_customer" not in tool_names
+
+
 def test_agent_tracks_ollama_connection_error_without_fallback():
     loop = FakeFunctionCallingLoop(error=ConnectionError("ollama unavailable"))
 
@@ -407,7 +421,7 @@ def test_agent_tracks_malformed_function_calling_result():
     assert result["issue_resolved"] is False
 
 
-def test_agent_does_not_execute_old_handler_twice_when_function_call_succeeds(monkeypatch):
+def test_agent_does_not_execute_old_handler_twice_when_function_call_succeeds():
     loop = FakeFunctionCallingLoop(
         {
             "status": "completed",
@@ -431,15 +445,24 @@ def test_agent_does_not_execute_old_handler_twice_when_function_call_succeeds(mo
             ],
         }
     )
+    agent = CustomerSupportAgent(loop=loop)
     calls = []
 
-    def fake_lookup_transaction(transaction_id, user_id):
-        calls.append((transaction_id, user_id))
-        return {"found": True, "transaction": {"transaction_id": transaction_id, "status": "approved", "amount": 49.90, "currency": "BRL"}}
+    def fake_execute(tool_name, arguments, *, context=None):
+        calls.append((tool_name, arguments, context))
+        return {
+            "found": True,
+            "transaction": {
+                "transaction_id": arguments["transaction_id"],
+                "status": "approved",
+                "amount": 49.90,
+                "currency": "BRL",
+            },
+        }
 
-    monkeypatch.setattr("app.agents.customer_support.lookup_transaction", fake_lookup_transaction)
+    agent.executor.execute = fake_execute
 
-    result = CustomerSupportAgent(loop=loop).answer(
+    result = agent.answer(
         "Qual o status da transação txn1001?",
         "cliente1988",
     )

@@ -147,7 +147,16 @@ class OllamaFunctionCallingLoop:
 
         history = [copy.deepcopy(message) for message in messages]
         tool_payload = list(tools) if tools is not None else registry_to_ollama_tools(self.registry)
+        allowed_tool_names = None
+        if tools is not None:
+            allowed_tool_names = {
+                str(tool["function"]["name"])
+                for tool in tool_payload
+                if isinstance(tool, dict) and isinstance(tool.get("function"), dict)
+            }
+
         executed_tools: list[dict[str, Any]] = []
+        executed_names: set[str] = set()
         malformed_tool_calls: list[str] = []
 
         for iteration in range(1, self.max_iterations + 1):
@@ -180,11 +189,19 @@ class OllamaFunctionCallingLoop:
                 tool_name = call["name"]
                 arguments = copy.deepcopy(call["arguments"])
                 tool_id = call.get("id")
-                try:
-                    result_payload = self.executor.execute(tool_name, arguments, context=context)
-                    serialized = {"ok": True, "result": _json_safe(result_payload)}
-                except Exception as exc:  # pragma: no cover - path validated below
-                    serialized = {"ok": False, "error": self._safe_tool_error(exc)}
+
+                if allowed_tool_names is not None and tool_name not in allowed_tool_names:
+                    serialized = {"ok": False, "error": "Tool not allowed for this intent."}
+                elif tool_name in executed_names:
+                    serialized = {"ok": False, "error": "Tool already executed in this turn."}
+                else:
+                    try:
+                        result_payload = self.executor.execute(tool_name, arguments, context=context)
+                        serialized = {"ok": True, "result": _json_safe(result_payload)}
+                        executed_names.add(tool_name)
+                    except Exception as exc:  # pragma: no cover - path validated below
+                        serialized = {"ok": False, "error": self._safe_tool_error(exc)}
+                        executed_names.add(tool_name)
 
                 tool_message = {
                     "role": "tool",

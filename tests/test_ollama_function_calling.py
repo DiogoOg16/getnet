@@ -173,6 +173,43 @@ def test_loop_handles_multiple_rounds_of_tool_calls():
     assert len(result["tool_results"]) == 2
 
 
+def test_loop_rejects_unauthorized_tools_before_execution():
+    registry = _build_registry()
+    client = FakeClient([
+        {
+            "message": {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {"id": "call_1", "function": {"name": "lookup_customer", "arguments": {"customer_id": "cliente-1"}}},
+                ],
+            }
+        },
+        {"message": {"role": "assistant", "content": "Resposta final"}},
+    ])
+    loop = OllamaFunctionCallingLoop(client, registry, max_iterations=3)
+    allowed_tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "lookup_transaction",
+                "description": "Consulta transação autenticada.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"transaction_id": {"type": "string"}},
+                    "required": ["transaction_id"],
+                },
+            },
+        }
+    ]
+
+    result = loop.run([{"role": "user", "content": "Diga algo"}], context={"user_id": "u-1"}, tools=allowed_tools)
+
+    assert result["status"] == "completed"
+    assert result["tool_results"][0]["result"]["ok"] is False
+    assert result["tool_results"][0]["result"]["error"] == "Tool not allowed for this intent."
+
+
 def test_loop_handles_unknown_tool():
     registry = _build_registry()
     client = FakeClient([

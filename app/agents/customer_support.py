@@ -4,11 +4,7 @@ from typing import Any
 
 from app.llm.ollama_client import OllamaClient
 from app.llm.ollama_function_calling import OllamaFunctionCallingLoop
-from app.tools.customer_tools import (
-    lookup_customer,
-    lookup_settlement,
-    lookup_transaction,
-)
+from app.llm.ollama_tools import registry_to_ollama_tools
 from app.tools.registry import ToolExecutor, ToolRegistry, tool_registry
 from app.verified_facts import make_verified_fact
 
@@ -194,11 +190,24 @@ class CustomerSupportAgent:
             return None
         return knowledge_result
 
-    def _run_function_calling(self, message: str, user_id: str) -> dict[str, Any]:
+    def _authorized_tools(self, *, tool_names: list[str]) -> list[dict[str, Any]]:
+        authorized = set(tool_names)
+        return [
+            tool
+            for tool in registry_to_ollama_tools(self.registry)
+            if tool.get("function", {}).get("name") in authorized
+        ]
+
+    def _execute_backend_tool(self, tool_name: str, arguments: dict[str, Any], user_id: str) -> Any:
+        return self.executor.execute(tool_name, arguments, context={"user_id": user_id})
+
+    def _run_function_calling(self, message: str, user_id: str, *, allowed_tools: list[str] | None = None) -> dict[str, Any]:
+        tool_payload = self._authorized_tools(tool_names=list(allowed_tools) if allowed_tools else []) if allowed_tools else None
         try:
             result = self.loop.run(
                 [{"role": "user", "content": message}],
                 context={"user_id": user_id},
+                tools=tool_payload,
             )
         except Exception as exc:  # pragma: no cover - exercised via tests using fake loop failures
             return {
@@ -400,7 +409,7 @@ class CustomerSupportAgent:
 
         # If a transaction ID is provided, always verify ownership and status.
         if transaction_id:
-            loop_result = self._run_function_calling(message, user_id)
+            loop_result = self._run_function_calling(message, user_id, allowed_tools=["lookup_transaction"])
             loop_status = loop_result.get("status")
             if loop_status == "tool_call_error":
                 return {
@@ -559,7 +568,7 @@ class CustomerSupportAgent:
                         "verified_facts": verified_facts,
                     }
                 if recognized is False:
-                    result = lookup_transaction(transaction_id, user_id)
+                    result = self._execute_backend_tool("lookup_transaction", {"transaction_id": transaction_id}, user_id)
 
                     if not result["found"]:
                         return {
@@ -639,7 +648,7 @@ class CustomerSupportAgent:
                         "verified_facts": verified_facts,
                     }
 
-            result = lookup_transaction(transaction_id, user_id)
+            result = self._execute_backend_tool("lookup_transaction", {"transaction_id": transaction_id}, user_id)
 
             if not result["found"]:
                 return {
@@ -761,7 +770,7 @@ class CustomerSupportAgent:
         )
 
         if settlement_timing:
-            loop_result = self._run_function_calling(message, user_id)
+            loop_result = self._run_function_calling(message, user_id, allowed_tools=["lookup_settlement"])
             loop_status = loop_result.get("status")
             if loop_status == "tool_call_error":
                 return {
@@ -900,7 +909,7 @@ class CustomerSupportAgent:
                         "verified_facts": [],
                     }
                 if recognized is False:
-                    result = lookup_settlement(user_id)
+                    result = self._execute_backend_tool("lookup_settlement", {}, user_id)
 
                     if not result.get("found"):
                         return {
@@ -962,7 +971,7 @@ class CustomerSupportAgent:
                         "verified_facts": [],
                     }
 
-            result = lookup_settlement(user_id)
+            result = self._execute_backend_tool("lookup_settlement", {}, user_id)
 
             if not result["found"]:
                 return {
@@ -1038,7 +1047,7 @@ class CustomerSupportAgent:
                 "status da conta",
             )
         ):
-            loop_result = self._run_function_calling(message, user_id)
+            loop_result = self._run_function_calling(message, user_id, allowed_tools=["lookup_customer"])
             loop_status = loop_result.get("status")
             if loop_status == "tool_call_error":
                 return {
@@ -1156,7 +1165,7 @@ class CustomerSupportAgent:
                         "verified_facts": [],
                     }
                 if recognized is False:
-                    result = lookup_customer(user_id)
+                    result = self._execute_backend_tool("lookup_customer", {}, user_id)
 
                     if not result["found"]:
                         return {
@@ -1189,7 +1198,7 @@ class CustomerSupportAgent:
                         "verified_facts": [],
                     }
 
-            result = lookup_customer(user_id)
+            result = self._execute_backend_tool("lookup_customer", {}, user_id)
 
             if not result["found"]:
                 return {
