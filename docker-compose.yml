@@ -17,6 +17,10 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b}
       - GETNET_DEMO_AUTH_TOKENS=${GETNET_DEMO_AUTH_TOKENS:?Configure GETNET_DEMO_AUTH_TOKENS no arquivo .env}
+      - GETNET_SESSION_MEMORY_PATH=${GETNET_SESSION_MEMORY_PATH:-/app/data/getnet_session_memory.json}
+      - GETNET_HUMAN_HANDOFF_PATH=${GETNET_HUMAN_HANDOFF_PATH:-/app/data/getnet_human_handoff.json}
+    volumes:
+      - api_data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -56,4 +60,5 @@ services:
     restart: "no"
 
 volumes:
+  api_data:
   ollama_data:
