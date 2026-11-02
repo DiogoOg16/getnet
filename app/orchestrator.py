@@ -11,6 +11,7 @@ from app.agents.customer_support import CustomerSupportAgent
 from app.agents.knowledge import KnowledgeAgent
 from app.agents.router import RouterAgent, RoutingDecision
 from app.agents.web_search import WebSearchAgent
+from app.tools.registry import ToolRegistry, tool_registry
 from app.verified_facts import consolidate_verified_facts
 
 
@@ -52,10 +53,13 @@ class ChatExecution:
 class ChatOrchestrator:
     """Plan, execute, and record a bounded agent workflow."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, registry: ToolRegistry | None = None) -> None:
+        self.registry = registry if registry is not None else tool_registry
+        if not isinstance(self.registry, ToolRegistry):
+            raise TypeError("registry must be a ToolRegistry instance.")
         self.router = RouterAgent()
         self.knowledge = KnowledgeAgent()
-        self.support = CustomerSupportAgent()
+        self.support = CustomerSupportAgent(registry=self.registry)
         self.web_search = WebSearchAgent()
 
     @staticmethod

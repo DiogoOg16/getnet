@@ -7,6 +7,7 @@ from app.tools.customer_tools import (
     lookup_customer,
     lookup_settlement,
     lookup_transaction,
+    register_customer_tools,
 )
 from app.tools.registry import (
     Tool,
@@ -18,11 +19,30 @@ from app.tools.registry import (
     tool_registry,
 )
 
+register_customer_tools(tool_registry)
+
+
+def test_fresh_registry_is_empty_before_explicit_initialization():
+    registry = ToolRegistry()
+
+    assert registry.list() == []
+
 
 def test_registry_registers_customer_tools():
     names = {tool.name for tool in tool_registry.list()}
 
-    assert {"lookup_customer", "lookup_transaction", "lookup_settlement"}.issubset(names)
+    assert names == {"lookup_customer", "lookup_transaction", "lookup_settlement"}
+
+
+def test_register_customer_tools_is_idempotent():
+    registry = ToolRegistry()
+
+    register_customer_tools(registry)
+    register_customer_tools(registry)
+
+    names = {tool.name for tool in registry.list()}
+    assert names == {"lookup_customer", "lookup_transaction", "lookup_settlement"}
+    assert len(registry.list()) == 3
 
 
 def test_registry_gets_tool_by_name():

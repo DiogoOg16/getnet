@@ -201,14 +201,54 @@ class CustomerSupportAgent:
     def _execute_backend_tool(self, tool_name: str, arguments: dict[str, Any], user_id: str) -> Any:
         return self.executor.execute(tool_name, arguments, context={"user_id": user_id})
 
+    @staticmethod
+    def _tool_calling_instruction(allowed_tools: list[str]) -> str:
+        tool_list = ", ".join(allowed_tools)
+        return (
+            "Você está em modo de execução operacional. "
+            f"Ferramentas autorizadas nesta etapa: {tool_list}. "
+            "Quando a solicitação exigir consulta operacional, você deve chamar a ferramenta autorizada. "
+            "Se a ferramenta não exigir argumentos do usuário, envie arguments como objeto vazio. "
+            "Não peça user_id, customer_id, identidade autenticada ou contexto interno ao usuário. "
+            "Não invente dados e não responda como se a consulta tivesse sido executada sem chamar ferramenta."
+        )
+
+    def _function_calling_messages(self, message: str, allowed_tools: list[str] | None, *, retry: bool = False) -> list[dict[str, str]]:
+        if not allowed_tools:
+            return [{"role": "user", "content": message}]
+
+        instruction = self._tool_calling_instruction(list(allowed_tools))
+        if retry:
+            instruction += (
+                " Tentativa obrigatória de correção: a resposta anterior foi inválida por não chamar ferramenta. "
+                "Nesta resposta, gere tool_calls agora usando uma das ferramentas autorizadas."
+            )
+
+        return [
+            {
+                "role": "system",
+                "content": instruction,
+            },
+            {"role": "user", "content": message},
+        ]
+
+    def _run_function_calling_once(
+        self,
+        messages: list[dict[str, str]],
+        user_id: str,
+        tool_payload: list[dict[str, Any]] | None,
+    ) -> dict[str, Any]:
+        return self.loop.run(
+            messages,
+            context={"user_id": user_id},
+            tools=tool_payload,
+        )
+
     def _run_function_calling(self, message: str, user_id: str, *, allowed_tools: list[str] | None = None) -> dict[str, Any]:
         tool_payload = self._authorized_tools(tool_names=list(allowed_tools) if allowed_tools else []) if allowed_tools else None
+        messages = self._function_calling_messages(message, allowed_tools)
         try:
-            result = self.loop.run(
-                [{"role": "user", "content": message}],
-                context={"user_id": user_id},
-                tools=tool_payload,
-            )
+            result = self._run_function_calling_once(messages, user_id, tool_payload)
         except Exception as exc:  # pragma: no cover - exercised via tests using fake loop failures
             return {
                 "status": "tool_call_error",
@@ -237,6 +277,43 @@ class CustomerSupportAgent:
                 "error": "Function-calling loop exceeded the iteration limit.",
                 "tool_results": tool_results,
             }
+
+        if result.get("status") == "completed" and not tool_results and allowed_tools:
+            retry_messages = self._function_calling_messages(message, allowed_tools, retry=True)
+            try:
+                retry_result = self._run_function_calling_once(retry_messages, user_id, tool_payload)
+            except Exception as exc:  # pragma: no cover - exercised via tests using fake loop failures
+                return {
+                    "status": "tool_call_error",
+                    "error": str(exc),
+                    "tool_results": [],
+                }
+
+            if not isinstance(retry_result, dict):
+                return {
+                    "status": "invalid_result",
+                    "error": "Unexpected function-calling result payload.",
+                    "tool_results": [],
+                }
+
+            retry_tool_results = retry_result.get("tool_results")
+            if not isinstance(retry_tool_results, list):
+                return {
+                    "status": "invalid_result",
+                    "error": "Tool-calling result is missing tool_results.",
+                    "tool_results": [],
+                }
+
+            retry_status = retry_result.get("status")
+            if retry_status != "completed":
+                normalized_retry = dict(retry_result)
+                normalized_retry["status"] = (
+                    str(retry_status) if retry_status is not None else "invalid_result"
+                )
+                normalized_retry["tool_results"] = retry_tool_results
+                return normalized_retry
+
+            tool_results = retry_tool_results
 
         if not tool_results:
             return {

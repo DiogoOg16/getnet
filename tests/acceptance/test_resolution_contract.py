@@ -83,7 +83,39 @@ def test_human_handoff_contract():
     assert payload["awaiting_user_input"] is False
 
 
-def test_support_then_knowledge_requires_final_resolution_evaluation():
+def test_support_then_knowledge_requires_final_resolution_evaluation(monkeypatch):
+    def fake_run_function_calling(self, message, user_id, *, allowed_tools=None):
+        assert user_id == "cliente2001"
+        assert allowed_tools == ["lookup_transaction"]
+        return {
+            "status": "tool_call_success",
+            "tool_results": [
+                {
+                    "tool_name": "lookup_transaction",
+                    "arguments": {"transaction_id": "txn2001"},
+                    "result": {
+                        "ok": True,
+                        "result": {
+                            "found": True,
+                            "transaction": {
+                                "transaction_id": "txn2001",
+                                "customer_id": "cliente2001",
+                                "amount": 250.00,
+                                "currency": "BRL",
+                                "status": "declined",
+                                "decline_reason": "Cartão bloqueado pelo emissor",
+                            },
+                        },
+                    },
+                }
+            ],
+        }
+
+    monkeypatch.setattr(
+        "app.agents.customer_support.CustomerSupportAgent._run_function_calling",
+        fake_run_function_calling,
+    )
+
     payload = _payload_for(
         "Por que a transação txn2001 foi recusada e como resolver?",
         user_id="cliente2001",

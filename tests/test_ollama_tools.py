@@ -5,8 +5,11 @@ from app.tools.customer_tools import (
     lookup_customer,
     lookup_settlement,
     lookup_transaction,
+    register_customer_tools,
 )
 from app.tools.registry import Tool, ToolRegistry, tool_registry
+
+register_customer_tools(tool_registry)
 
 
 def _tool_payload(payload, name):
@@ -20,7 +23,8 @@ def test_converter_handles_lookup_customer():
     assert converted["type"] == "function"
     assert converted["function"]["name"] == "lookup_customer"
     assert converted["function"]["description"] == (
-        "Recupera um cliente pelo ID do usuário autenticado."
+        "Recupera o cadastro do cliente usando o user_id autenticado do backend. "
+        "Não requer argumentos do usuário."
     )
     assert converted["function"]["parameters"] == {
         "type": "object",

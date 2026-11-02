@@ -3,7 +3,11 @@ from app.tools.customer_tools import (
     lookup_customer,
     lookup_settlement,
     lookup_transaction,
+    register_customer_tools,
 )
+from app.tools.registry import tool_registry
+
+register_customer_tools(tool_registry)
 
 
 def test_lookup_existing_customer():
@@ -40,7 +44,8 @@ def test_agent_does_not_reveal_other_customers_transaction_details():
 
     assert result["agent"] == "customer_support"
     assert result["issue_resolved"] is False
-    assert "não encontrei" in result["response"].lower()
+    normalized = result["response"].lower()
+    assert "não encontrei" in normalized or "não posso confirmar" in normalized
     assert "R$ 250.00" not in result["response"]
 
 
@@ -307,6 +312,18 @@ class FakeFunctionCallingLoop:
         return self.result
 
 
+class SequencedFunctionCallingLoop:
+    def __init__(self, results):
+        self.results = list(results)
+        self.calls = []
+
+    def run(self, messages, *, context=None, tools=None):
+        self.calls.append({"messages": messages, "context": context, "tools": tools})
+        if not self.results:
+            return {"status": "completed", "tool_results": []}
+        return self.results.pop(0)
+
+
 def test_agent_tracks_successful_function_calling_result():
     loop = FakeFunctionCallingLoop(
         {
@@ -370,6 +387,63 @@ def test_agent_passes_only_authorized_tools_to_function_calling_loop():
     assert "lookup_customer" not in tool_names
 
 
+def test_agent_includes_explicit_tool_calling_instruction():
+    loop = FakeFunctionCallingLoop({"status": "completed", "tool_results": []})
+
+    CustomerSupportAgent(loop=loop).answer(
+        "Quero consultar minha conta",
+        "cliente1988",
+    )
+
+    call_messages = loop.calls[0]["messages"]
+    assert len(call_messages) == 2
+    assert call_messages[0]["role"] == "system"
+    instruction = call_messages[0]["content"].lower()
+    assert "ferramentas autorizadas" in instruction
+    assert "lookup_customer" in instruction
+    assert "deve chamar a ferramenta autorizada" in instruction
+    assert "não peça user_id" in instruction
+    assert call_messages[1] == {"role": "user", "content": "Quero consultar minha conta"}
+
+
+def test_agent_retries_once_when_model_returns_no_tool_calls():
+    loop = SequencedFunctionCallingLoop(
+        [
+            {"status": "completed", "tool_results": []},
+            {
+                "status": "completed",
+                "tool_results": [
+                    {
+                        "tool_name": "lookup_customer",
+                        "arguments": {},
+                        "result": {
+                            "ok": True,
+                            "result": {
+                                "found": True,
+                                "customer": {
+                                    "name": "Cliente de Teste",
+                                    "account_status": "active",
+                                },
+                            },
+                        },
+                    }
+                ],
+            },
+        ]
+    )
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Quero consultar minha conta",
+        "cliente1988",
+    )
+
+    assert len(loop.calls) == 2
+    assert result["function_call_status"] == "tool_call_success"
+    retry_instruction = loop.calls[1]["messages"][0]["content"].lower()
+    assert "tentativa obrigatória de correção" in retry_instruction
+    assert "gere tool_calls agora" in retry_instruction
+
+
 def test_agent_tracks_ollama_connection_error_without_fallback():
     loop = FakeFunctionCallingLoop(error=ConnectionError("ollama unavailable"))
 
@@ -393,6 +467,98 @@ def test_agent_tracks_max_iterations_exceeded_without_fallback():
     )
 
     assert result["function_call_status"] == "max_iterations_exceeded"
+    assert result["tool_used"] is None
+    assert result["issue_resolved"] is False
+    assert len(loop.calls) == 1
+
+
+def test_agent_preserves_second_attempt_max_iterations_state():
+    loop = SequencedFunctionCallingLoop(
+        [
+            {"status": "completed", "tool_results": []},
+            {"status": "max_iterations_exceeded", "tool_results": []},
+        ]
+    )
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Quero consultar minha conta",
+        "cliente1988",
+    )
+
+    assert len(loop.calls) == 2
+    assert result["function_call_status"] == "max_iterations_exceeded"
+    assert result["tool_used"] is None
+    assert result["issue_resolved"] is False
+
+
+def test_run_function_calling_preserves_retry_error_and_metadata():
+    retry_result = {
+        "status": "max_iterations_exceeded",
+        "error": "Function-calling loop exceeded the iteration limit.",
+        "tool_results": [],
+        "iterations": 5,
+        "last_response": {"message": {"role": "assistant", "content": ""}},
+        "malformed_tool_calls": ["x"],
+    }
+    loop = SequencedFunctionCallingLoop(
+        [
+            {"status": "completed", "tool_results": []},
+            retry_result,
+        ]
+    )
+
+    payload = CustomerSupportAgent(loop=loop)._run_function_calling(
+        "Quero consultar minha conta",
+        "cliente1988",
+        allowed_tools=["lookup_customer"],
+    )
+
+    assert payload["status"] == "max_iterations_exceeded"
+    assert payload["error"] == "Function-calling loop exceeded the iteration limit."
+    assert payload["iterations"] == 5
+    assert payload["malformed_tool_calls"] == ["x"]
+    assert isinstance(payload["tool_results"], list)
+
+
+def test_run_function_calling_validates_retry_tool_results_as_list():
+    loop = SequencedFunctionCallingLoop(
+        [
+            {"status": "completed", "tool_results": []},
+            {"status": "tool_call_error", "error": "network", "tool_results": {"invalid": True}},
+        ]
+    )
+
+    payload = CustomerSupportAgent(loop=loop)._run_function_calling(
+        "Quero consultar minha conta",
+        "cliente1988",
+        allowed_tools=["lookup_customer"],
+    )
+
+    assert payload["status"] == "invalid_result"
+    assert "tool_results" in payload["error"].lower()
+
+
+class FailOnSecondRunLoop:
+    def __init__(self):
+        self.calls = []
+
+    def run(self, messages, *, context=None, tools=None):
+        self.calls.append({"messages": messages, "context": context, "tools": tools})
+        if len(self.calls) == 1:
+            return {"status": "completed", "tool_results": []}
+        raise ConnectionError("ollama unavailable on retry")
+
+
+def test_agent_preserves_second_attempt_connection_error_state():
+    loop = FailOnSecondRunLoop()
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Quero consultar minha conta",
+        "cliente1988",
+    )
+
+    assert len(loop.calls) == 2
+    assert result["function_call_status"] == "tool_call_error"
     assert result["tool_used"] is None
     assert result["issue_resolved"] is False
 

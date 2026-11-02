@@ -12,6 +12,8 @@ from app.auth import authenticate_user
 from app.human_handoff import HumanHandoffStore, is_attendant_user
 from app.orchestrator import ChatOrchestrator
 from app.session_memory import SessionMemory
+from app.tools.customer_tools import register_customer_tools
+from app.tools.registry import tool_registry
 from app.verified_facts import public_fact_conflicts, public_verified_facts
 
 logging.basicConfig(
@@ -26,7 +28,15 @@ app = FastAPI(
     version="0.3.0",
 )
 
-orchestrator = ChatOrchestrator()
+registry = register_customer_tools(tool_registry)
+missing_tools = [
+    name for name in ("lookup_customer", "lookup_transaction", "lookup_settlement")
+    if registry.get(name) is None
+]
+if missing_tools:
+    raise RuntimeError(f"Required customer support tools are missing from the registry: {missing_tools}")
+
+orchestrator = ChatOrchestrator(registry=registry)
 session_memory = SessionMemory()
 handoff_store = HumanHandoffStore()
 bearer_scheme = HTTPBearer(auto_error=False)

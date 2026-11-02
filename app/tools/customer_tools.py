@@ -1,6 +1,6 @@
 """Tools for retrieving simulated customer and transaction data."""
 
-from app.tools.registry import Tool, tool_registry
+from app.tools.registry import Tool, ToolRegistry, tool_registry
 
 CUSTOMERS = {
     "cliente1988": {
@@ -144,12 +144,23 @@ def lookup_settlement(user_id: str) -> dict:
     }
 
 
-def _register_customer_tools() -> None:
-    """Register the customer support tools in the central provider-independent registry."""
-    tool_registry.register(
+def register_customer_tools(registry: ToolRegistry | None = None) -> ToolRegistry:
+    """Register the customer support tools in the provided registry.
+
+    This method is explicit and idempotent: repeated calls keep a single copy of
+    each tool in the target registry.
+    """
+    target_registry = registry if registry is not None else tool_registry
+    if not isinstance(target_registry, ToolRegistry):
+        raise TypeError("registry must be a ToolRegistry instance.")
+
+    tool_definitions = (
         Tool(
             name="lookup_customer",
-            description="Recupera um cliente pelo ID do usuário autenticado.",
+            description=(
+                "Recupera o cadastro do cliente usando o user_id autenticado do backend. "
+                "Não requer argumentos do usuário."
+            ),
             parameters={
                 "type": "object",
                 "properties": {},
@@ -157,10 +168,7 @@ def _register_customer_tools() -> None:
             },
             trusted_context=("user_id",),
             handler=lookup_customer,
-        )
-    )
-
-    tool_registry.register(
+        ),
         Tool(
             name="lookup_transaction",
             description="Recupera uma transação apenas quando pertence ao cliente autenticado.",
@@ -176,10 +184,7 @@ def _register_customer_tools() -> None:
             },
             trusted_context=("user_id",),
             handler=lookup_transaction,
-        )
-    )
-
-    tool_registry.register(
+        ),
         Tool(
             name="lookup_settlement",
             description="Recupera registros simulados de liquidação para o cliente autenticado.",
@@ -190,8 +195,11 @@ def _register_customer_tools() -> None:
             },
             trusted_context=("user_id",),
             handler=lookup_settlement,
-        )
+        ),
     )
 
+    for tool in tool_definitions:
+        if target_registry.get(tool.name) is None:
+            target_registry.register(tool)
 
-_register_customer_tools()
+    return target_registry
