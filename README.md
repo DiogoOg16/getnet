@@ -6,6 +6,7 @@ Assistente de suporte multiagente desenvolvido como desafio técnico. A aplicaç
 
 ## Índice
 
+- [Checklist de compliance do desafio](#checklist-de-compliance-do-desafio)
 - [Principais funcionalidades](#principais-funcionalidades)
 - [Arquitetura e fluxo da mensagem](#arquitetura-e-fluxo-da-mensagem)
 - [Function Calling no Customer Support (Incremento 5B)](#function-calling-no-customer-support-incremento-5b)
@@ -20,6 +21,21 @@ Assistente de suporte multiagente desenvolvido como desafio técnico. A aplicaç
 - [Observabilidade](#observabilidade)
 - [Limitações conhecidas](#limitações-conhecidas)
 - [Estrutura do projeto](#estrutura-do-projeto)
+
+## Checklist de compliance do desafio
+
+| Requisito do desafio | Implementação (código) | Evidência de testes |
+|---|---|---|
+| Router e fluxo multiagente | `app/orchestrator.py`, `app/agents/router.py` | `tests/test_router.py`, `tests/test_router_scenarios.py`, `tests/test_orchestrator.py` |
+| Knowledge Agent com RAG + busca web | `app/agents/knowledge.py`, `app/rag/retriever.py`, `app/agents/web_search.py` | `tests/test_knowledge.py`, `tests/test_knowledge_fallback.py`, `tests/test_web_search.py` |
+| Customer Support com 2+ tools | `app/tools/customer_tools.py`, `app/tools/registry.py`, `app/agents/customer_support.py` | `tests/test_customer_support.py`, `tests/test_tool_registry.py` |
+| Endpoint `POST /chat` com JSON significativo | `app/main.py` | `tests/test_api.py`, `tests/acceptance/test_resolution_contract.py` |
+| Persistência de sessão e handoff | `app/session_memory.py`, `app/human_handoff.py` | `tests/test_api.py`, `tests/test_behavior_evaluation.py` |
+| Dockerização para execução padrão | `Dockerfile`, `docker-compose.yml` | validação manual documentada em "Reprodução da validação final" |
+| Testes automatizados e estratégia | `tests/` + seção de estratégia | `python -m pytest -q` (suíte padrão) + testes reais opt-in (`RUN_OLLAMA_INTEGRATION=1`) |
+| CI em push/PR para `main` | `.github/workflows/ci.yml` | [Execução CI aprovada no GitHub Actions](https://github.com/DiogoOg16/getnet/actions/runs/4146379649) |
+
+Observação: os testes de integração real com Ollama permanecem opt-in por variável de ambiente e não fazem parte da suíte padrão do CI.
 
 ## Principais funcionalidades
 
