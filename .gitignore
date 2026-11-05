@@ -8,3 +8,5 @@ __pycache__/
 logs/
 .audit/
 .session_memory.json
+logs/agent_probe_*.txt
+logs/validation_*.json
