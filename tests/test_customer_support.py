@@ -1,11 +1,16 @@
+import socket
+
 from app.agents.customer_support import CustomerSupportAgent
+from app.llm.ollama_client import OllamaClient
+from app.llm.ollama_function_calling import OllamaFunctionCallingLoop
+from app.llm.ollama_client import OllamaTimeoutError
 from app.tools.customer_tools import (
     lookup_customer,
     lookup_settlement,
     lookup_transaction,
     register_customer_tools,
 )
-from app.tools.registry import tool_registry
+from app.tools.registry import ToolExecutor, tool_registry
 
 register_customer_tools(tool_registry)
 
@@ -444,8 +449,103 @@ def test_agent_retries_once_when_model_returns_no_tool_calls():
     assert "gere tool_calls agora" in retry_instruction
 
 
-def test_agent_tracks_ollama_connection_error_without_fallback():
+def test_agent_uses_backend_fallback_on_ollama_connection_error_for_transaction():
     loop = FakeFunctionCallingLoop(error=ConnectionError("ollama unavailable"))
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn1001?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "no_tool_calls"
+    assert result["tool_used"] == "lookup_transaction"
+    assert result["issue_resolved"] is True
+    assert result["step_status"] == "success"
+    assert "txn1001" in result["response"]
+
+
+def test_agent_uses_backend_fallback_on_ollama_connection_error_for_customer_lookup():
+    loop = FakeFunctionCallingLoop(error=ConnectionError("ollama unavailable"))
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Quero consultar minha conta",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "no_tool_calls"
+    assert result["tool_used"] == "lookup_customer"
+    assert result["issue_resolved"] is True
+    assert result["step_status"] == "success"
+    assert "Cliente de Teste" in result["response"]
+
+
+def test_agent_uses_backend_fallback_on_ollama_connection_error_for_settlement_lookup():
+    loop = FakeFunctionCallingLoop(error=ConnectionError("ollama unavailable"))
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Quando o dinheiro das vendas de ontem será depositado?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "no_tool_calls"
+    assert result["tool_used"] == "lookup_settlement"
+    assert result["issue_resolved"] is True
+    assert result["step_status"] == "success"
+    assert "Prazo de recebimento" in result["response"]
+
+
+def test_agent_uses_backend_fallback_on_ollama_timeout_error():
+    loop = FakeFunctionCallingLoop(error=OllamaTimeoutError("timed out"))
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn1001?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "no_tool_calls"
+    assert result["tool_used"] == "lookup_transaction"
+    assert result["issue_resolved"] is True
+
+
+def test_integration_connection_refused_triggers_deterministic_transaction_fallback():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        refused_port = sock.getsockname()[1]
+
+    client = OllamaClient(base_url=f"http://127.0.0.1:{refused_port}", timeout=1)
+    executor = ToolExecutor(tool_registry)
+    loop = OllamaFunctionCallingLoop(
+        client=client,
+        registry=tool_registry,
+        executor=executor,
+        max_iterations=3,
+    )
+    agent = CustomerSupportAgent(
+        client=client,
+        registry=tool_registry,
+        executor=executor,
+        loop=loop,
+    )
+
+    transaction_id = "txn1001"
+    result = agent.answer(
+        f"Qual o status da transação {transaction_id}?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "no_tool_calls"
+    assert result["tool_used"] == "lookup_transaction"
+    assert result["issue_resolved"] is True
+    assert transaction_id in result["response"]
+
+    facts = result["verified_facts"]
+    assert facts
+    assert all(fact["entity"] == transaction_id for fact in facts)
+    assert {fact["name"] for fact in facts} == {"status", "amount", "currency"}
+
+
+def test_agent_does_not_fallback_for_non_infrastructure_tool_call_error():
+    loop = FakeFunctionCallingLoop(error=RuntimeError("unexpected llm orchestration bug"))
 
     result = CustomerSupportAgent(loop=loop).answer(
         "Qual o status da transação txn1001?",
@@ -558,9 +658,9 @@ def test_agent_preserves_second_attempt_connection_error_state():
     )
 
     assert len(loop.calls) == 2
-    assert result["function_call_status"] == "tool_call_error"
-    assert result["tool_used"] is None
-    assert result["issue_resolved"] is False
+    assert result["function_call_status"] == "no_tool_calls"
+    assert result["tool_used"] == "lookup_customer"
+    assert result["issue_resolved"] is True
 
 
 def test_agent_tracks_malformed_function_calling_result():
@@ -584,6 +684,30 @@ def test_agent_tracks_malformed_function_calling_result():
 
     assert result["function_call_status"] == "invalid_result"
     assert result["tool_used"] is None
+    assert result["issue_resolved"] is False
+
+
+def test_agent_does_not_fallback_for_invalid_tool_result_payload():
+    loop = FakeFunctionCallingLoop(
+        {
+            "status": "completed",
+            "tool_results": [
+                {
+                    "tool_name": "lookup_customer",
+                    "arguments": {},
+                    "result": {"ok": False, "error": "Invalid tool arguments."},
+                }
+            ],
+        }
+    )
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Quero consultar minha conta",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "invalid_result"
+    assert result["tool_used"] == "lookup_customer"
     assert result["issue_resolved"] is False
 
 
@@ -671,3 +795,31 @@ def test_agent_keeps_transaction_id_request_when_missing():
     assert result["tool_used"] is None
     assert "txn" in result["response"].lower()
     assert result["awaiting_user_input"] is True
+
+
+def test_fallback_transaction_query_keeps_cross_customer_ownership_blocked():
+    loop = FakeFunctionCallingLoop(error=ConnectionError("ollama unavailable"))
+
+    result = CustomerSupportAgent(loop=loop).answer(
+        "Qual o status da transação txn2001?",
+        "cliente1988",
+    )
+
+    assert result["function_call_status"] == "no_tool_calls"
+    assert result["issue_resolved"] is False
+    assert "não encontrei" in result["response"].lower()
+
+
+def test_fallback_does_not_share_verified_facts_between_users():
+    loop = FakeFunctionCallingLoop(error=ConnectionError("ollama unavailable"))
+    agent = CustomerSupportAgent(loop=loop)
+
+    first = agent.answer("Qual o status da transação txn1001?", "cliente1988")
+    second = agent.answer("Qual o status da transação txn2001?", "cliente2001")
+
+    assert first["function_call_status"] == "no_tool_calls"
+    assert second["function_call_status"] == "no_tool_calls"
+    assert first["verified_facts"]
+    assert second["verified_facts"]
+    assert all(fact["entity"] == "txn1001" for fact in first["verified_facts"])
+    assert all(fact["entity"] == "txn2001" for fact in second["verified_facts"])

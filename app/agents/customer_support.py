@@ -2,7 +2,11 @@ import re
 import unicodedata
 from typing import Any
 
-from app.llm.ollama_client import OllamaClient
+from app.llm.ollama_client import (
+    OllamaClient,
+    OllamaConnectionError,
+    OllamaTimeoutError,
+)
 from app.llm.ollama_function_calling import OllamaFunctionCallingLoop
 from app.llm.ollama_tools import registry_to_ollama_tools
 from app.tools.registry import ToolExecutor, ToolRegistry, tool_registry
@@ -244,6 +248,25 @@ class CustomerSupportAgent:
             tools=tool_payload,
         )
 
+    @staticmethod
+    def _is_infrastructure_tool_call_error(error: Exception) -> bool:
+        return isinstance(
+            error,
+            (
+                OllamaConnectionError,
+                OllamaTimeoutError,
+                ConnectionError,
+                TimeoutError,
+            ),
+        )
+
+    @staticmethod
+    def _should_use_backend_fallback(loop_result: dict[str, Any]) -> bool:
+        return bool(
+            loop_result.get("status") == "tool_call_error"
+            and loop_result.get("infrastructure_error") is True
+        )
+
     def _run_function_calling(self, message: str, user_id: str, *, allowed_tools: list[str] | None = None) -> dict[str, Any]:
         tool_payload = self._authorized_tools(tool_names=list(allowed_tools) if allowed_tools else []) if allowed_tools else None
         messages = self._function_calling_messages(message, allowed_tools)
@@ -254,6 +277,7 @@ class CustomerSupportAgent:
                 "status": "tool_call_error",
                 "error": str(exc),
                 "tool_results": [],
+                "infrastructure_error": self._is_infrastructure_tool_call_error(exc),
             }
 
         if not isinstance(result, dict):
@@ -287,6 +311,7 @@ class CustomerSupportAgent:
                     "status": "tool_call_error",
                     "error": str(exc),
                     "tool_results": [],
+                    "infrastructure_error": self._is_infrastructure_tool_call_error(exc),
                 }
 
             if not isinstance(retry_result, dict):
@@ -489,6 +514,89 @@ class CustomerSupportAgent:
             loop_result = self._run_function_calling(message, user_id, allowed_tools=["lookup_transaction"])
             loop_status = loop_result.get("status")
             if loop_status == "tool_call_error":
+                if self._should_use_backend_fallback(loop_result):
+                    result = self._execute_backend_tool("lookup_transaction", {"transaction_id": transaction_id}, user_id)
+
+                    if not result["found"]:
+                        return {
+                            "agent": "customer_support",
+                            "response": (
+                                "Não encontrei essa transação para o cliente informado. "
+                                "Confirme o identificador e tente novamente."
+                            ),
+                            "tool_used": "lookup_transaction",
+                            "function_call_status": "no_tool_calls",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": True,
+                            "step_status": "waiting_for_user_input",
+                            "verified_facts": [],
+                        }
+
+                    transaction = result["transaction"]
+
+                    status_messages = {
+                        "approved": "aprovada",
+                        "pending": "pendente",
+                        "declined": "recusada",
+                    }
+                    status = status_messages.get(
+                        transaction["status"],
+                        transaction["status"],
+                    )
+
+                    response = (
+                        f"A transação {transaction['transaction_id']} está "
+                        f"{status}. Valor: R$ {transaction['amount']:.2f}."
+                    )
+
+                    if transaction["status"] == "declined":
+                        decline_reason = transaction.get("decline_reason")
+                        if decline_reason:
+                            response += f" Motivo da recusa: {decline_reason}."
+                        else:
+                            response += (
+                                " Não há detalhes disponíveis sobre o motivo da recusa "
+                                "neste registro."
+                            )
+
+                    verified_facts = [
+                        make_verified_fact(
+                            entity=transaction["transaction_id"],
+                            name="status",
+                            value=transaction["status"],
+                            source_agent="customer_support",
+                            source_tool="lookup_transaction",
+                        ),
+                        make_verified_fact(
+                            entity=transaction["transaction_id"],
+                            name="amount",
+                            value=transaction["amount"],
+                            source_agent="customer_support",
+                            source_tool="lookup_transaction",
+                        ),
+                        make_verified_fact(
+                            entity=transaction["transaction_id"],
+                            name="currency",
+                            value=transaction["currency"],
+                            source_agent="customer_support",
+                            source_tool="lookup_transaction",
+                        ),
+                    ]
+
+                    return {
+                        "agent": "customer_support",
+                        "response": response,
+                        "tool_used": "lookup_transaction",
+                        "function_call_status": "no_tool_calls",
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": True,
+                        "awaiting_user_input": False,
+                        "step_status": "success",
+                        "verified_facts": verified_facts,
+                    }
                 return {
                     "agent": "customer_support",
                     "response": "Não foi possível consultar a transação neste momento porque o serviço de ferramentas falhou.",
@@ -850,6 +958,71 @@ class CustomerSupportAgent:
             loop_result = self._run_function_calling(message, user_id, allowed_tools=["lookup_settlement"])
             loop_status = loop_result.get("status")
             if loop_status == "tool_call_error":
+                if self._should_use_backend_fallback(loop_result):
+                    result = self._execute_backend_tool("lookup_settlement", {}, user_id)
+
+                    if not result["found"]:
+                        return {
+                            "agent": "customer_support",
+                            "response": (
+                                "Não consegui localizar o cadastro na base simulada "
+                                "para consultar as orientações de recebimento."
+                            ),
+                            "tool_used": "lookup_settlement",
+                            "function_call_status": "no_tool_calls",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": False,
+                            "step_status": "failed",
+                        }
+
+                    if result.get("records"):
+                        details = []
+                        for index, record in enumerate(result["records"], start=1):
+                            status = record.get("status") or "não disponível"
+                            amount = record.get("amount")
+                            currency = record.get("currency")
+                            date_value = record.get("estimated_settlement_date")
+
+                            item_parts = [
+                                f"Registro {index}: status {status}",
+                            ]
+
+                            if amount is not None:
+                                item_parts.append(f"valor: R$ {float(amount):.2f}")
+                            if currency:
+                                item_parts.append(f"moeda: {currency}")
+                            if date_value:
+                                item_parts.append(f"data prevista: {date_value}")
+                            else:
+                                item_parts.append("data prevista: não disponível")
+
+                            details.append("; ".join(item_parts))
+
+                        message_text = (
+                            "Prazo de recebimento: "
+                            + "; ".join(details)
+                            + "."
+                        )
+                    else:
+                        message_text = result["message"]
+
+                    return {
+                        "agent": "customer_support",
+                        "response": (
+                            f"{message_text} Para verificar uma operação específica, informe o "
+                            "identificador da transação, por exemplo txn1001."
+                        ),
+                        "tool_used": "lookup_settlement",
+                        "function_call_status": "no_tool_calls",
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": True,
+                        "awaiting_user_input": False,
+                        "step_status": "success",
+                        "verified_facts": [],
+                    }
                 return {
                     "agent": "customer_support",
                     "response": "Não foi possível consultar o prazo de recebimento porque a ferramenta falhou.",
@@ -1127,6 +1300,39 @@ class CustomerSupportAgent:
             loop_result = self._run_function_calling(message, user_id, allowed_tools=["lookup_customer"])
             loop_status = loop_result.get("status")
             if loop_status == "tool_call_error":
+                if self._should_use_backend_fallback(loop_result):
+                    result = self._execute_backend_tool("lookup_customer", {}, user_id)
+
+                    if not result["found"]:
+                        return {
+                            "agent": "customer_support",
+                            "response": "Não encontrei esse cliente na base simulada.",
+                            "tool_used": "lookup_customer",
+                            "function_call_status": "no_tool_calls",
+                            "flow_completed": True,
+                            "response_delivered": True,
+                            "issue_resolved": False,
+                            "awaiting_user_input": False,
+                            "step_status": "failed",
+                            "verified_facts": [],
+                        }
+
+                    customer = result["customer"]
+                    return {
+                        "agent": "customer_support",
+                        "response": (
+                            f"Encontrei o cadastro de {customer['name']}. "
+                            f"Status da conta: {customer['account_status']}."
+                        ),
+                        "tool_used": "lookup_customer",
+                        "function_call_status": "no_tool_calls",
+                        "flow_completed": True,
+                        "response_delivered": True,
+                        "issue_resolved": True,
+                        "awaiting_user_input": False,
+                        "step_status": "success",
+                        "verified_facts": [],
+                    }
                 return {
                     "agent": "customer_support",
                     "response": "Não foi possível consultar o cadastro do cliente porque a ferramenta falhou.",
