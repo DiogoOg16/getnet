@@ -190,6 +190,12 @@ O arquivo de Compose do projeto é `docker-compose.yml`.
 
 ### API sem LLM
 
+Antes de iniciar com Docker Compose, crie o arquivo `.env` a partir do modelo `.env.example`, que já inclui a configuração inicial de demonstração:
+
+```bash
+cp .env.example .env
+```
+
 ```bash
 docker compose up --build -d
 docker compose ps
@@ -269,7 +275,7 @@ Exemplo de requisição:
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/chat \
-  -H 'Authorization: Bearer test-token-cliente1988' \
+  -H 'Authorization: Bearer demo-token-cliente1988' \
   -H 'Content-Type: application/json' \
   -d '{
     "message": "Qual o status da transação txn1001?",
@@ -317,7 +323,7 @@ Os endpoints exigem autenticação Bearer. Usuários cliente só podem acessar t
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/chat \
-  -H 'Authorization: Bearer test-token-cliente1988' \
+  -H 'Authorization: Bearer demo-token-cliente1988' \
   -H 'Content-Type: application/json' \
   -d '{"message":"Como funciona o Pix?","user_id":"cliente1988"}'
 ```
@@ -326,7 +332,7 @@ curl -s -X POST http://127.0.0.1:8000/chat \
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/chat \
-  -H 'Authorization: Bearer test-token-cliente1988' \
+  -H 'Authorization: Bearer demo-token-cliente1988' \
   -H 'Content-Type: application/json' \
   -d '{"message":"Qual é a previsão do tempo em Porto Alegre amanhã?","user_id":"cliente1988"}'
 ```
@@ -335,7 +341,7 @@ curl -s -X POST http://127.0.0.1:8000/chat \
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/chat \
-  -H 'Authorization: Bearer test-token-cliente1988' \
+  -H 'Authorization: Bearer demo-token-cliente1988' \
   -H 'Content-Type: application/json' \
   -d '{"message":"Preciso falar com um humano sobre dados sensíveis do meu cadastro.","user_id":"cliente1988"}'
 ```
