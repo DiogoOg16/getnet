@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,42 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.main import app
+
+
+def _load_auth_tokens() -> dict[str, str]:
+    raw_tokens = os.getenv("GETNET_DEMO_AUTH_TOKENS", "")
+    if not raw_tokens:
+        raise RuntimeError("GETNET_DEMO_AUTH_TOKENS não está definido.")
+
+    try:
+        token_map = json.loads(raw_tokens)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("GETNET_DEMO_AUTH_TOKENS deve conter um JSON válido.") from exc
+
+    if not isinstance(token_map, dict):
+        raise RuntimeError("GETNET_DEMO_AUTH_TOKENS deve mapear tokens para user_id.")
+
+    cleaned: dict[str, str] = {}
+    for token, user_id in token_map.items():
+        if isinstance(token, str) and token and isinstance(user_id, str) and user_id:
+            cleaned[token] = user_id
+
+    if not cleaned:
+        raise RuntimeError("GETNET_DEMO_AUTH_TOKENS não possui pares token/user_id válidos.")
+
+    return cleaned
+
+
+def _resolve_token_for_user(user_id: str) -> str:
+    for token, mapped_user_id in _load_auth_tokens().items():
+        if mapped_user_id == user_id:
+            return token
+    raise RuntimeError(f"Nenhum token configurado para user_id '{user_id}'.")
+
+
+def _build_auth_headers(user_id: str) -> dict[str, str]:
+    token = _resolve_token_for_user(user_id)
+    return {"Authorization": f"Bearer {token}"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -50,11 +87,19 @@ def main() -> None:
     args = build_parser().parse_args()
     message = " ".join(args.message)
 
-    client = TestClient(app)
+    headers = _build_auth_headers(args.user_id)
+    client = TestClient(app, headers=headers)
     response = client.post(
         "/chat",
         json={"message": message, "user_id": args.user_id},
     )
+
+    if response.status_code == 401:
+        raise RuntimeError("Falha de autenticação (401) ao chamar /chat.")
+    if response.status_code == 403:
+        raise RuntimeError("Falha de autorização (403) ao chamar /chat.")
+    if response.status_code >= 400:
+        raise RuntimeError(f"Falha HTTP {response.status_code} ao chamar /chat.")
 
     payload = response.json()
     print(json.dumps(payload, ensure_ascii=False, indent=2))

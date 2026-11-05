@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -48,22 +49,67 @@ SCENARIOS = [
 ]
 
 
+def _load_auth_tokens() -> dict[str, str]:
+    raw_tokens = os.getenv("GETNET_DEMO_AUTH_TOKENS", "")
+    if not raw_tokens:
+        raise RuntimeError("GETNET_DEMO_AUTH_TOKENS não está definido.")
+
+    try:
+        token_map = json.loads(raw_tokens)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("GETNET_DEMO_AUTH_TOKENS deve conter um JSON válido.") from exc
+
+    if not isinstance(token_map, dict):
+        raise RuntimeError("GETNET_DEMO_AUTH_TOKENS deve mapear tokens para user_id.")
+
+    cleaned: dict[str, str] = {}
+    for token, user_id in token_map.items():
+        if isinstance(token, str) and token and isinstance(user_id, str) and user_id:
+            cleaned[token] = user_id
+
+    if not cleaned:
+        raise RuntimeError("GETNET_DEMO_AUTH_TOKENS não possui pares token/user_id válidos.")
+
+    return cleaned
+
+
+def _resolve_token_for_user(user_id: str) -> str:
+    for token, mapped_user_id in _load_auth_tokens().items():
+        if mapped_user_id == user_id:
+            return token
+    raise RuntimeError(f"Nenhum token configurado para user_id '{user_id}'.")
+
+
+def _build_auth_headers(user_id: str) -> dict[str, str]:
+    token = _resolve_token_for_user(user_id)
+    return {"Authorization": f"Bearer {token}"}
+
+
 def run_validation() -> list[dict]:
     client = TestClient(app)
     results = []
 
     for scenario in SCENARIOS:
+        headers = _build_auth_headers(scenario["user_id"])
         response = client.post(
             "/chat",
             json={"message": scenario["message"], "user_id": scenario["user_id"]},
+            headers=headers,
         )
-        body = response.json()
+
+        is_success = 200 <= response.status_code < 300
+        body = response.json() if is_success else {}
+        auth_error = response.status_code in (401, 403)
+        http_error = not is_success and not auth_error
         record = {
             "name": scenario["name"],
             "input": {
                 "message": scenario["message"],
                 "user_id": scenario["user_id"],
             },
+            "http_status": response.status_code,
+            "auth_error": auth_error,
+            "http_error": http_error,
             "expected_agent": scenario["expect_agent"],
             "actual_agent": body.get("agent"),
             "tool_used": body.get("tool_used"),
