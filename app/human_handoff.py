@@ -64,6 +64,7 @@ class HumanHandoffStore:
         user_id: str,
         session_id: str,
         message: str,
+        flow: str | None = None,
     ) -> dict:
         if not user_id or not session_id:
             raise ValueError("user_id e session_id são obrigatórios.")
@@ -81,6 +82,8 @@ class HumanHandoffStore:
             "created_at": now,
             "updated_at": now,
         }
+        if flow:
+            record["flow"] = flow
         self._records[ticket_id] = record
         self._save()
         return record.copy()
@@ -111,7 +114,13 @@ class HumanHandoffStore:
         record = self._records.get(ticket_id)
         return record.copy() if record else None
 
-    def find_active_for_session(self, *, user_id: str, session_id: str) -> dict | None:
+    def find_active_for_session(
+        self,
+        *,
+        user_id: str,
+        session_id: str,
+        flow: str | None = None,
+    ) -> dict | None:
         for record in sorted(
             self._records.values(),
             key=lambda item: item.get("created_at", ""),
@@ -121,6 +130,7 @@ class HumanHandoffStore:
                 record.get("user_id") == user_id
                 and record.get("session_id") == session_id
                 and record.get("status") in {"pending", "assigned"}
+                and (flow is None or record.get("flow") == flow)
             ):
                 return record.copy()
         return None

@@ -438,7 +438,12 @@ class KnowledgeAgent:
             )
         return "\n".join(lines) if len(lines) > 1 else ""
 
-    def answer(self, message: str, verified_facts: list[dict] | None = None) -> dict:
+    def answer(
+        self,
+        message: str,
+        verified_facts: list[dict] | None = None,
+        generation_context: str = "",
+    ) -> dict:
         query = message.lower().strip()
         fact_context = self._verified_fact_context(verified_facts)
 
@@ -501,6 +506,12 @@ class KnowledgeAgent:
         ]
         if fact_context:
             context_parts.insert(0, fact_context)
+        if generation_context:
+            context_parts.append(
+                "Histórico recente da conversa (use somente para entender "
+                "referências da pergunta; não é fonte de fatos):\n"
+                f"{generation_context}"
+            )
 
         context = "\n\n".join(context_parts)
 

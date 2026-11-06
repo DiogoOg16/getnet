@@ -12,6 +12,8 @@ from app.llm.ollama_tools import registry_to_ollama_tools
 from app.tools.registry import ToolExecutor, ToolRegistry, tool_registry
 from app.verified_facts import make_verified_fact
 
+TERMINAL_CONNECTIVITY_FLOW = "terminal_connectivity"
+
 
 class CustomerSupportAgent:
     """Handles customer-specific questions using support tools."""
@@ -417,6 +419,76 @@ class CustomerSupportAgent:
                 continue
         return facts
 
+    def escalate_terminal_connectivity(self, issue_message: str, reply: str) -> dict:
+        """Encerra o diagnóstico depois que o usuário informou os detalhes pedidos.
+
+        A base não tem procedimento de conectividade por modelo, então o caminho
+        é determinístico: sem LLM, sem ferramentas e sem instruções inventadas.
+        """
+        return {
+            "agent": "customer_support",
+            "response": (
+                "Entendi que o problema de conectividade da maquininha continua. "
+                "Não encontrei documentação suficiente na base atual para orientar "
+                "este caso de forma segura. Vou encaminhar para atendimento humano "
+                "para continuidade do diagnóstico."
+            ),
+            "tool_used": None,
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": False,
+            "resolved": False,
+            "awaiting_user_input": False,
+            "step_status": "handoff",
+            "verified_facts": [],
+            "handoff_required": True,
+            "handoff_message": f"{issue_message} | Complemento: {reply}",
+            "handoff_flow": TERMINAL_CONNECTIVITY_FLOW,
+        }
+
+    def _connectivity_guidance(self, issue_message: str) -> dict:
+        """Orienta pela base quando houver documentação ou encaminha ao atendimento."""
+        knowledge_result = self._knowledge_followup(issue_message)
+        if knowledge_result:
+            response = str(knowledge_result.get("response", "")).replace("‑", "-").replace("–", "-").replace("—", "-")
+            if response.strip():
+                return {
+                    "agent": "customer_support",
+                    "response": (
+                        "Com base na documentação disponível da Getnet:\n\n"
+                        f"{response}"
+                    ),
+                    "tool_used": knowledge_result.get("tool_used", "knowledge"),
+                    "sources": knowledge_result.get("sources", []),
+                    "source_sections": knowledge_result.get("source_sections", {}),
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "resolved": False,
+                    "awaiting_user_input": False,
+                    "step_status": "success",
+                    "verified_facts": [],
+                    "handoff_required": False,
+                }
+
+        return {
+            "agent": "customer_support",
+            "response": (
+                "Não encontrei documentação suficiente na base atual para orientar este caso de conectividade "
+                "de forma segura. Vou encaminhar para atendimento humano para continuidade do diagnóstico."
+            ),
+            "tool_used": "knowledge",
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": False,
+            "resolved": False,
+            "awaiting_user_input": False,
+            "step_status": "handoff",
+            "verified_facts": [],
+            "handoff_required": True,
+            "handoff_flow": TERMINAL_CONNECTIVITY_FLOW,
+        }
+
     def answer(self, message: str, user_id: str) -> dict:
         text = self._normalize_text(message)
 
@@ -445,6 +517,7 @@ class CustomerSupportAgent:
                     "step_status": "handoff",
                     "verified_facts": [],
                     "handoff_required": True,
+                    "handoff_flow": TERMINAL_CONNECTIVITY_FLOW,
                 }
 
             missing = self._missing_terminal_details(context, message)
@@ -466,47 +539,13 @@ class CustomerSupportAgent:
                     "step_status": "waiting_for_user_input",
                     "verified_facts": [],
                     "handoff_required": False,
+                    "pending_followup": {
+                        "flow": TERMINAL_CONNECTIVITY_FLOW,
+                        "original_message": message,
+                    },
                 }
 
-            knowledge_result = self._knowledge_followup(message)
-            if knowledge_result:
-                response = str(knowledge_result.get("response", "")).replace("‑", "-").replace("–", "-").replace("—", "-")
-                if response.strip():
-                    return {
-                        "agent": "customer_support",
-                        "response": (
-                            "Com base na documentação disponível da Getnet:\n\n"
-                            f"{response}"
-                        ),
-                        "tool_used": knowledge_result.get("tool_used", "knowledge"),
-                        "sources": knowledge_result.get("sources", []),
-                        "source_sections": knowledge_result.get("source_sections", {}),
-                        "flow_completed": True,
-                        "response_delivered": True,
-                        "issue_resolved": False,
-                        "resolved": False,
-                        "awaiting_user_input": False,
-                        "step_status": "success",
-                        "verified_facts": [],
-                        "handoff_required": False,
-                    }
-
-            return {
-                "agent": "customer_support",
-                "response": (
-                    "Não encontrei documentação suficiente na base atual para orientar este caso de conectividade "
-                    "de forma segura. Vou encaminhar para atendimento humano para continuidade do diagnóstico."
-                ),
-                "tool_used": "knowledge",
-                "flow_completed": True,
-                "response_delivered": True,
-                "issue_resolved": False,
-                "resolved": False,
-                "awaiting_user_input": False,
-                "step_status": "handoff",
-                "verified_facts": [],
-                "handoff_required": True,
-            }
+            return self._connectivity_guidance(message)
 
         transaction_id = self._extract_transaction_id(message)
 

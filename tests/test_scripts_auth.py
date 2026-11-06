@@ -325,7 +325,7 @@ def test_check_scenarios_chat_sends_bearer_header(monkeypatch):
 def test_check_scenarios_reports_http_diagnostics(monkeypatch, capsys, status_code, expected_text):
     module = _load_script_module("check_scenarios.py", f"check_scenarios_mod_http_{status_code}")
 
-    def failing_chat(_message, user_id="cliente1988"):
+    def failing_chat(_message, user_id="cliente1988", session_id=None):
         raise urllib.error.HTTPError(
             url="http://localhost:8000/chat",
             code=status_code,

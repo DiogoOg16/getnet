@@ -234,6 +234,10 @@ def chat(
         limit=5,
     )
     routing_context = contextual_reference
+    pending_followup = session_memory.get_pending_followup(
+        user_id=authenticated_user_id,
+        session_id=session_key,
+    )
 
     memory_direct_answer = session_memory.answer_from_context(
         user_id=authenticated_user_id,
@@ -269,6 +273,7 @@ def chat(
             request_id=request_id,
             routing_context=routing_context,
             conversation_context=recent_context,
+            pending_followup=pending_followup,
         )
         decision = execution.decision
         result = execution.result
@@ -285,11 +290,26 @@ def chat(
         ]
 
     if result.get("handoff_required") and result.get("step_status") == "handoff":
-        ticket = handoff_store.create(
-            user_id=authenticated_user_id,
-            session_id=session_key,
-            message=request.message,
-        )
+        handoff_flow = result.get("handoff_flow")
+        ticket = None
+        if handoff_flow:
+            ticket = handoff_store.find_active_for_session(
+                user_id=authenticated_user_id,
+                session_id=session_key,
+                flow=handoff_flow,
+            )
+        if ticket:
+            result["response"] = (
+                "Já existe um atendimento humano aberto para este problema. "
+                f"Ticket: {ticket['id']}."
+            )
+        else:
+            ticket = handoff_store.create(
+                user_id=authenticated_user_id,
+                session_id=session_key,
+                message=result.get("handoff_message") or request.message,
+                flow=handoff_flow,
+            )
         result["handoff"] = ticket
         result["flow_completed"] = True
         result["response_delivered"] = bool(result.get("response"))
@@ -319,6 +339,7 @@ def chat(
         session_id=session_key,
         message=request.message,
         response=result.get("response", ""),
+        pending_followup=result.get("pending_followup"),
     )
 
     total_latency_ms = int((time.perf_counter() - started_at) * 1000)

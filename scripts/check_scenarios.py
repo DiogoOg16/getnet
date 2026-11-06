@@ -7,6 +7,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,11 +36,14 @@ SCENARIOS = [
 ]
 
 
-def chat(message, user_id="cliente1988"):
+def chat(message, user_id="cliente1988", session_id=None):
     token = _resolve_token_for_user(user_id)
+    payload = {"message": message, "user_id": user_id}
+    if session_id:
+        payload["session_id"] = session_id
     request = urllib.request.Request(
         f"{BASE}/chat",
-        data=json.dumps({"message": message, "user_id": user_id}).encode(),
+        data=json.dumps(payload).encode(),
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}",
@@ -88,11 +92,15 @@ def main() -> None:
         print(f"ERRO DE CONFIGURAÇÃO: {error}", file=sys.stderr)
         raise SystemExit(2) from error
 
+    run_id = uuid.uuid4().hex[:8]
     for number, message in enumerate(SCENARIOS, start=1):
+        # Sessão exclusiva: nenhum histórico ou ticket herdado de outro cenário.
+        session_id = f"scenario-{run_id}-{number:02d}"
         print("=" * 72)
         print(f"[{number}] {message}")
+        print(f"   session_id={session_id}")
         try:
-            data = chat(message)
+            data = chat(message, session_id=session_id)
         except urllib.error.HTTPError as error:
             if error.code == 401:
                 print("   ERRO HTTP 401: autenticação inválida ou ausente.")

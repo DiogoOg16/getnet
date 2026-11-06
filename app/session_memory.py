@@ -56,13 +56,14 @@ class SessionMemory:
                 timestamp = entry.get("timestamp")
                 if not message and not response:
                     continue
-                cleaned[key].append(
-                    {
-                        "message": message,
-                        "response": response,
-                        "timestamp": timestamp,
-                    }
-                )
+                cleaned_entry = {
+                    "message": message,
+                    "response": response,
+                    "timestamp": timestamp,
+                }
+                if isinstance(entry.get("pending_followup"), dict):
+                    cleaned_entry["pending_followup"] = entry["pending_followup"]
+                cleaned[key].append(cleaned_entry)
         return cleaned
 
     def _save(self) -> None:
@@ -104,6 +105,7 @@ class SessionMemory:
         message: str,
         response: str,
         session_id: str | None = None,
+        pending_followup: dict | None = None,
     ) -> None:
         key = self._session_key(user_id, session_id)
         entry = {
@@ -111,6 +113,8 @@ class SessionMemory:
             "response": response.strip(),
             "timestamp": datetime.now().isoformat(timespec="seconds"),
         }
+        if pending_followup:
+            entry["pending_followup"] = pending_followup
 
         if key not in self._store:
             self._store[key] = []
@@ -140,6 +144,20 @@ class SessionMemory:
             if response:
                 context.append(f"Assistente: {response}")
         return context
+
+    def get_pending_followup(
+        self,
+        *,
+        user_id: str,
+        session_id: str | None = None,
+    ) -> dict | None:
+        """Retorna o fluxo pendente do último turno; vale por um único turno."""
+        key = self._session_key(user_id, session_id)
+        self._prune_expired(user_id, session_id)
+        entries = self._store.get(key, [])
+        if not entries:
+            return None
+        return entries[-1].get("pending_followup")
 
     @staticmethod
     def _normalize_reference_text(value: str) -> str:

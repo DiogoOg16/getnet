@@ -170,8 +170,122 @@ KNOWLEDGE = _compile((
 ))
 
 
+# Continuidade de um fluxo de suporte que aguarda detalhes do usuário.
+FOLLOWUP_CONTINUATION = _compile((
+    r"\bcontinua\b",
+    r"\bsegue (?:igual|sem|com)\b",
+    r"\bmesm[ao] (?:coisa|problema|erro)\b",
+    r"\breinici",
+    r"\bja tentei\b",
+    r"\bstill\b",
+    r"\bsame (?:issue|problem|error|thing)\b",
+    r"\brestart",
+    r"\breboot",
+    r"\balready tried\b",
+))
+
+# Negações mudam o sentido: "não resolveu" é continuidade, "resolveu" é encerramento.
+FOLLOWUP_NEGATED_RESOLUTION = _compile((
+    r"\bnao (?:\w+ )?(?:resolv\w*|funcion\w*|conect\w*|voltou\w*|deu certo|consegui\w*)",
+    r"\b(?:didn'?t|doesn'?t|not|hasn'?t|isn'?t) (?:\w+ )?(?:work\w*|help\w*|fix\w*|solv\w*|resolv\w*|connect\w*)",
+))
+
+FOLLOWUP_RESOLUTION = _compile((
+    r"\bresolv\w*",
+    r"\bfuncion(?:ou|ando)\b",
+    r"\bvoltou a (?:funcionar|conectar|ligar)\b",
+    r"\bvoltou ao normal\b",
+    r"\b(?:internet|sinal|rede|conexao|wi-?fi) voltou\b",
+    r"\bconect(?:ou|ando)\b",
+    r"\bdeu certo\b",
+    r"\bconsegui\b",
+    r"\b(?:solved|resolved|fixed)\b",
+    r"\bworking (?:now|again)\b",
+    r"\bworks now\b",
+    r"\bback online\b",
+    r"\bconnected\b",
+))
+
+FOLLOWUP_CONNECTIVITY = _compile((
+    r"\bwi-?fi\b",
+    r"\brede\b",
+    r"\bsinal\b",
+    r"\binternet\b",
+    r"\bchip\b",
+    r"\bconect",
+    r"\bconexao\b",
+    r"\bnetwork\b",
+    r"\bsignal\b",
+    r"\bconnect",
+    r"\bmaquin",
+    r"\bterminal\b",
+    r"\bcard machine\b",
+))
+
+FOLLOWUP_GENERIC_DETAIL = _compile((
+    r"\btela\b",
+    r"\berro\b",
+    r"\bmensagem\b",
+    r"\bscreen\b",
+    r"\berror\b",
+))
+
+# Assunto próprio: sem sinal de conectividade, não pertence ao fluxo pendente.
+FOLLOWUP_OTHER_TOPIC = _compile((
+    r"\bsaldo\b",
+    r"\bpagamento",
+    r"\bdinheiro\b",
+    r"\bdeposit",
+    r"\brecebiment",
+    r"\btaxas?\b",
+    r"\bpix\b",
+    r"\bantecip",
+    r"\blink\b",
+    r"\bcrediario\b",
+    r"\bparcel",
+    r"\bconta\b",
+    r"\bcadastro\b",
+    r"\btransac",
+    r"\bvendas?\b",
+    r"\bbalance\b",
+    r"\bpayment",
+    r"\bfees?\b",
+    r"\baccount\b",
+    r"\bsales?\b",
+))
+
+
 class RouterAgent:
     """Routes incoming messages using explicit, rule-based intent patterns."""
+
+    @staticmethod
+    def continues_pending_flow(decision: RoutingDecision, message: str) -> bool:
+        """Decide se a mensagem atual continua um fluxo pendente.
+
+        Uma intenção nova e explícita sempre vence a continuidade.
+        """
+        text = normalize(message)
+        if TRANSACTION_ID.search(text):
+            return False
+
+        negated = bool(FOLLOWUP_NEGATED_RESOLUTION.search(text))
+        if FOLLOWUP_RESOLUTION.search(FOLLOWUP_NEGATED_RESOLUTION.sub(" ", text)):
+            return False
+
+        is_fallback = decision.agent == "fallback"
+        if not is_fallback and (
+            decision.agent not in {"knowledge", "customer_support"} or "?" in text
+        ):
+            return False
+
+        continuation = negated or bool(FOLLOWUP_CONTINUATION.search(text))
+        if FOLLOWUP_CONNECTIVITY.search(text):
+            return is_fallback or continuation
+        if FOLLOWUP_OTHER_TOPIC.search(text):
+            return False
+        return continuation or (
+            is_fallback and bool(FOLLOWUP_GENERIC_DETAIL.search(text))
+        )
 
     @staticmethod
     def _is_short_reference(message: str) -> bool:

@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -89,12 +90,20 @@ def _build_auth_headers(user_id: str) -> dict[str, str]:
 def run_validation() -> list[dict]:
     client = TestClient(app)
     results = []
+    run_id = uuid.uuid4().hex[:8]
 
     for scenario in SCENARIOS:
         headers = _build_auth_headers(scenario["user_id"])
+        # Sessão exclusiva por padrão. Cenários com vários turnos podem
+        # compartilhar sessão declarando o mesmo "session_id" explicitamente.
+        session_id = scenario.get("session_id") or f"validation-{run_id}-{scenario['name']}"
         response = client.post(
             "/chat",
-            json={"message": scenario["message"], "user_id": scenario["user_id"]},
+            json={
+                "message": scenario["message"],
+                "user_id": scenario["user_id"],
+                "session_id": session_id,
+            },
             headers=headers,
         )
 
@@ -107,6 +116,7 @@ def run_validation() -> list[dict]:
             "input": {
                 "message": scenario["message"],
                 "user_id": scenario["user_id"],
+                "session_id": session_id,
             },
             "http_status": response.status_code,
             "auth_error": auth_error,

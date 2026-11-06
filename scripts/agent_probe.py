@@ -72,6 +72,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Identificador do cliente para a API.",
     )
     parser.add_argument(
+        "--session-id",
+        default=None,
+        help="Sessão a reutilizar para testar conversas com vários turnos.",
+    )
+    parser.add_argument(
         "--log",
         action="store_true",
         help="Salva a resposta em um arquivo .txt no diretório logs/.",
@@ -91,10 +96,10 @@ def main() -> None:
 
     headers = _build_auth_headers(args.user_id)
     client = TestClient(app, headers=headers)
-    response = client.post(
-        "/chat",
-        json={"message": message, "user_id": args.user_id},
-    )
+    payload = {"message": message, "user_id": args.user_id}
+    if args.session_id:
+        payload["session_id"] = args.session_id
+    response = client.post("/chat", json=payload)
 
     if response.status_code == 401:
         raise RuntimeError("Falha de autenticação (401) ao chamar /chat.")

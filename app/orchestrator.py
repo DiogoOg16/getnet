@@ -7,7 +7,10 @@ from dataclasses import dataclass
 
 logger = logging.getLogger("getnet_orchestrator")
 
-from app.agents.customer_support import CustomerSupportAgent
+from app.agents.customer_support import (
+    TERMINAL_CONNECTIVITY_FLOW,
+    CustomerSupportAgent,
+)
 from app.agents.knowledge import KnowledgeAgent
 from app.agents.router import RouterAgent, RoutingDecision
 from app.agents.web_search import WebSearchAgent
@@ -63,24 +66,30 @@ class ChatOrchestrator:
         self.web_search = WebSearchAgent()
 
     @staticmethod
-    def _with_context(message: str, conversation_context: list[str] | None = None) -> str:
-        if not conversation_context:
-            return message
+    def _generation_context(conversation_history: list[str] | None = None) -> str:
+        """Falas recentes do usuário para a geração; nunca entram em busca ou ferramentas.
 
-        context_lines = [
+        As respostas anteriores do assistente ficam de fora: recusas antigas
+        ("não encontrei informações") induziam o modelo a recusar de novo.
+        """
+        lines = [
             line.strip()
-            for line in conversation_context
-            if isinstance(line, str) and line.strip()
+            for line in conversation_history or []
+            if isinstance(line, str) and line.strip().startswith("Usuário:")
         ]
-        if not context_lines:
-            return message
+        return "\n".join(lines)
 
-        return (
-            "Contexto recente da conversa:\n"
-            + "\n".join(context_lines)
-            + "\n\nPergunta atual: "
-            + message
-        )
+    def _resumes_pending_flow(
+        self,
+        decision: RoutingDecision,
+        message: str,
+        pending_followup: dict | None,
+    ) -> bool:
+        if not pending_followup:
+            return False
+        if pending_followup.get("flow") != TERMINAL_CONNECTIVITY_FLOW:
+            return False
+        return self.router.continues_pending_flow(decision, message)
 
     @staticmethod
     def _normalize_text(message: str) -> str:
@@ -150,17 +159,30 @@ class ChatOrchestrator:
         message: str,
         user_id: str,
         verified_facts: list[dict] | None = None,
+        generation_context: str = "",
+        resumed_followup: dict | None = None,
     ) -> dict:
         if step.agent == "knowledge":
             parameters = inspect.signature(self.knowledge.answer).parameters
-            if "verified_facts" in parameters or any(
+            accepts_any = any(
                 parameter.kind == inspect.Parameter.VAR_KEYWORD
                 for parameter in parameters.values()
+            )
+            kwargs = {}
+            if "verified_facts" in parameters or accepts_any:
+                kwargs["verified_facts"] = verified_facts
+            if generation_context and (
+                "generation_context" in parameters or accepts_any
             ):
-                return self.knowledge.answer(message, verified_facts=verified_facts)
-            return self.knowledge.answer(message)
+                kwargs["generation_context"] = generation_context
+            return self.knowledge.answer(message, **kwargs)
 
         if step.agent == "customer_support":
+            if resumed_followup:
+                return self.support.escalate_terminal_connectivity(
+                    resumed_followup.get("original_message", ""),
+                    message,
+                )
             return self.support.answer(message=message, user_id=user_id)
 
         if step.agent == "web_search":
@@ -346,13 +368,37 @@ class ChatOrchestrator:
         request_id: str | None = None,
         routing_context: str | None = None,
         conversation_context: list[str] | None = None,
+        pending_followup: dict | None = None,
     ) -> ChatExecution:
         current_message = message
-        execution_message = self._with_context(current_message, conversation_context)
+        conversation_history = conversation_context
+        # Referências curtas ("e essa?") usam somente a pergunta anterior já
+        # resolvida; o histórico completo não vira consulta nem argumento.
+        agent_message = routing_context or current_message
+        # A geração só recebe histórico quando a pergunta depende dele: em
+        # pergunta nova, falas antigas faziam o modelo recusar sem motivo.
+        generation_context = (
+            self._generation_context(conversation_history)
+            if routing_context
+            else ""
+        )
+
         if routing_context is None:
             decision, plan = self.create_plan(current_message)
         else:
             decision, plan = self.create_plan(current_message, routing_context)
+
+        resumed_followup = None
+        if self._resumes_pending_flow(decision, current_message, pending_followup):
+            resumed_followup = pending_followup
+            decision = RoutingDecision(
+                agent="customer_support",
+                reason="The message continues a support flow awaiting user details.",
+            )
+            plan = ExecutionPlan(
+                steps=(PlanStep(agent=decision.agent, reason=decision.reason),),
+                max_steps=3,
+            )
 
         executed_steps: list[str] = []
         results: list[dict] = []
@@ -364,9 +410,11 @@ class ChatOrchestrator:
             try:
                 step_result = self._execute_step(
                     step,
-                    execution_message,
+                    agent_message,
                     user_id,
                     verified_facts=shared_verified_facts,
+                    generation_context=generation_context,
+                    resumed_followup=resumed_followup,
                 )
                 shared_verified_facts.extend(step_result.get("verified_facts", []))
                 results.append(step_result)

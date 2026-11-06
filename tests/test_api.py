@@ -349,7 +349,7 @@ def test_orchestrator_keeps_current_message_and_routing_context_separate(monkeyp
     assert execution.decision.agent == "customer_support"
 
 
-def test_orchestrator_executes_original_message_with_execution_context(monkeypatch):
+def test_orchestrator_resolves_short_reference_without_full_history(monkeypatch):
     seen = {}
 
     def fake_answer(self, message: str, user_id: str):
@@ -371,14 +371,14 @@ def test_orchestrator_executes_original_message_with_execution_context(monkeypat
         "E essa?",
         "cliente1988",
         routing_context="Qual o status da transação txn1001?",
-        conversation_context=["Usuário: Qual o status da transação txn1001?"],
+        conversation_context=[
+            "Usuário: Qual o status da transação txn1001?",
+            "Assistente: A transação txn1001 está aprovada.",
+        ],
     )
 
     assert execution.result["agent"] == "customer_support"
-    lower_message = seen["message"].lower()
-    assert "pergunta atual: e essa" in lower_message
-    assert "qual o status da transação txn1001" in lower_message
-    assert lower_message.count("txn1001") >= 1
+    assert seen["message"] == "Qual o status da transação txn1001?"
 
 
 def test_chat_current_intent_wins_after_mixed_history_topics():
