@@ -232,6 +232,30 @@ def test_agent_detects_terminal_connectivity_issue_and_requests_missing_context(
     assert "mensagem" in result["response"].lower() or "sinal" in result["response"].lower()
 
 
+def test_agent_detects_terminal_connectivity_issue_in_english():
+    result = CustomerSupportAgent().answer(
+        "My card machine won't connect to the internet, what should I do?",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert result["awaiting_user_input"] is True
+    assert result["handoff_required"] is False
+    normalized = result["response"].lower()
+    assert "wi-fi" in normalized or "rede" in normalized or "sinal" in normalized
+
+
+def test_agent_does_not_treat_non_connectivity_device_question_as_troubleshooting():
+    result = CustomerSupportAgent().answer(
+        "My card machine supports contactless payments?",
+        "cliente1988",
+    )
+
+    assert result["agent"] == "customer_support"
+    assert result["tool_used"] is None
+    assert "diagnóstico de conectividade" not in result["response"].lower()
+
+
 def test_agent_extracts_explicit_terminal_context_from_message():
     context = CustomerSupportAgent()._extract_terminal_context(
         "Minha maquininha não conecta na internet, Wi‑Fi indisponível e mostra erro de rede.",

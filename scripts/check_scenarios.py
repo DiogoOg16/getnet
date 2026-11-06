@@ -7,6 +7,13 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.env_bootstrap import load_local_env
 
 BASE = (
     sys.argv[1]
@@ -74,6 +81,7 @@ def _resolve_token_for_user(user_id: str) -> str:
 
 
 def main() -> None:
+    load_local_env()
     try:
         _load_auth_tokens()
     except RuntimeError as error:
@@ -103,5 +111,13 @@ def main() -> None:
         print(f"   resposta: {text[:220]}{'…' if len(text) > 220 else ''}")
 
 
+def run_cli() -> int:
+    try:
+        main()
+    except SystemExit as error:
+        return int(error.code) if isinstance(error.code, int) else 1
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_cli())

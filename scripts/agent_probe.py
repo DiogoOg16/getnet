@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.main import app
+from scripts.env_bootstrap import load_local_env
 
 
 def _load_auth_tokens() -> dict[str, str]:
@@ -84,6 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    load_local_env()
     args = build_parser().parse_args()
     message = " ".join(args.message)
 
@@ -116,5 +118,14 @@ def main() -> None:
         print(f"\n[LOG] Resposta salva em: {file_path}")
 
 
+def run_cli() -> int:
+    try:
+        main()
+    except RuntimeError as error:
+        print(f"ERRO DE CONFIGURACAO: {error}", file=sys.stderr)
+        return 2
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_cli())

@@ -10,3 +10,4 @@ logs/
 .session_memory.json
 logs/agent_probe_*.txt
 logs/validation_*.json
+app/rag/documents/*.backup.jsonl

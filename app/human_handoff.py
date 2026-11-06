@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -69,7 +69,7 @@ class HumanHandoffStore:
             raise ValueError("user_id e session_id são obrigatórios.")
 
         ticket_id = uuid.uuid4().hex[:12]
-        now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         record = {
             "id": ticket_id,
             "user_id": user_id,
@@ -140,7 +140,7 @@ class HumanHandoffStore:
 
         record["status"] = "assigned"
         record["assignee"] = assignee.strip()
-        record["updated_at"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        record["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         self._save()
         return record.copy()
 
@@ -157,6 +157,6 @@ class HumanHandoffStore:
 
         record["status"] = "completed"
         record["resolution"] = resolution.strip()
-        record["updated_at"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        record["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         self._save()
         return record.copy()

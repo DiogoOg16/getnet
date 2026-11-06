@@ -114,6 +114,18 @@ def test_agent_probe_fails_without_token_config(monkeypatch):
         module._load_auth_tokens()
 
 
+def test_agent_probe_run_cli_returns_non_zero_without_token_config(monkeypatch, capsys):
+    module = _load_script_module("agent_probe.py", "agent_probe_mod_cli_missing_env")
+    monkeypatch.delenv("GETNET_DEMO_AUTH_TOKENS", raising=False)
+    monkeypatch.setattr(module, "load_local_env", lambda: None)
+    monkeypatch.setattr(sys, "argv", ["agent_probe.py", "olá"])
+
+    exit_code = module.run_cli()
+
+    assert exit_code != 0
+    assert "ERRO DE CONFIGURACAO" in capsys.readouterr().err
+
+
 def test_validate_functionality_uses_bearer_and_classifies_401(monkeypatch):
     module = _load_script_module("validate_functionality.py", "validate_mod_401")
     monkeypatch.setenv(
@@ -262,6 +274,17 @@ def test_validate_functionality_fails_without_token_config(monkeypatch):
         module.run_validation()
 
 
+def test_validate_functionality_run_cli_returns_non_zero_without_token_config(monkeypatch, capsys):
+    module = _load_script_module("validate_functionality.py", "validate_mod_cli_missing_env")
+    monkeypatch.delenv("GETNET_DEMO_AUTH_TOKENS", raising=False)
+    monkeypatch.setattr(module, "load_local_env", lambda: None)
+
+    exit_code = module.run_cli()
+
+    assert exit_code != 0
+    assert "ERRO DE CONFIGURACAO" in capsys.readouterr().err
+
+
 def test_check_scenarios_chat_sends_bearer_header(monkeypatch):
     module = _load_script_module("check_scenarios.py", "check_scenarios_mod_headers")
     monkeypatch.setenv(
@@ -330,6 +353,7 @@ def test_check_scenarios_fails_without_token_config(monkeypatch):
 def test_check_scenarios_main_fails_fast_without_token_config(monkeypatch, capsys):
     module = _load_script_module("check_scenarios.py", "check_scenarios_mod_main_missing_env")
     monkeypatch.delenv("GETNET_DEMO_AUTH_TOKENS", raising=False)
+    monkeypatch.setattr(module, "load_local_env", lambda: None)
 
     with pytest.raises(SystemExit) as exc_info:
         module.main()
@@ -338,3 +362,13 @@ def test_check_scenarios_main_fails_fast_without_token_config(monkeypatch, capsy
     err_output = capsys.readouterr().err
     assert "ERRO DE CONFIGURAÇÃO" in err_output
     assert "GETNET_DEMO_AUTH_TOKENS" in err_output
+
+
+def test_check_scenarios_run_cli_returns_non_zero_without_token_config(monkeypatch):
+    module = _load_script_module("check_scenarios.py", "check_scenarios_mod_run_cli_missing_env")
+    monkeypatch.delenv("GETNET_DEMO_AUTH_TOKENS", raising=False)
+    monkeypatch.setattr(module, "load_local_env", lambda: None)
+
+    exit_code = module.run_cli()
+
+    assert exit_code != 0

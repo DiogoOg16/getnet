@@ -151,16 +151,25 @@ O modelo padrão é `qwen2.5:7b`. O uso do Ollama é opcional.
 
 Execute os comandos a partir da raiz do repositório, onde estão `requirements.txt` e `app/`.
 
-### 1. Criar e instalar o ambiente
+### 1. Preparar variáveis de ambiente
+
+```bash
+cp -n .env.example .env
+```
+
+### 2. Criar e instalar o ambiente
 
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
+set -a
+source .env
+set +a
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 2. Iniciar a API
+### 3. Iniciar a API
 
 ```bash
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -168,7 +177,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 A API ficará disponível em `http://127.0.0.1:8000`. A documentação interativa do FastAPI fica em `http://127.0.0.1:8000/docs`.
 
-### 3. Verificar a aplicação
+### 4. Verificar a aplicação
 
 Em outro terminal:
 
@@ -270,6 +279,8 @@ curl -s http://127.0.0.1:8000/health
 ### `POST /chat`
 
 Recebe uma mensagem e o identificador do usuário.
+
+O enunciado do desafio define `message` e `user_id` no corpo da requisição. Nesta implementação, o endpoint também exige autenticação Bearer. A identidade autenticada pelo token é validada contra o `user_id` enviado no payload para impedir acesso cruzado entre clientes.
 
 Exemplo de requisição:
 
@@ -444,9 +455,20 @@ python scripts/validate_functionality.py
 python scripts/check_scenarios.py
 ```
 
+Antes de executar os scripts, garanta que as variáveis estejam disponíveis no shell:
+
+```bash
+cp -n .env.example .env
+set -a
+source .env
+set +a
+```
+
 - `agent_probe.py`: permite inspecionar respostas de agentes; a geração real depende da disponibilidade do Ollama.
 - `validate_functionality.py`: executa cenários de validação funcional e grava resultados em `logs/`.
 - `check_scenarios.py`: auxilia na verificação de cenários de roteamento.
+
+Os três scripts utilizam `GETNET_DEMO_AUTH_TOKENS` para montar o cabeçalho `Authorization: Bearer ...`. Sem essa configuração, a execução termina com código diferente de zero.
 
 Consulte o código dos scripts para opções e comportamento detalhados.
 
@@ -488,7 +510,7 @@ python -m pytest -v tests/test_customer_support_integration_real.py
 4. Subir aplicação com Docker Compose
 
 ```bash
-cp .env.example .env
+cp -n .env.example .env
 docker compose up --build -d
 docker compose ps
 ```
@@ -555,22 +577,48 @@ Os logs atuais são voltados à depuração. O projeto ainda não implementa das
 
 ```text
 .
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── app/
 │   ├── agents/
 │   │   ├── router.py
 │   │   ├── knowledge.py
 │   │   ├── customer_support.py
 │   │   └── web_search.py
+│   ├── llm/
+│   │   ├── ollama_client.py
+│   │   ├── ollama_function_calling.py
+│   │   └── ollama_tools.py
 │   ├── rag/
 │   │   ├── documents/
 │   │   │   └── getnet_sources.jsonl
 │   │   ├── ingest.py
 │   │   └── retriever.py
 │   ├── tools/
+│   │   ├── customer_tools.py
+│   │   ├── exchange_rate.py
+│   │   ├── registry.py
+│   │   └── weather.py
+│   ├── auth.py
+│   ├── human_handoff.py
 │   ├── orchestrator.py
+│   ├── session_memory.py
+│   ├── verified_facts.py
 │   └── main.py
+├── docs/
+├── eval/
 ├── scripts/
+│   ├── agent_probe.py
+│   ├── check_scenarios.py
+│   └── validate_functionality.py
 ├── tests/
+│   ├── acceptance/
+│   ├── conftest.py
+│   ├── test_api.py
+│   ├── test_customer_support.py
+│   ├── test_router.py
+│   └── test_scripts_auth.py
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt

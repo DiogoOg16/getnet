@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.main import app
+from scripts.env_bootstrap import load_local_env
 
 SCENARIOS = [
     {
@@ -122,6 +123,7 @@ def run_validation() -> list[dict]:
 
 
 def main() -> None:
+    load_local_env()
     results = run_validation()
     output_dir = ROOT / "logs"
     output_dir.mkdir(exist_ok=True)
@@ -133,5 +135,14 @@ def main() -> None:
     print(f"\n[LOG] Resultados salvos em: {output_file}")
 
 
+def run_cli() -> int:
+    try:
+        main()
+    except RuntimeError as error:
+        print(f"ERRO DE CONFIGURACAO: {error}", file=sys.stderr)
+        return 2
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_cli())
