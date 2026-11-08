@@ -1,0 +1,509 @@
+{
+  "commit": "848ca9f",
+  "consultas": [
+    {
+      "consulta": "What's the difference between the Get Clássica and the Get Smart?",
+      "pt": true,
+      "top3": [
+        "Maquininhas Get Clássica e Get Smart: valor mensal de utilização",
+        "Qual a diferença entre Get Smart e TEF móvel?",
+        "Quais os diferenciais de uma Get Smart?"
+      ]
+    },
+    {
+      "consulta": "What's the weather forecast in Porto Alegre tomorrow?",
+      "pt": false,
+      "top3": []
+    },
+    {
+      "consulta": "When will the money from yesterday's sales be deposited?",
+      "pt": false,
+      "top3": [
+        "Quando e como vou receber os valores das minhas vendas realizadas?"
+      ]
+    },
+    {
+      "consulta": "Do I need a bank account to receive my sales via Pix?",
+      "pt": false,
+      "top3": [
+        "O que é o Pix? E quais as vantagens?",
+        "O que é a Get Conta? Quais os benefícios?",
+        "Pix"
+      ]
+    },
+    {
+      "consulta": "My card machine won't connect to the internet, what should I do?",
+      "pt": false,
+      "top3": [
+        "É preciso ter acesso a internet para utilizar o Get Tap?"
+      ]
+    },
+    {
+      "consulta": "How does receivables advance (antecipação) work with Getnet?",
+      "pt": true,
+      "top3": [
+        "Como antecipar suas vendas pelo app - Getnet",
+        "Sou cliente Getnet, tenho um POS 3G + Wi-Fi Aluguel com Antecipação Automática e peço uma Getnet com Receba Já. Qual taxa prevalece?",
+        "Quais canais posso utilizar para antecipar as vendas?"
+      ]
+    },
+    {
+      "consulta": "What's the euro exchange rate today?",
+      "pt": false,
+      "top3": [
+        "Qual é a taxa cobrada para os cartões de benefícios e regionais?",
+        "Há alguma taxa extra para usar o Aplicativo Getnet Brasil?",
+        "Ao contratar a taxa de Receba Já poderei realizar vendas com cartão de débito?"
+      ]
+    },
+    {
+      "consulta": "My card machine is showing a transaction decline error.",
+      "pt": false,
+      "top3": [
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Possíveis status das suas vendas com Pix:"
+      ]
+    },
+    {
+      "consulta": "How many installments can I split a sale into with the crediário?",
+      "pt": true,
+      "top3": [
+        "Crediário: vantagens",
+        "Qualquer estabelecimento pode ter o Crediário? E se eu não quiser ter o produto?",
+        "Como eu contrato o Crediário e qual a taxa?"
+      ]
+    },
+    {
+      "consulta": "Can I sell through WhatsApp using the Payment Link?",
+      "pt": false,
+      "top3": [
+        "Como o Link de Pagamento pode ser enviado?",
+        "Link de Pagamento: benefícios",
+        "Link de Pagamento: como criar e compartilhar"
+      ]
+    },
+    {
+      "consulta": "Como funciona o Pix?",
+      "pt": true,
+      "top3": [
+        "O que é Pix agendado? Como faço o agendamento do Pix?",
+        "O que é Pix Saque e Pix Troco?",
+        "Como funciona o Pix na Getnet?"
+      ]
+    },
+    {
+      "consulta": "Como habilitar e vender via Pix usando o Get Tap?",
+      "pt": true,
+      "top3": [
+        "Como vender via Pix por aproximação pelo Get Tap?",
+        "Como habilitar e vender via Pix pelo Get Tap",
+        "Usar o Pix pelo Get Tap ajuda a evitar filas?"
+      ]
+    },
+    {
+      "consulta": "Como vender via Pix por QR Code?",
+      "pt": true,
+      "top3": [
+        "Como receber por QR Code?",
+        "Como realizar o pagamento com QR Code?",
+        "Possíveis status das suas vendas com Pix:"
+      ]
+    },
+    {
+      "consulta": "Quais plugins a Getnet trabalha?",
+      "pt": true,
+      "top3": [
+        "1. VTEX",
+        "2. MAGENTO",
+        "3. WOOCOMMERCE"
+      ]
+    },
+    {
+      "consulta": "Qual é o significado do erro ADQ 4-83 na maquininha?",
+      "pt": true,
+      "top3": [
+        "Erro ADQ 4-83: erro de integração com as bandeiras - Getnet",
+        "Erro ADQ 4-30: falha na comunicação na maquininha - Getnet",
+        "Erro ADQ 4-27: erro na comunicação dos sistemas - Getnet"
+      ]
+    },
+    {
+      "consulta": "Por que minha transação foi recusada?",
+      "pt": true,
+      "top3": [
+        "Possíveis status das suas vendas com Pix:",
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Como utilizar o Pix ¶"
+      ]
+    },
+    {
+      "consulta": "Quais são os possíveis status das minhas vendas?",
+      "pt": true,
+      "top3": [
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Posso consultar o status de uma transação?",
+        "Possíveis status das suas vendas com Pix:"
+      ]
+    },
+    {
+      "consulta": "Minha maquininha não conecta à internet, o que faço?",
+      "pt": true,
+      "top3": []
+    },
+    {
+      "consulta": "Como funciona a antecipação de recebíveis?",
+      "pt": true,
+      "top3": [
+        "O que é antecipação de vendas?",
+        "Qual a taxa para Antecipação Automática?",
+        "Quais canais posso utilizar para antecipar as vendas?"
+      ]
+    },
+    {
+      "consulta": "Qual o status da transação txn1001?",
+      "pt": true,
+      "top3": [
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Posso consultar o status de uma transação?",
+        "Possíveis status das suas vendas com Pix:"
+      ]
+    },
+    {
+      "consulta": "Como funciona o Pix na Getnet?",
+      "pt": true,
+      "top3": [
+        "Como funciona o Pix na Getnet?",
+        "Como fazer uma venda com Pix na maquininha? - Getnet",
+        "Como habilitar o recebimento de vendas via pix no aplicativo Getnet Brasil - Getnet"
+      ]
+    },
+    {
+      "consulta": "Qual a previsão do tempo em Porto Alegre amanhã?",
+      "pt": true,
+      "top3": [
+        "O que devo fazer para receber o desconto previsto na condição comercial contratada?",
+        "Como funciona o modelo gorjeta e o comissão?"
+      ]
+    },
+    {
+      "consulta": "Preciso falar com um humano sobre dados sensíveis do meu cadastro.",
+      "pt": true,
+      "top3": [
+        "Como adicionar um Contato de Confiança?",
+        "É possível cadastrar duas contas bancárias diferentes para o mesmo contato de confiança?",
+        "Como faço para contratar um TEF?"
+      ]
+    },
+    {
+      "consulta": "Me conte uma curiosidade sobre a Roma antiga.",
+      "pt": false,
+      "top3": [
+        "Quando posso contestar uma transação?",
+        "Troquei de celular, como acesso o Get Tap novamente?",
+        "Quantas tecnologias posso adquirir?"
+      ]
+    },
+    {
+      "consulta": "Pode me ajudar?",
+      "pt": false,
+      "top3": [
+        "Usar o Pix pelo Get Tap ajuda a evitar filas?",
+        "Com quais Plugins Digitais a Getnet trabalha ajuda - Getnet",
+        "O que é gravame e o que ele muda na minha forma de receber dinheiro?"
+      ]
+    },
+    {
+      "consulta": "Qual o clima de amanhã e o status da transação txn1001?",
+      "pt": true,
+      "top3": [
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Posso consultar o status de uma transação?",
+        "Possíveis status das suas vendas com Pix:"
+      ]
+    },
+    {
+      "consulta": "Minha transação txn1001 foi recusada, por que isso acontece e como resolver?",
+      "pt": true,
+      "top3": [
+        "Possíveis status das suas vendas com Pix:",
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Como utilizar o Pix ¶"
+      ]
+    },
+    {
+      "consulta": "Não recebi o dinheiro das vendas de ontem, quando cai?",
+      "pt": true,
+      "top3": [
+        "Quando e como vou receber os valores das minhas vendas realizadas?",
+        "O que é gravame e o que ele muda na minha forma de receber dinheiro?",
+        "O que é a Getnet?"
+      ]
+    },
+    {
+      "consulta": "Qual a cotação do euro hoje?",
+      "pt": true,
+      "top3": []
+    },
+    {
+      "consulta": "Posso vender pelo WhatsApp usando Link de Pagamento?",
+      "pt": true,
+      "top3": [
+        "Como o Link de Pagamento pode ser enviado?",
+        "Apenas clientes pessoas jurídicas podem usar Link de Pagamento?",
+        "Link de Pagamento: benefícios"
+      ]
+    },
+    {
+      "consulta": "Qual a diferença entre Get Clássica e Get Smart?",
+      "pt": true,
+      "top3": [
+        "Qual a diferença entre Get Smart e TEF móvel?",
+        "Maquininhas Get Clássica e Get Smart: valor mensal de utilização",
+        "Quais os diferenciais de uma Get Smart?"
+      ]
+    },
+    {
+      "consulta": "Minha maquininha não conecta na internet, o que fazer?",
+      "pt": true,
+      "top3": []
+    },
+    {
+      "consulta": "Meu cartão é 4111 1111 1111 1111, preciso ajuda agora.",
+      "pt": true,
+      "top3": [
+        "Como eu sei se o cartão solicitado já foi habilitado em minha maquininha?",
+        "Link de Pagamento: planos e custos"
+      ]
+    },
+    {
+      "consulta": "A Getnet tem o produto UltraZXQW-999 com antifraude quântico?",
+      "pt": false,
+      "top3": [
+        "Link de Pagamento: benefícios",
+        "Comprei/Aluguei uma Getnet, onde vejo as taxas do crédito parcelado?"
+      ]
+    },
+    {
+      "consulta": "Quero falar com um atendente humano agora.",
+      "pt": false,
+      "top3": [
+        "Link de Pagamento: planos e custos"
+      ]
+    },
+    {
+      "consulta": "Qual foi o nome que eu disse agora?",
+      "pt": true,
+      "top3": [
+        "Qual é a diferença entre Gravame e Cessão?",
+        "O que é gravame e como ele funciona?",
+        "O que mudou na Antecipação?"
+      ]
+    },
+    {
+      "consulta": "Qual foi o nome que eu disse?",
+      "pt": true,
+      "top3": [
+        "Qual é a diferença entre Gravame e Cessão?",
+        "O que é gravame e como ele funciona?",
+        "Como adicionar um Contato de Confiança?"
+      ]
+    },
+    {
+      "consulta": "Meu nome é Ana e Bruno ao mesmo tempo. Qual é meu nome?",
+      "pt": true,
+      "top3": [
+        "Como ligo ou desligo minha máquina?",
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Quais os diferenciais de uma Get Smart?"
+      ]
+    },
+    {
+      "consulta": "Minha venda foi recusada, o que aconteceu?",
+      "pt": true,
+      "top3": [
+        "Possíveis status das suas vendas com Pix:",
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Como utilizar o Pix ¶"
+      ]
+    },
+    {
+      "consulta": "Como funciona a antecipação de recebíveis na Getnet?",
+      "pt": true,
+      "top3": [
+        "Como antecipar suas vendas pelo app - Getnet",
+        "Sou cliente Getnet, tenho um POS 3G + Wi-Fi Aluguel com Antecipação Automática e peço uma Getnet com Receba Já. Qual taxa prevalece?",
+        "Quais canais posso utilizar para antecipar as vendas?"
+      ]
+    },
+    {
+      "consulta": "O que é inflação?",
+      "pt": true,
+      "top3": []
+    },
+    {
+      "consulta": "blorpt zyx 123 sem sentido",
+      "pt": false,
+      "top3": [
+        "Como faço para aderir à condição comercial que preveja desconto no aluguel da minha máquina?"
+      ]
+    },
+    {
+      "consulta": "Meu recebimento de vendas ainda não caiu na conta.",
+      "pt": true,
+      "top3": [
+        "Quais são os possíveis status das minhas vendas?  - Getnet",
+        "Quando e como vou receber os valores das minhas vendas realizadas?",
+        "O que é antecipação de vendas?"
+      ]
+    },
+    {
+      "consulta": "Minha maquininha não conecta na internet e não funciona.",
+      "pt": true,
+      "top3": []
+    },
+    {
+      "consulta": "Minha transação foi recusada e eu quero saber o motivo.",
+      "pt": true,
+      "top3": [
+        "Possíveis status das suas vendas com Pix:",
+        "Quais são os possíveis status das minhas vendas?  - Getnet"
+      ]
+    },
+    {
+      "consulta": "Como funciona o Pix da Getnet?",
+      "pt": true,
+      "top3": [
+        "Como funciona o Pix na Getnet?",
+        "Como fazer uma venda com Pix na maquininha? - Getnet",
+        "Como habilitar o recebimento de vendas via pix no aplicativo Getnet Brasil - Getnet"
+      ]
+    },
+    {
+      "consulta": "Quais produtos a Getnet oferece para pequenos negócios?",
+      "pt": true,
+      "top3": [
+        "Crediário: vantagens",
+        "Como funciona o Pix na Getnet?",
+        "Benefícios de habilitar o Pix:"
+      ]
+    },
+    {
+      "consulta": "Não consigo continuar e preciso falar com um humano.",
+      "pt": true,
+      "top3": [
+        "O que acontece caso eu não consiga cumprir as contrapartidas da condição comercial contratada?",
+        "Quais bandeiras são consideradas para compor o faturamento mínimo estipulado pela condição comercial?",
+        "O que é tarifa de inatividade?"
+      ]
+    },
+    {
+      "consulta": "Qual é o melhor filme de ficção científica de 2024?",
+      "pt": true,
+      "top3": [
+        "Benefícios de habilitar o Pix:"
+      ]
+    },
+    {
+      "consulta": "Qual a cotação do dólar hoje?",
+      "pt": true,
+      "top3": []
+    },
+    {
+      "consulta": "O que é o Receba Já?",
+      "pt": true,
+      "top3": [
+        "O que é o Receba Já?",
+        "Qual é a diferença entre Gravame e Cessão?",
+        "O que é gravame e o que ele muda na minha forma de receber dinheiro?"
+      ]
+    },
+    {
+      "consulta": "Quanto custa o Receba Já?",
+      "pt": true,
+      "top3": [
+        "Quais os custos desses dois pacotes?"
+      ]
+    },
+    {
+      "consulta": "Qual a taxa do Receba Já?",
+      "pt": true,
+      "top3": [
+        "Ao contratar a taxa de Receba Já poderei realizar vendas com cartão de débito?",
+        "Sou cliente Getnet, tenho uma Getnet com Receba Já e quero substituir para um POS Chip Aluguel. Qual taxa prevalece?",
+        "Não sou cliente Getnet e atualmente trabalho como Pessoa Jurídica, posso contratar taxa Receba Já?"
+      ]
+    },
+    {
+      "consulta": "Posso contratar Receba Já para qualquer maquininha?",
+      "pt": true,
+      "top3": [
+        "Posso contratar a condição de receba já para qualquer maquininha?",
+        "O que devo fazer para receber o desconto previsto na condição comercial contratada?",
+        "Após receber a máquina, como eu começo a usar o Aplicativo que escolhi?"
+      ]
+    },
+    {
+      "consulta": "Preciso de conta bancária para vender com Pix?",
+      "pt": true,
+      "top3": [
+        "Como habilitar e vender via Pix pelo Get Tap",
+        "É possível cadastrar duas contas bancárias diferentes para o mesmo contato de confiança?",
+        "Como vender via Pix por aproximação pelo Get Tap?"
+      ]
+    },
+    {
+      "consulta": "Como cadastrar minha conta bancária?",
+      "pt": true,
+      "top3": [
+        "É possível cadastrar duas contas bancárias diferentes para o mesmo contato de confiança?",
+        "Como adicionar um Contato de Confiança?",
+        "Como cadastrar minhas chaves na minha Get Conta?"
+      ]
+    },
+    {
+      "consulta": "Qual o domicílio bancário para receber Pix?",
+      "pt": true,
+      "top3": [
+        "Qual é a diferença entre Gravame e Trava de Domicílio Bancário?",
+        "Como eu altero/atualizado meu domicílio bancário?",
+        "Pix"
+      ]
+    },
+    {
+      "consulta": "Quando vou receber minhas vendas?",
+      "pt": true,
+      "top3": [
+        "Quando irei receber o valor das minhas vendas?",
+        "Quando e como vou receber os valores das minhas vendas realizadas?",
+        "O que é antecipação de vendas?"
+      ]
+    },
+    {
+      "consulta": "Como receber pagamentos pelo Link de Pagamento?",
+      "pt": true,
+      "top3": [
+        "O cliente Link de pagamento pode ter direito a recebimento D+2?",
+        "O que o portador do cartão verá quando receber o link?",
+        "Quais são as formas de pagamento que o Link de Pagamento aceita?"
+      ]
+    },
+    {
+      "consulta": "Qual banco posso usar para receber?",
+      "pt": true,
+      "top3": [
+        "O que é a RESOLUÇÃO DO BANCO CENTRAL 4734/ CIRC 3952?",
+        "Em quanto tempo posso usar meu Get Tap?",
+        "Após receber a máquina, como eu começo a usar o Aplicativo que escolhi?"
+      ]
+    },
+    {
+      "consulta": "O que é trava de domicílio bancário?",
+      "pt": true,
+      "top3": [
+        "Qual é a diferença entre Gravame e Trava de Domicílio Bancário?",
+        "O que é gravame e como ele funciona?",
+        "Como eu altero/atualizado meu domicílio bancário?"
+      ]
+    }
+  ]
+}
