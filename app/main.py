@@ -1,6 +1,8 @@
 import hmac
 import logging
+import re
 import time
+import unicodedata
 import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -75,6 +77,24 @@ class ChatResponse(BaseModel):
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+_HANDOFF_QUERY_PATTERN = re.compile(
+    r"atendimento humano|status do atendimento|meu atendimento"
+    r"|\bticket\b(?!\s+medio)|\bchamado\b"
+)
+
+
+def _is_handoff_query(message: str) -> bool:
+    """Reconhece mensagens sobre o próprio atendimento humano.
+
+    A palavra "status" sozinha não basta: "status da transação" e
+    "status das minhas vendas" seguem o roteamento normal.
+    "Ticket médio" é métrica de vendas, não o ticket do atendimento.
+    """
+    normalized = unicodedata.normalize("NFKD", message.lower())
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+    return bool(_HANDOFF_QUERY_PATTERN.search(normalized))
 
 
 def _serialize_ticket_for_actor(record: dict, actor_user_id: str) -> dict:
@@ -167,9 +187,7 @@ def chat(
         session_id=session_key,
     )
 
-    if active_handoff and (
-        "status" in request.message.lower() or "atendimento humano" in request.message.lower()
-    ):
+    if active_handoff and _is_handoff_query(request.message):
         status_text = {
             "pending": "pendente",
             "assigned": "assumido",
