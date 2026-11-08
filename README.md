@@ -565,6 +565,12 @@ Os logs atuais são voltados à depuração. O projeto ainda não implementa das
 - **Sem reranking semântico:** não há reranker dedicado após a recuperação lexical.
 - **Corpus estático:** o JSONL reflete a data de ingestão; informações de produtos, taxas e procedimentos podem mudar.
 - **Dependência opcional do LLM:** o Ollama pode não estar disponível ou pode produzir respostas incorretas apesar das instruções de contexto.
+- **Síntese de fontes com escopos diferentes:** na configuração avaliada (BM25 com `limit=3`, prompt atual, `qwen2.5:7b` com parâmetros padrão do Ollama), o sistema não respondeu com segurança a uma pergunta cuja regra muda conforme o produto ou canal: "Do I need a bank account to receive my sales via Pix?". A limitação foi observada só nessa pergunta.
+  - **Recuperação:** o documento que traz a exigência específica (Pix no Get Tap) fica em 6º lugar e não entra no contexto.
+  - **Geração, com o contexto real:** nenhuma de 40 respostas foi correta. A maioria recusa ou generaliza; as 2 que distinguem modalidades têm erros (uma atribui ao Pix um prazo da Get Conta; a outra extrapola além dos documentos).
+  - **Geração, com o Get Tap inserido no contexto:** o modelo restringe a exigência ao Get Tap quando o documento aparece sozinho (19 de 20 respostas). Junto com documentos de outras modalidades, transforma a exigência em regra geral (20 de 20).
+  - **Instrução de escopo no prompt:** só ajudou no contexto montado com o Get Tap, onde as respostas corretas foram de 0 para 7 em 20. No contexto real, as recusas subiram de 9 para 16 em 20, e por isso não foi adotada.
+  - **Alcance:** a limitação vale para essa configuração. Não foi verificado se persiste com outros modelos.
 - **Busca externa:** a pesquisa geral via DuckDuckGo pode ser instável ou bloqueada. Resumos do mecanismo de busca não são verificação independente das páginas.
 - **Câmbio:** a fonte e o tipo de cotação seguem a implementação da ferramenta; não se deve interpretar o valor como uma cotação comercial em tempo real sem verificar a resposta e a fonte.
 - **Idioma:** a geração foi orientada principalmente para respostas em português; não há garantia de responder no mesmo idioma de toda mensagem recebida.
