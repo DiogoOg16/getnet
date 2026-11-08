@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from datetime import date, timedelta
 from typing import Any
 
 from app.llm.ollama_client import (
@@ -9,6 +10,7 @@ from app.llm.ollama_client import (
 )
 from app.llm.ollama_function_calling import OllamaFunctionCallingLoop
 from app.llm.ollama_tools import registry_to_ollama_tools
+from app.tools.customer_tools import filter_settlement_records, settlement_reference_date
 from app.tools.registry import ToolExecutor, ToolRegistry, tool_registry
 from app.verified_facts import make_verified_fact
 
@@ -488,6 +490,107 @@ class CustomerSupportAgent:
             "handoff_required": True,
             "handoff_flow": TERMINAL_CONNECTIVITY_FLOW,
         }
+
+    SETTLEMENT_STATUS_LABELS = {
+        "scheduled": "agendada",
+        "processing": "em processamento",
+        "settled": "liquidada",
+        "pending": "pendente",
+        "failed": "falhou",
+    }
+
+    @staticmethod
+    def _format_iso_date(value: Any) -> str | None:
+        try:
+            return date.fromisoformat(str(value)).strftime("%d/%m/%Y")
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _has_malformed_settlement_records(result: dict[str, Any]) -> bool:
+        """`records` precisa ser uma lista de dicionários (ou vazia/ausente)."""
+        records = result.get("records")
+        if records is None:
+            return False
+        if not isinstance(records, list):
+            return True
+        return any(not isinstance(record, dict) for record in records)
+
+    @staticmethod
+    def _malformed_settlement_records_response() -> dict[str, Any]:
+        return {
+            "agent": "customer_support",
+            "response": "A resposta de recebimento inclui registros incompletos e não pode ser usada com segurança.",
+            "tool_used": "lookup_settlement",
+            "function_call_status": "invalid_result",
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": False,
+            "awaiting_user_input": True,
+            "step_status": "invalid_result",
+            "verified_facts": [],
+        }
+
+    @classmethod
+    def _settlement_message(cls, result: dict[str, Any], text: str) -> str:
+        """Monta a resposta de liquidação, separando data da venda e da liquidação.
+
+        Se a pergunta é sobre as vendas de ontem, só entram os registros cuja
+        data da venda é o dia anterior à data de referência da ferramenta.
+        """
+        records = list(result.get("records") or [])
+        notice = "Consulta feita em dados simulados de demonstração, não em dados reais da Getnet."
+
+        reference = None
+        if result.get("reference_date"):
+            try:
+                reference = date.fromisoformat(str(result["reference_date"]))
+            except ValueError:
+                reference = None
+        if reference is None:
+            reference = settlement_reference_date()
+
+        asks_yesterday = re.search(r"\b(?:yesterday|ontem)\b", text) is not None
+        heading = "Prazo de recebimento"
+        if asks_yesterday:
+            target = reference - timedelta(days=1)
+            records = filter_settlement_records(records, target.isoformat())
+            heading = f"Prazo de recebimento das vendas de ontem ({target.strftime('%d/%m/%Y')})"
+            if not records:
+                return (
+                    f"{notice} Não encontrei vendas de ontem ({target.strftime('%d/%m/%Y')}) "
+                    "nos registros de liquidação deste cliente."
+                )
+
+        if not records:
+            return f"{notice} {result.get('message', 'Não há registros de liquidação disponíveis.')}"
+
+        details = []
+        for index, record in enumerate(records, start=1):
+            transaction = record.get("transaction_id")
+            sale_date = cls._format_iso_date(record.get("sale_date")) if record.get("sale_date") else None
+            sale_part = f"venda {transaction}" if transaction else "venda"
+            sale_part += f" realizada em {sale_date}" if sale_date else " sem data da venda disponível"
+            item_parts = [f"Registro {index}: {sale_part}"]
+
+            amount = record.get("amount")
+            if amount is not None:
+                item_parts.append(f"valor: R$ {float(amount):.2f}")
+            if record.get("currency"):
+                item_parts.append(f"moeda: {record['currency']}")
+
+            status = record.get("status")
+            status_label = cls.SETTLEMENT_STATUS_LABELS.get(status, status) if status else "não disponível"
+            item_parts.append(f"status da liquidação: {status_label}")
+
+            settlement_date = record.get("estimated_settlement_date")
+            formatted_settlement = cls._format_iso_date(settlement_date) if settlement_date else None
+            item_parts.append(
+                f"data prevista de liquidação: {formatted_settlement or 'não disponível'}"
+            )
+            details.append("; ".join(item_parts))
+
+        return f"{notice} {heading}: " + "; ".join(details) + "."
 
     def answer(self, message: str, user_id: str) -> dict:
         text = self._normalize_text(message)
@@ -1028,36 +1131,9 @@ class CustomerSupportAgent:
                             "step_status": "failed",
                         }
 
-                    if result.get("records"):
-                        details = []
-                        for index, record in enumerate(result["records"], start=1):
-                            status = record.get("status") or "não disponível"
-                            amount = record.get("amount")
-                            currency = record.get("currency")
-                            date_value = record.get("estimated_settlement_date")
-
-                            item_parts = [
-                                f"Registro {index}: status {status}",
-                            ]
-
-                            if amount is not None:
-                                item_parts.append(f"valor: R$ {float(amount):.2f}")
-                            if currency:
-                                item_parts.append(f"moeda: {currency}")
-                            if date_value:
-                                item_parts.append(f"data prevista: {date_value}")
-                            else:
-                                item_parts.append("data prevista: não disponível")
-
-                            details.append("; ".join(item_parts))
-
-                        message_text = (
-                            "Prazo de recebimento: "
-                            + "; ".join(details)
-                            + "."
-                        )
-                    else:
-                        message_text = result["message"]
+                    if self._has_malformed_settlement_records(result):
+                        return self._malformed_settlement_records_response()
+                    message_text = self._settlement_message(result, text)
 
                     return {
                         "agent": "customer_support",
@@ -1150,49 +1226,9 @@ class CustomerSupportAgent:
                             "step_status": "failed",
                         }
 
-                    if result.get("records"):
-                        details = []
-                        for index, record in enumerate(result["records"], start=1):
-                            if not isinstance(record, dict):
-                                return {
-                                    "agent": "customer_support",
-                                    "response": "A resposta de recebimento inclui registros incompletos e não pode ser usada com segurança.",
-                                    "tool_used": "lookup_settlement",
-                                    "function_call_status": "invalid_result",
-                                    "flow_completed": True,
-                                    "response_delivered": True,
-                                    "issue_resolved": False,
-                                    "awaiting_user_input": True,
-                                    "step_status": "invalid_result",
-                                    "verified_facts": [],
-                                }
-                            status = record.get("status") or "não disponível"
-                            amount = record.get("amount")
-                            currency = record.get("currency")
-                            date_value = record.get("estimated_settlement_date")
-
-                            item_parts = [
-                                f"Registro {index}: status {status}",
-                            ]
-
-                            if amount is not None:
-                                item_parts.append(f"valor: R$ {float(amount):.2f}")
-                            if currency:
-                                item_parts.append(f"moeda: {currency}")
-                            if date_value:
-                                item_parts.append(f"data prevista: {date_value}")
-                            else:
-                                item_parts.append("data prevista: não disponível")
-
-                            details.append("; ".join(item_parts))
-
-                        message_text = (
-                            "Prazo de recebimento: "
-                            + "; ".join(details)
-                            + "."
-                        )
-                    else:
-                        message_text = result.get("message", "Não há registros de liquidação disponíveis.")
+                    if self._has_malformed_settlement_records(result):
+                        return self._malformed_settlement_records_response()
+                    message_text = self._settlement_message(result, text)
 
                     return {
                         "agent": "customer_support",
@@ -1228,33 +1264,9 @@ class CustomerSupportAgent:
                             "step_status": "failed",
                         }
 
-                    if result.get("records"):
-                        details = []
-                        for index, record in enumerate(result["records"], start=1):
-                            status = record.get("status") or "não disponível"
-                            amount = record.get("amount")
-                            currency = record.get("currency")
-                            date_value = record.get("estimated_settlement_date")
-
-                            item_parts = [f"Registro {index}: status {status}"]
-                            if amount is not None:
-                                item_parts.append(f"valor: R$ {float(amount):.2f}")
-                            if currency:
-                                item_parts.append(f"moeda: {currency}")
-                            if date_value:
-                                item_parts.append(f"data prevista: {date_value}")
-                            else:
-                                item_parts.append("data prevista: não disponível")
-
-                            details.append("; ".join(item_parts))
-
-                        message_text = (
-                            "Prazo de recebimento: "
-                            + "; ".join(details)
-                            + "."
-                        )
-                    else:
-                        message_text = result.get("message", "Não há registros de liquidação disponíveis.")
+                    if self._has_malformed_settlement_records(result):
+                        return self._malformed_settlement_records_response()
+                    message_text = self._settlement_message(result, text)
 
                     return {
                         "agent": "customer_support",
@@ -1290,36 +1302,9 @@ class CustomerSupportAgent:
                     "step_status": "failed",
                 }
 
-            if result.get("records"):
-                details = []
-                for index, record in enumerate(result["records"], start=1):
-                    status = record.get("status") or "não disponível"
-                    amount = record.get("amount")
-                    currency = record.get("currency")
-                    date_value = record.get("estimated_settlement_date")
-
-                    item_parts = [
-                        f"Registro {index}: status {status}",
-                    ]
-
-                    if amount is not None:
-                        item_parts.append(f"valor: R$ {float(amount):.2f}")
-                    if currency:
-                        item_parts.append(f"moeda: {currency}")
-                    if date_value:
-                        item_parts.append(f"data prevista: {date_value}")
-                    else:
-                        item_parts.append("data prevista: não disponível")
-
-                    details.append("; ".join(item_parts))
-
-                message_text = (
-                    "Prazo de recebimento: "
-                    + "; ".join(details)
-                    + "."
-                )
-            else:
-                message_text = result["message"]
+            if self._has_malformed_settlement_records(result):
+                return self._malformed_settlement_records_response()
+            message_text = self._settlement_message(result, text)
 
             return {
                 "agent": "customer_support",

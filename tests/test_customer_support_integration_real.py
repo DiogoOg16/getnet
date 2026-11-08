@@ -1,11 +1,12 @@
 import json
 import os
+from datetime import timedelta
 
 import pytest
 
 from app.agents.customer_support import CustomerSupportAgent
 from app.llm.ollama_client import OllamaClient
-from app.tools.customer_tools import register_customer_tools
+from app.tools.customer_tools import register_customer_tools, settlement_reference_date
 from app.tools.registry import tool_registry
 
 register_customer_tools(tool_registry)
@@ -131,8 +132,10 @@ def test_customer_support_real_integration_settlement_lookup():
     _assert_history_contains_tool_round(
         client,
         "lookup_settlement",
-        expected_result_keywords=("settlement", "2026-11-05", "2026-11-12"),
+        expected_result_keywords=("settlement", "sale_date", "estimated_settlement_date"),
     )
 
-    assert "Registro" in result["response"] or "Prazo de recebimento" in result["response"]
-    assert "2026-11-05" in result["response"] or "2026-11-12" in result["response"]
+    yesterday = (settlement_reference_date() - timedelta(days=1)).strftime("%d/%m/%Y")
+    assert f"Prazo de recebimento das vendas de ontem ({yesterday})" in result["response"]
+    assert "txn1001" in result["response"]
+    assert "txn1002" not in result["response"]

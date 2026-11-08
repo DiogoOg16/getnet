@@ -75,22 +75,38 @@ def test_agent_answers_customer_account_question():
     assert "Cliente de Teste" in result["response"]
 
 
-def test_agent_handles_settlement_timing_question_without_transaction_id():
+def _fix_settlement_reference_date(monkeypatch, value="2026-11-08"):
+    from datetime import date
+
+    from app.agents import customer_support as customer_support_module
+    from app.tools import customer_tools
+
+    reference = date.fromisoformat(value)
+    monkeypatch.setattr(customer_tools, "settlement_reference_date", lambda: reference)
+    monkeypatch.setattr(customer_support_module, "settlement_reference_date", lambda: reference)
+
+
+def test_agent_handles_settlement_timing_question_without_transaction_id(monkeypatch):
+    _fix_settlement_reference_date(monkeypatch)
+
     result = CustomerSupportAgent().answer(
         "Quando o dinheiro das vendas de ontem será depositado?",
         "cliente1988",
     )
 
     assert result["agent"] == "customer_support"
-    assert "prazo" in result["response"].lower()
+    assert "prazo de recebimento das vendas de ontem (07/11/2026)" in result["response"].lower()
     assert "Registro 1" in result["response"]
-    assert "Registro 2" in result["response"]
-    assert "2026-11-05" in result["response"]
-    assert "2026-11-12" in result["response"]
+    assert "Registro 2" not in result["response"]
+    assert "txn1001 realizada em 07/11/2026" in result["response"]
+    assert "data prevista de liquidação: 09/11/2026" in result["response"]
+    assert "dados simulados" in result["response"]
     assert "transação" in result["response"].lower() or "txn" in result["response"].lower()
 
 
-def test_agent_lists_each_settlement_record_with_available_fields():
+def test_agent_lists_each_settlement_record_with_available_fields(monkeypatch):
+    _fix_settlement_reference_date(monkeypatch)
+
     result = CustomerSupportAgent().answer(
         "Quando o dinheiro das vendas será depositado?",
         "cliente1988",
@@ -98,14 +114,18 @@ def test_agent_lists_each_settlement_record_with_available_fields():
 
     assert result["agent"] == "customer_support"
     assert "Registro 1" in result["response"]
-    assert "status scheduled" in result["response"].lower()
+    assert "venda txn1001 realizada em 07/11/2026" in result["response"]
+    assert "status da liquidação: agendada" in result["response"]
     assert "R$ 149.90" in result["response"]
     assert "BRL" in result["response"]
-    assert "2026-11-05" in result["response"]
+    assert "data prevista de liquidação: 09/11/2026" in result["response"]
     assert "Registro 2" in result["response"]
-    assert "status processing" in result["response"].lower()
+    assert "venda txn1002 realizada em 05/11/2026" in result["response"]
+    assert "status da liquidação: em processamento" in result["response"]
     assert "R$ 89.50" in result["response"]
-    assert "2026-11-12" in result["response"]
+    assert "data prevista de liquidação: 08/11/2026" in result["response"]
+    assert "scheduled" not in result["response"]
+    assert "processing" not in result["response"]
 
 
 def test_agent_reports_missing_settlement_date_when_not_available(monkeypatch):
@@ -130,9 +150,10 @@ def test_agent_reports_missing_settlement_date_when_not_available(monkeypatch):
     )
 
     assert result["agent"] == "customer_support"
-    assert "data prevista: não disponível" in result["response"].lower()
+    assert "data prevista de liquidação: não disponível" in result["response"].lower()
+    assert "sem data da venda disponível" in result["response"].lower()
     assert "R$ 75.00" in result["response"]
-    assert "status failed" in result["response"].lower()
+    assert "status da liquidação: falhou" in result["response"].lower()
 
 
 def test_lookup_settlement_empty_records_for_known_customer_without_settlements():

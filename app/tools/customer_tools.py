@@ -1,5 +1,7 @@
 """Tools for retrieving simulated customer and transaction data."""
 
+from datetime import date, timedelta
+
 from app.tools.registry import Tool, ToolRegistry, tool_registry
 
 CUSTOMERS = {
@@ -51,6 +53,10 @@ TRANSACTIONS = {
     },
 }
 
+# Datas relativas à data de referência (em dias), para que os registros
+# sintéticos não fiquem desatualizados. Status e datas são coerentes:
+# "scheduled" e "processing" têm liquidação prevista a partir da data de
+# referência; "settled" teria liquidação até a data de referência.
 SETTLEMENTS = {
     "cliente1988": [{
         "settlement_id": "settlement_001",
@@ -59,7 +65,8 @@ SETTLEMENTS = {
         "status": "scheduled",
         "amount": 149.90,
         "currency": "BRL",
-        "estimated_settlement_date": "2026-11-05",
+        "sale_offset_days": -1,
+        "settlement_offset_days": 1,
         "source": "synthetic_fixture",
         "simulated": True,
     }, {
@@ -69,12 +76,40 @@ SETTLEMENTS = {
         "status": "processing",
         "amount": 89.50,
         "currency": "BRL",
-        "estimated_settlement_date": "2026-11-12",
+        "sale_offset_days": -3,
+        "settlement_offset_days": 0,
         "source": "synthetic_fixture",
         "simulated": True,
     }],
     "cliente2001": [],
 }
+
+
+def settlement_reference_date() -> date:
+    """Data de referência das liquidações simuladas.
+
+    É o único ponto que lê o relógio do sistema; os testes a substituem.
+    """
+    return date.today()
+
+
+def _materialize_settlement(record: dict, reference_date: date) -> dict:
+    """Converte deslocamentos em dias para datas ISO, sem alterar o status."""
+    materialized = record.copy()
+    sale_offset = materialized.pop("sale_offset_days", None)
+    settlement_offset = materialized.pop("settlement_offset_days", None)
+    if sale_offset is not None:
+        materialized["sale_date"] = (reference_date + timedelta(days=sale_offset)).isoformat()
+    if settlement_offset is not None:
+        materialized["estimated_settlement_date"] = (
+            reference_date + timedelta(days=settlement_offset)
+        ).isoformat()
+    return materialized
+
+
+def filter_settlement_records(records: list[dict], sale_date: str) -> list[dict]:
+    """Mantém só os registros cuja data da venda é `sale_date` (ISO)."""
+    return [record for record in records if record.get("sale_date") == sale_date]
 
 
 def lookup_customer(user_id: str) -> dict:
@@ -105,11 +140,15 @@ def lookup_transaction(
 
     return {"found": True, "transaction": transaction.copy()}
 
-def lookup_settlement(user_id: str) -> dict:
+def lookup_settlement(
+    user_id: str,
+    sale_date: str | None = None,
+    reference_date: date | None = None,
+) -> dict:
     """Return synthetic settlement records for a known customer.
 
     The records are intentionally simulated and do not represent a real
-    Getnet settlement integration.
+    Getnet settlement integration. `sale_date` (ISO) filters by sale date.
     """
     customer = CUSTOMERS.get(user_id)
 
@@ -121,13 +160,20 @@ def lookup_settlement(user_id: str) -> dict:
             "message": "Cliente não encontrado na base de dados simulada.",
         }
 
-    records = [record.copy() for record in SETTLEMENTS.get(user_id, [])]
+    reference = reference_date or settlement_reference_date()
+    records = [
+        _materialize_settlement(record, reference)
+        for record in SETTLEMENTS.get(user_id, [])
+    ]
+    if sale_date is not None:
+        records = filter_settlement_records(records, sale_date)
 
     if records:
         return {
             "found": True,
             "simulated": True,
             "customer_id": user_id,
+            "reference_date": reference.isoformat(),
             "records": records,
             "message": "Há registros de liquidação disponíveis para este cliente.",
         }
@@ -136,6 +182,7 @@ def lookup_settlement(user_id: str) -> dict:
         "found": True,
         "simulated": True,
         "customer_id": user_id,
+        "reference_date": reference.isoformat(),
         "records": [],
         "message": (
             "Não há registros de liquidação para este cliente neste "
