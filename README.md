@@ -257,6 +257,7 @@ Esse endereço é configurado para o cenário Docker previsto no `docker-compose
 |---|---|---|
 | `OLLAMA_URL` | `http://localhost:11434` no processo local; o Compose define `http://ollama:11434` como padrão do serviço | Endereço base do Ollama. |
 | `OLLAMA_MODEL` | `qwen2.5:7b` | Nome do modelo usado para geração. |
+| `GETNET_DEMO_AUTH_TOKENS` | sem padrão; obrigatória | JSON que mapeia cada token Bearer a um `user_id`. O `.env.example` traz tokens fictícios para `cliente1988`, `cliente2001` e `atendente_01`, só para desenvolvimento. |
 
 Exemplo para execução local:
 
@@ -327,6 +328,73 @@ O exemplo ilustra o contrato da resposta; a mensagem, o status da transação e 
 - `POST /human-handoff/{ticket_id}/complete`: um atendente conclui o ticket.
 
 Os endpoints exigem autenticação Bearer. Usuários cliente só podem acessar tickets próprios; atendentes podem operar tickets conforme as regras de transição implementadas.
+
+#### Fluxo do atendente
+
+Um `user_id` que começa com `atendente_` é tratado como atendente. Só atendentes podem assumir e concluir tickets, e cada atendente só pode assumir um ticket para si mesmo. As transições permitidas são `pending` → `assigned` → `completed`: concluir um ticket que ainda não foi assumido devolve `400`.
+
+> **Só para desenvolvimento:** o token `demo-token-atendente_01` do `.env.example` é público e fictício. Substitua todos os tokens antes de usar o projeto em qualquer ambiente real. Se o seu `.env` foi criado antes dessa credencial existir, acrescente o par `"demo-token-atendente_01":"atendente_01"` ao JSON de `GETNET_DEMO_AUTH_TOKENS` e reinicie a API.
+
+1. Abrir um ticket como cliente. O campo `handoff.id` da resposta é o identificador do ticket:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/chat \
+  -H 'Authorization: Bearer demo-token-cliente1988' \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Preciso falar com um humano sobre dados sensíveis do meu cadastro.","user_id":"cliente1988"}'
+```
+
+2. Consultar o ticket como atendente. O `status` deve ser `pending`:
+
+```bash
+TICKET_ID=<valor de handoff.id>
+
+curl -s http://127.0.0.1:8000/human-handoff/$TICKET_ID \
+  -H 'Authorization: Bearer demo-token-atendente_01'
+```
+
+3. Assumir o ticket. O campo `assignee` precisa ser o próprio atendente autenticado:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/human-handoff/$TICKET_ID/assume \
+  -H 'Authorization: Bearer demo-token-atendente_01' \
+  -H 'Content-Type: application/json' \
+  -d '{"assignee":"atendente_01"}'
+```
+
+4. Confirmar a atribuição: o ticket deve ter `status` igual a `assigned` e `assignee` igual a `atendente_01`:
+
+```bash
+curl -s http://127.0.0.1:8000/human-handoff/$TICKET_ID \
+  -H 'Authorization: Bearer demo-token-atendente_01'
+```
+
+5. Concluir o ticket. O campo `resolution` não pode ser vazio:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/human-handoff/$TICKET_ID/complete \
+  -H 'Authorization: Bearer demo-token-atendente_01' \
+  -H 'Content-Type: application/json' \
+  -d '{"resolution":"Cadastro revisado com o cliente."}'
+```
+
+6. Confirmar o estado final: `status` igual a `completed`, com a `resolution` registrada. O cliente dono do ticket também pode consultá-lo com o próprio token:
+
+```bash
+curl -s http://127.0.0.1:8000/human-handoff/$TICKET_ID \
+  -H 'Authorization: Bearer demo-token-cliente1988'
+```
+
+Respostas de erro esperadas:
+
+| Situação | Código |
+|---|---|
+| Sem token ou com token inválido | `401` |
+| Cliente tenta assumir ou concluir um ticket | `403` |
+| Atendente tenta assumir um ticket em nome de outro (`assignee` diferente do próprio `user_id`) | `403` |
+| Cliente consulta um ticket de outro cliente | `403` |
+| Ticket inexistente na consulta | `404` |
+| Concluir antes de assumir, assumir de novo, `assignee` ausente ou `resolution` vazia | `400` |
 
 ### Exemplos adicionais
 
