@@ -1,0 +1,828 @@
+{
+  "version": "1.2",
+  "status": "congelado em 2026-11-08 (v1.2: S02-R3/REL-05, S05-V em português dividido em R1/R2, SUP-03 suspeito)",
+  "baseline_commit": "939d2ba",
+  "corpus": {
+    "path": "app/rag/documents/getnet_sources.jsonl",
+    "sha256": "4606534bcb218a74057b8cc89e20ac3e0163839dc2ec62c4602ef71486f61f4d",
+    "document_id_scheme": "O corpus não tem campo de ID. Cada documento é identificado por número da linha no JSONL + os 12 primeiros hex do sha256 do campo content. Títulos não são únicos (4 títulos cobrem 13 chunks), então a camada 1 deve comparar pelo hash do conteúdo, não só pelo título em `sources`."
+  },
+  "evidence_sources": {
+    "E1": "tests/fixtures/ranking_61_consultas_848ca9f.json — top 3 de retrieve() para as consultas oficiais. app/rag/ é idêntico entre 848ca9f e 939d2ba (git diff vazio).",
+    "E2": "~/getnet-experiments/2026-11-08_cenarios-oficiais/execucao_1.jsonl e continuacoes.jsonl — execução real em 354da40; router, RAG, Knowledge, Web Search, orquestrador e ferramentas externas são idênticos a 939d2ba.",
+    "E3": "Leitura de código em 939d2ba (arquivos e funções citados em cada requisito).",
+    "E4": "tests/test_settlement_dates.py em 939d2ba (31 testes passando)."
+  },
+  "proposed_backlog_ids": [
+    {
+      "id": "RAG-07",
+      "status": "aprovado (D1)",
+      "title": "Documento gold existente e relevante fora do limite de recuperação (top 3); distinto de RAG-01 (IDF)",
+      "cases": {
+        "RAG-07a": "Cenário 4: documento Get Tap (L16) fora do top 3 para a consulta de conta bancária/Pix (posição 6). Limitação já documentada no README; investigação do cenário 4 encerrada.",
+        "RAG-07b": "Cenário 6: documento-base de antecipação (L145, 'O que é antecipação de vendas?') fora do top 3.",
+        "RAG-07c": "Cenário 9: FAQ sobre limite de parcelas (L183, 'Até quantas parcelas posso fazer…') fora do top 3."
+      }
+    },
+    {
+      "id": "REL-05",
+      "status": "aprovado (D9)",
+      "title": "Falha de ferramenta externa reportada como sucesso",
+      "detail": "Quando Open-Meteo ou PTAX falham, _weather_answer e _exchange_answer não definem step_status; _combine_results marca 'success' porque há resposta. A busca DuckDuckGo marca 'failed' corretamente (web_search.py, linhas 70, 87, 136).",
+      "evidence": "tests/test_official_scenarios.py S02-R3 em 939d2ba: step_status 'success' com Open-Meteo indisponível; leitura de app/agents/web_search.py."
+    },
+    {
+      "id": "SUP-03",
+      "status": "suspeita a confirmar (D11)",
+      "title": "Negação em inglês nos detalhes de conectividade não é reconhecida",
+      "detail": "Em 'The screen shows no Wi-Fi signal', _extract_terminal_context devolve has_wifi_signal=True; 'the message ...' não preenche error_hint (só reconhece 'mensagem'). Falta decidir se o suporte em inglês desses detalhes é requisito.",
+      "evidence": "Chamada direta a CustomerSupportAgent._extract_terminal_context com a mensagem do S05-V v1.1."
+    }
+  ],
+  "layer1_conventions": {
+    "llm": "Fake LLM do tests/conftest.py (KnowledgeAgent._generate e cliente do Customer Support). A camada 1 não julga texto gerado.",
+    "http": "requests.get / requests.post mockados para Open-Meteo, PTAX e DuckDuckGo. Nenhum serviço externo real.",
+    "dates": "Data de referência fixada por monkeypatch (customer_tools.settlement_reference_date e date.today das ferramentas). Nunca o relógio do sistema.",
+    "sources_check": "Documentos gold verificados no resultado efetivo da recuperação: interceptar a função retrieve usada por app.agents.knowledge (o objeto devolvido ao agente) e comparar linha + sha256 do conteúdo; e confirmar que o mesmo conteúdo está no contexto entregue a KnowledgeAgent._generate. Não basta o documento existir no índice, ser carregado ou aparecer num estágio intermediário; o título em `sources` sozinho não basta, porque títulos não são únicos.",
+    "xfail": "Requisitos com baseline_expected = 'xfail' usam pytest.mark.xfail(strict=True, reason='<backlog_id>: <motivo>'). XPASS exige revisão manual deste arquivo; o xfail nunca é removido automaticamente.",
+    "granularity": "Cada requisito vira um teste próprio, para que um cenário possa ter partes que passam e partes em xfail.",
+    "scope": "Os 30 requisitos dos dez cenários oficiais ficam separados dos casos adicionais (additional_cases); relatórios mostram os dois grupos separadamente.",
+    "idf_check": "S05V-R2 intercepta retriever._idf (função de módulo chamada por retrieve) durante o cenário e registra cada (termo, valor). Pré-condição: retrieve foi chamado e _idf registrou valores; o requisito é todos os valores >= 0.",
+    "forbidden_vs_xfail": "Verificações de 'nada inventado' levantam ForbiddenViolation, que não é absorvida pelo xfail: uma resposta inventada falha a suíte mesmo num requisito em xfail."
+  },
+  "scenarios": [
+    {
+      "id": "S01",
+      "message": "What's the difference between the Get Clássica and the Get Smart?",
+      "language": "en",
+      "layer1": {
+        "route": "knowledge",
+        "plan": [
+          "knowledge"
+        ],
+        "agent": "knowledge",
+        "tool": "ollama (fake na camada 1)",
+        "gold_documents": {
+          "required": [
+            {
+              "line": 269,
+              "content_sha256_12": "40b9aeaf79b8",
+              "title": "Maquininhas Get Clássica e Get Smart: valor mensal de utilização",
+              "why": "Único documento do corpus que menciona a Get Clássica: aluguel R$ 79,90 vs R$ 129,90 e isenção acima de R$ 20 mil vs R$ 40 mil."
+            }
+          ],
+          "any_of": [
+            {
+              "line": 76,
+              "content_sha256_12": "01e5645e5e90",
+              "title": "O que é a Get Smart?",
+              "why": "Define a Get Smart: máquina inteligente, estoque, pedidos, nota fiscal."
+            },
+            {
+              "line": 74,
+              "content_sha256_12": "040c230fa615",
+              "title": "Quais os diferenciais de uma Get Smart?",
+              "why": "Diferenciais: gestão integrada, cupom fiscal, conciliação."
+            },
+            {
+              "line": 83,
+              "content_sha256_12": "737057c146c2",
+              "title": "Qual a diferença entre Get Smart e TEF móvel?",
+              "why": "Get Smart é Android e permite operações no equipamento."
+            }
+          ],
+          "corpus_gap": "Não há documento que descreva recursos da Get Clássica. Uma comparação de funcionalidades não tem sustentação além do preço e da isenção."
+        },
+        "contract": {
+          "step_status": "success",
+          "handoff_required": false,
+          "awaiting_user_input": false
+        },
+        "forbidden_layer1": [
+          "sources sem L269"
+        ],
+        "requirements": [
+          {
+            "id": "S01-R1",
+            "description": "Rota knowledge, plano de um passo.",
+            "baseline_expected": "pass",
+            "evidence": "E2 (agent=knowledge); E3 router.KNOWLEDGE casa 'difference between' e 'get smart'."
+          },
+          {
+            "id": "S01-R2",
+            "description": "L269 presente no contexto recuperado.",
+            "baseline_expected": "pass",
+            "evidence": "E1 top 3 inclui L269 na posição 1."
+          },
+          {
+            "id": "S01-R3",
+            "description": "Pelo menos um documento any_of presente.",
+            "baseline_expected": "pass",
+            "evidence": "E1 top 3 inclui L83 e L74."
+          }
+        ],
+        "notes": "Timeout do Ollama (REL-01) pertence à camada 2 e não conta como falha de retrieval."
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s01"
+      }
+    },
+    {
+      "id": "S02",
+      "message": "What's the weather forecast in Porto Alegre tomorrow?",
+      "language": "en",
+      "layer1": {
+        "route": "web_search",
+        "plan": [
+          "web_search"
+        ],
+        "agent": "web_search",
+        "tool": "open_meteo",
+        "gold_documents": {
+          "required": [],
+          "note": "Não usa o corpus."
+        },
+        "http_mock": "Geocoding devolve Porto Alegre / Rio Grande do Sul; forecast devolve daily.time [D0, D1] com máximas, mínimas e probabilidade de chuva conhecidas.",
+        "tool_facts": [
+          "Resposta contém 'Porto Alegre'.",
+          "Resposta usa o índice 1 (amanhã): data D1 no formato dd/mm/aaaa.",
+          "Mínima e máxima de D1 com uma casa decimal e probabilidade de chuva de D1.",
+          "Resposta cita 'Fonte: Open-Meteo' e sources = ['https://open-meteo.com']."
+        ],
+        "contract": {
+          "step_status": "success",
+          "handoff_required": false
+        },
+        "forbidden_layer1": [
+          "Com o HTTP falhando, a resposta não pode conter temperatura nem probabilidade; step_status = failed."
+        ],
+        "requirements": [
+          {
+            "id": "S02-R1",
+            "description": "Rota web_search e tool open_meteo.",
+            "baseline_expected": "pass",
+            "evidence": "E2; E3 web_search._is_weather_question."
+          },
+          {
+            "id": "S02-R2",
+            "description": "Valores de D1 do mock aparecem formatados.",
+            "baseline_expected": "pass",
+            "evidence": "E3 web_search._weather_answer; tests/test_weather.py."
+          },
+          {
+            "id": "S02-R3",
+            "description": "Falha HTTP não produz previsão inventada (obrigatório, fora do xfail) e é reportada com step_status = failed.",
+            "baseline_expected": "xfail",
+            "evidence": "Execução da camada 1 em 939d2ba (v1.1): assert 'success' == 'failed'; _weather_answer não define step_status.",
+            "backlog_id": "REL-05",
+            "reason": "Com Open-Meteo indisponível, a resposta não inventa valores, mas step_status volta 'success'."
+          }
+        ]
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s02"
+      }
+    },
+    {
+      "id": "S03",
+      "message": "When will the money from yesterday's sales be deposited?",
+      "language": "en",
+      "layer1": {
+        "route": "customer_support",
+        "plan": [
+          "customer_support"
+        ],
+        "agent": "customer_support",
+        "tool": "lookup_settlement",
+        "user_id": "cliente1988",
+        "reference_date": "2026-11-08",
+        "gold_documents": {
+          "required": [],
+          "note": "Usa dados sintéticos da ferramenta, não o corpus."
+        },
+        "tool_facts": [
+          "Registro de txn1001: sale_date 2026-11-07, status scheduled, estimated_settlement_date 2026-11-09.",
+          "Resposta: 'Prazo de recebimento das vendas de ontem (07/11/2026)'.",
+          "Resposta: 'venda txn1001 realizada em 07/11/2026' e 'data prevista de liquidação: 09/11/2026'.",
+          "Resposta: 'status da liquidação: agendada' e aviso de dados simulados."
+        ],
+        "contract": {
+          "step_status": "success",
+          "issue_resolved": true,
+          "handoff_required": false
+        },
+        "forbidden_layer1": [
+          "txn1002 ou 05/11/2026 na resposta (venda de outra data).",
+          "Status internos em inglês ('scheduled', 'processing') na resposta.",
+          "Registros de outro cliente."
+        ],
+        "requirements": [
+          {
+            "id": "S03-R1",
+            "description": "Rota customer_support e tool lookup_settlement.",
+            "baseline_expected": "pass",
+            "evidence": "E3 router.SUPPORT casa 'deposit'; E4."
+          },
+          {
+            "id": "S03-R2",
+            "description": "Só a venda de ontem, com data da venda e data prevista separadas, status em português e aviso de simulação.",
+            "baseline_expected": "pass",
+            "evidence": "E4 test_agent_answers_only_with_yesterdays_sales."
+          },
+          {
+            "id": "S03-R3",
+            "description": "Isolamento: cliente2001 não vê txn1001.",
+            "baseline_expected": "pass",
+            "evidence": "E4 test_settlements_stay_isolated_per_customer."
+          }
+        ],
+        "notes": "A camada 1 deve exercitar o caminho via /chat, não só o agente. A reexecução real em 939d2ba (camada 2) ainda não foi feita no commit; foi feita na árvore de trabalho equivalente."
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s03"
+      }
+    },
+    {
+      "id": "S04",
+      "message": "Do I need a bank account to receive my sales via Pix?",
+      "language": "en",
+      "layer1": {
+        "route": "knowledge",
+        "plan": [
+          "knowledge"
+        ],
+        "agent": "knowledge",
+        "tool": "ollama (fake na camada 1)",
+        "gold_documents": {
+          "required": [
+            {
+              "line": 16,
+              "content_sha256_12": "9b1cbebc8c01",
+              "title": "Como habilitar e vender via Pix pelo Get Tap",
+              "why": "Única fonte que afirma uma exigência explícita: para vender com Pix no Get Tap é necessário vincular uma conta bancária."
+            }
+          ],
+          "supporting": [
+            {
+              "line": 63,
+              "content_sha256_12": "53835765f12c",
+              "title": "Pix",
+              "why": "POS Digital: recebe na conta bancária e contrata com a chave cadastrada no domicílio bancário."
+            },
+            {
+              "line": 231,
+              "content_sha256_12": "b752a0684977",
+              "title": "O que é a Get Conta? Quais os benefícios?",
+              "why": "Get Conta permite vender por meio do Pix."
+            },
+            {
+              "line": 120,
+              "content_sha256_12": "838084f0fcf8",
+              "title": "O que é o Pix? E quais as vantagens?",
+              "why": "Regra genérica do Pix (conta corrente, poupança ou pré-paga)."
+            }
+          ]
+        },
+        "contract": {
+          "step_status": "success",
+          "handoff_required": false
+        },
+        "forbidden_layer1": [],
+        "requirements": [
+          {
+            "id": "S04-R1",
+            "description": "Rota knowledge.",
+            "baseline_expected": "pass",
+            "evidence": "E2; E3 router.KNOWLEDGE casa 'pix'."
+          },
+          {
+            "id": "S04-R2",
+            "description": "L16 presente no contexto recuperado.",
+            "baseline_expected": "xfail",
+            "backlog_id": "RAG-07a",
+            "reason": "L16 está na posição 6 do ranking; limit=3.",
+            "evidence": "E1 top 3 = L120, L231, L63; experimentos de 2026-11-07 (posição 6)."
+          }
+        ],
+        "notes": "Investigação do cenário 4 encerrada; limitação documentada no README. O xfail registra a lacuna sem propor correção."
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s04"
+      }
+    },
+    {
+      "id": "S05",
+      "turns": [
+        "My card machine won't connect to the internet, what should I do?",
+        "The screen shows no Wi-Fi signal and the message 'Sem conexão'."
+      ],
+      "language": "en",
+      "layer1": {
+        "route": "customer_support (nos dois turnos; o segundo retoma o fluxo pendente)",
+        "plan": [
+          "customer_support"
+        ],
+        "agent": "customer_support",
+        "tool": "nenhuma",
+        "gold_documents": {
+          "required": [],
+          "corpus_gap": "Não há documento de diagnóstico de conectividade de maquininha no corpus.",
+          "not_gold": [
+            {
+              "line": 97,
+              "content_sha256_12": "87ca52aa53e6",
+              "title": "É preciso ter acesso a internet para utilizar o Get Tap?",
+              "why": "Trata do Get Tap (app), não de maquininha; não orienta o diagnóstico."
+            }
+          ]
+        },
+        "contract": {
+          "turn1": {
+            "step_status": "waiting_for_user_input",
+            "awaiting_user_input": true,
+            "handoff_required": false,
+            "pending_followup.flow": "terminal_connectivity"
+          },
+          "turn2": {
+            "step_status": "handoff",
+            "handoff_required": true,
+            "ticket.flow": "terminal_connectivity",
+            "ticket.status": "pending"
+          }
+        },
+        "forbidden_layer1": [
+          "Turno 1 não cria ticket.",
+          "Turno 1 não inventa modelo, operadora ou configuração do terminal.",
+          "Turno 2 não chama LLM nem retrieval (caminho determinístico)."
+        ],
+        "requirements": [
+          {
+            "id": "S05-R1",
+            "description": "Turno 1: pede sintoma (Wi-Fi/sinal e mensagem da tela) e aguarda o usuário.",
+            "baseline_expected": "pass",
+            "evidence": "E2 continuacoes.jsonl; E3 customer_support.answer (_missing_terminal_details)."
+          },
+          {
+            "id": "S05-R2",
+            "description": "Turno 2: handoff com ticket de fluxo terminal_connectivity e mensagem complementada.",
+            "baseline_expected": "pass",
+            "evidence": "E2; E3 customer_support.escalate_terminal_connectivity, main.chat (criação de ticket)."
+          }
+        ],
+        "notes": "O fluxo oficial não passa pelo retrieval, então RAG-01 não afeta este cenário. O problema de recuperação de conectividade é medido no caso adicional S05-V."
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s05"
+      }
+    },
+    {
+      "id": "S06",
+      "message": "How does receivables advance (antecipação) work with Getnet?",
+      "language": "en",
+      "layer1": {
+        "route": "knowledge",
+        "plan": [
+          "knowledge"
+        ],
+        "agent": "knowledge",
+        "tool": "ollama (fake na camada 1)",
+        "gold_documents": {
+          "required": [
+            {
+              "line": 145,
+              "content_sha256_12": "866d69fb7ba6",
+              "title": "O que é antecipação de vendas?",
+              "why": "Define o conceito: receber antes do prazo de compensação os valores de vendas no crédito, à vista ou parceladas."
+            }
+          ],
+          "any_of": [
+            {
+              "line": 46,
+              "content_sha256_12": "82113d10ad1e",
+              "title": "Como antecipar suas vendas pelo app - Getnet",
+              "why": "Como solicitar pelo app."
+            },
+            {
+              "line": 47,
+              "content_sha256_12": "1156c7473ef0",
+              "title": "Passo a passo para antecipar suas vendas pelo APP:",
+              "why": "Passo a passo."
+            },
+            {
+              "line": 158,
+              "content_sha256_12": "c329b65ecaa3",
+              "title": "Quais canais posso utilizar para antecipar as vendas?",
+              "why": "Canais (agência, internet banking, central, POS)."
+            }
+          ],
+          "not_gold": [
+            {
+              "line": 176,
+              "content_sha256_12": "8920c7d79306",
+              "title": "Sou cliente Getnet, tenho um POS 3G + Wi-Fi Aluguel com Antecipação Automática e peço uma Getnet com Receba Já. Qual taxa prevalece?",
+              "why": "Caso específico de Receba Já; não explica como a antecipação funciona."
+            }
+          ]
+        },
+        "contract": {
+          "step_status": "success",
+          "handoff_required": false
+        },
+        "forbidden_layer1": [],
+        "requirements": [
+          {
+            "id": "S06-R1",
+            "description": "Rota knowledge.",
+            "baseline_expected": "pass",
+            "evidence": "E2; E3 router.KNOWLEDGE casa 'antecip'."
+          },
+          {
+            "id": "S06-R2",
+            "description": "Pelo menos um documento any_of presente.",
+            "baseline_expected": "pass",
+            "evidence": "E1 top 3 inclui L46 e L158."
+          },
+          {
+            "id": "S06-R3",
+            "description": "L145 presente no contexto recuperado.",
+            "baseline_expected": "xfail",
+            "backlog_id": "RAG-07b",
+            "reason": "L145 não entra no top 3; L176 (Receba Já) ocupa a posição 2.",
+            "evidence": "E1 top 3 = L46, L176, L158; E2 resposta equipara antecipação a Receba Já."
+          }
+        ]
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s06"
+      }
+    },
+    {
+      "id": "S07",
+      "message": "What's the euro exchange rate today?",
+      "language": "en",
+      "layer1": {
+        "route": "web_search",
+        "plan": [
+          "web_search"
+        ],
+        "agent": "web_search",
+        "tool": "bcb_ptax",
+        "gold_documents": {
+          "required": [],
+          "note": "Não usa o corpus."
+        },
+        "http_mock": "PTAX devolve boletim de fechamento para um dia útil conhecido; cenário extra: 'hoje' em fim de semana devolve vazio até a sexta anterior.",
+        "tool_facts": [
+          "Resposta: 'PTAX de fechamento do Banco Central' com data e hora do boletim (dd/mm/aaaa HH:MM).",
+          "Compra e venda do mock no formato R$ x,xxxx.",
+          "Aviso 'Não é uma cotação em tempo real'.",
+          "sources = ['https://www.bcb.gov.br/conversao']."
+        ],
+        "contract": {
+          "step_status": "success",
+          "handoff_required": false
+        },
+        "forbidden_layer1": [
+          "Com HTTP falhando ou sem boletim, nenhum valor de cotação na resposta."
+        ],
+        "requirements": [
+          {
+            "id": "S07-R1",
+            "description": "Rota web_search e tool bcb_ptax.",
+            "baseline_expected": "pass",
+            "evidence": "E2; E3 web_search.answer (detect_currency)."
+          },
+          {
+            "id": "S07-R2",
+            "description": "Valores e data do mock, com aviso de não ser tempo real.",
+            "baseline_expected": "pass",
+            "evidence": "E3 web_search._exchange_answer; tests/test_exchange_rate.py."
+          },
+          {
+            "id": "S07-R3",
+            "description": "Fim de semana: usa o último dia útil com boletim.",
+            "baseline_expected": "pass",
+            "evidence": "E3 exchange_rate.get_exchange_rate; tests/test_exchange_rate.py::test_steps_back_over_weekend."
+          },
+          {
+            "id": "S07-R4",
+            "description": "Falha HTTP não produz cotação inventada.",
+            "baseline_expected": "pass",
+            "evidence": "E3 get_exchange_rate devolve found=False."
+          }
+        ]
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s07"
+      }
+    },
+    {
+      "id": "S08",
+      "turns": [
+        "My card machine is showing a transaction decline error.",
+        "The transaction is txn1003."
+      ],
+      "language": "en",
+      "layer1": {
+        "route": "customer_support",
+        "plan": [
+          "customer_support"
+        ],
+        "agent": "customer_support",
+        "tool": "turno 1: nenhuma; turno 2: lookup_transaction",
+        "user_id": "cliente1988",
+        "gold_documents": {
+          "required": [
+            {
+              "line": 48,
+              "content_sha256_12": "2286cf37edb5",
+              "title": "Quais são os possíveis status das minhas vendas?  - Getnet",
+              "why": "Define 'Negada: Venda não autorizada pelo emissor/bandeira do cartão' — a orientação documentada sobre o significado da recusa."
+            }
+          ],
+          "not_gold": [
+            {
+              "line": 52,
+              "content_sha256_12": "f3a570d193fa",
+              "title": "Erro ADQ 4-91: erro na aprovação da venda - Getnet",
+              "why": "Só se aplica se o usuário informar o código ADQ 4-91; a pergunta não informa código."
+            }
+          ]
+        },
+        "tool_facts": [
+          "txn1003 pertence a cliente1988, status declined, valor 75.00 BRL, sem motivo registrado.",
+          "txn2001 pertence a cliente2001 (decline_reason 'Cartão bloqueado pelo emissor')."
+        ],
+        "contract": {
+          "turn1": {
+            "step_status": "waiting_for_user_input",
+            "awaiting_user_input": true
+          },
+          "turn2": {
+            "step_status": "success",
+            "tool_used": "lookup_transaction"
+          }
+        },
+        "forbidden_layer1": [
+          "Turno 1: status ou motivo de recusa sem consulta.",
+          "Turno 2: motivo de recusa para txn1003 (o registro não tem motivo).",
+          "Qualquer turno: dados de txn2001 para cliente1988 (250, 'Cartão bloqueado')."
+        ],
+        "requirements": [
+          {
+            "id": "S08-R1",
+            "description": "Turno 1: rota customer_support, pede o identificador, não inventa status.",
+            "baseline_expected": "pass",
+            "evidence": "E2; E3 router (DEVICE + 'declin'), customer_support.answer (ramo declined_transaction)."
+          },
+          {
+            "id": "S08-R2",
+            "description": "Turno 2: lookup_transaction confirma recusa de txn1003 e diz que não há motivo registrado.",
+            "baseline_expected": "pass",
+            "evidence": "E2 continuacoes.jsonl."
+          },
+          {
+            "id": "S08-R3",
+            "description": "Ownership: txn2001 informado por cliente1988 → não encontrada, sem vazar dados.",
+            "baseline_expected": "pass",
+            "evidence": "E2 continuacoes.jsonl; E3 customer_tools.lookup_transaction."
+          },
+          {
+            "id": "S08-R4",
+            "description": "Conversa completa (turnos 1 e 2): em algum turno a resposta usa L48 para explicar o significado da recusa (venda não autorizada pelo emissor/bandeira). A orientação deve ser sustentada por informação disponível, não atribuir causa específica sem evidência, não contradizer lookup_transaction e não inventar procedimento. Não é exigido orientar antes de receber o identificador.",
+            "baseline_expected": "xfail",
+            "backlog_id": "ARCH-02",
+            "reason": "O plano não inclui Knowledge: _needs_knowledge_followup exige termo de orientação ('por que', 'o que fazer'), ausente na mensagem oficial; e Support para em awaiting_user_input. O retrieval em si traria L48.",
+            "evidence": "E1 top 3 da consulta = L48, L49; E3 orchestrator.create_plan e handle.",
+            "scope": "conversation"
+          }
+        ],
+        "notes": "Divergência com a hipótese inicial: existe documentação no corpus (L48). A lacuna é de orquestração, não de corpus."
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s08"
+      }
+    },
+    {
+      "id": "S09",
+      "message": "How many installments can I split a sale into with the crediário?",
+      "language": "en",
+      "layer1": {
+        "route": "knowledge",
+        "plan": [
+          "knowledge"
+        ],
+        "agent": "knowledge",
+        "tool": "ollama (fake na camada 1)",
+        "gold_documents": {
+          "required": [
+            {
+              "line": 267,
+              "content_sha256_12": "f1753356ee4d",
+              "title": "Crediário: vantagens",
+              "why": "'Com o Crediário, ele pode parcelar em até 48 vezes² no cartão de crédito'. Título duplicado com L266; verificar pelo hash."
+            },
+            {
+              "line": 183,
+              "content_sha256_12": "731172325203",
+              "title": "Até quantas parcelas posso fazer e como sei os juros para informar ao meu cliente (portador do cartão)?",
+              "why": "Resposta direta do FAQ: cada emissor estabelece o limite de parcelas; juros visíveis na simulação na maquininha."
+            }
+          ],
+          "supporting": [
+            {
+              "line": 268,
+              "content_sha256_12": "63d3293614aa",
+              "title": "Crediário: observações sobre taxas e juros",
+              "why": "Nota ²: taxas de juros variam conforme o emissor."
+            }
+          ]
+        },
+        "contract": {
+          "step_status": "success",
+          "handoff_required": false
+        },
+        "forbidden_layer1": [],
+        "requirements": [
+          {
+            "id": "S09-R1",
+            "description": "Rota knowledge.",
+            "baseline_expected": "pass",
+            "evidence": "E2; E3 router.KNOWLEDGE casa 'crediario'."
+          },
+          {
+            "id": "S09-R2",
+            "description": "L267 (48 vezes) presente no contexto recuperado.",
+            "baseline_expected": "pass",
+            "evidence": "E1 top 3 inclui 'Crediário: vantagens'; E2 resposta cita 48 vezes. O título não distingue L266/L267 — confirmar pelo hash ao implementar."
+          },
+          {
+            "id": "S09-R3",
+            "description": "L183 (o limite efetivo depende do emissor do cartão) presente no resultado da recuperação. Obrigatório por D2: distingue o máximo anunciado (48x, L267) do limite efetivamente permitido.",
+            "baseline_expected": "xfail",
+            "backlog_id": "RAG-07c",
+            "reason": "L183 não entra no top 3.",
+            "evidence": "E1 top 3 = 'Crediário: vantagens', L185, L182."
+          }
+        ],
+        "notes": "Divergência com a hipótese inicial (PASS): o documento que responde diretamente à pergunta não é recuperado, e a resposta observada omitiu que o limite depende do emissor."
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s09"
+      }
+    },
+    {
+      "id": "S10",
+      "message": "Can I sell through WhatsApp using the Payment Link?",
+      "language": "en",
+      "layer1": {
+        "route": "knowledge",
+        "plan": [
+          "knowledge"
+        ],
+        "agent": "knowledge",
+        "tool": "ollama (fake na camada 1)",
+        "gold_documents": {
+          "required": [
+            {
+              "line": 203,
+              "content_sha256_12": "14d512e45d6d",
+              "title": "Como o Link de Pagamento pode ser enviado?",
+              "why": "O vendedor pode enviar o link por redes sociais, WhatsApp, email e SMS; o cliente clica, escolhe o método e finaliza."
+            }
+          ],
+          "any_of": [
+            {
+              "line": 263,
+              "content_sha256_12": "c72f263fa5af",
+              "title": "Link de Pagamento: benefícios",
+              "why": "'Faça vendas usando o WhatsApp ou sua rede social'."
+            }
+          ]
+        },
+        "contract": {
+          "step_status": "success",
+          "handoff_required": false
+        },
+        "forbidden_layer1": [],
+        "requirements": [
+          {
+            "id": "S10-R1",
+            "description": "Rota knowledge.",
+            "baseline_expected": "pass",
+            "evidence": "E2; E3 router.KNOWLEDGE casa 'payment link' e 'whatsapp'."
+          },
+          {
+            "id": "S10-R2",
+            "description": "L203 presente no contexto recuperado.",
+            "baseline_expected": "pass",
+            "evidence": "E1 top 3 inclui L203 na posição 1."
+          },
+          {
+            "id": "S10-R3",
+            "description": "L263 presente.",
+            "baseline_expected": "pass",
+            "evidence": "E1 top 3 inclui L263."
+          }
+        ]
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s10"
+      }
+    }
+  ],
+  "decisions": {
+    "D1": "RAG-07 criado, com subcasos a, b e c.",
+    "D2": "L183 obrigatório no S09, junto com L267.",
+    "D3": "Respostas degradadas medidas à parte (availability, quality, degradation).",
+    "D4": "Classificação de recusa depende da suficiência das evidências, não só da presença do gold no contexto; presença do gold vira anotação.",
+    "D5": "N=10 para S01, S03, S04, S05, S06, S08, S09, S10 e S05-V; N=3 inicialmente para S02 e S07.",
+    "D6": "S05-V incluído como caso adicional, fora dos dez oficiais.",
+    "D7": "S08-R4 avaliado sobre a conversa completa; orientação em qualquer turno, fundamentada, sem inventar causa ou procedimento.",
+    "D8": "Gold verificado por hash no resultado efetivo da recuperação (interceptando retrieve) e no contexto entregue à geração.",
+    "D4-b": "Evidência parcial + recusa completa, sem fornecer nenhuma informação sustentada: Incorreta (confirmado em 2026-11-08).",
+    "D9": "S02-R3 mantém step_status=failed como requisito; baseline em xfail(strict=True) por REL-05. A verificação de que nada é inventado continua obrigatória e não é absorvida pelo xfail.",
+    "D10": "S05-V usa mensagem em português validada (alcança _connectivity_guidance e chama retrieve) e é dividido em S05V-R1 (comportamento, pass) e S05V-R2 (IDF observado na chamada real a retrieve, xfail RAG-01).",
+    "D11": "SUP-03 registrado como suspeita, separado do S05-V."
+  },
+  "layer2_conventions": {
+    "rubrics": "eval/official_scenarios_rubrics.md",
+    "metrics": {
+      "availability": "respostas efetivamente geradas pelo LLM ÷ execuções do cenário (exclui degradadas e indisponibilidade de serviço externo).",
+      "quality": "distribuição Correta / Parcial / Incorreta, só sobre as respostas geradas.",
+      "degradation": "quantidade e percentual de respostas degradadas (tool_used = retrieval_only ou timeout do Ollama), por cenário.",
+      "external_unavailable": "S02 e S07: falhas da API externa, contadas à parte; não entram em quality."
+    },
+    "n_per_scenario": {
+      "S01": 10,
+      "S03": 10,
+      "S04": 10,
+      "S05": 10,
+      "S06": 10,
+      "S08": 10,
+      "S09": 10,
+      "S10": 10,
+      "S02": 3,
+      "S07": 3,
+      "S05-V": 10
+    },
+    "n_rationale": "N mede a variabilidade da resposta final, não só o determinismo das ferramentas. S03 e S08 (turno 2) passam por function calling no Ollama; S01, S04, S06, S09, S10 e S05-V dependem da geração. S02 e S07 começam com 3 porque o texto é template da ferramenta e a variação vem da API externa, que é controlada; aumentar se as 3 divergirem. S05 não chama o LLM em nenhum turno pelo código atual (variabilidade esperada zero), mas fica com N=10 por decisão D5, o que também detecta mudanças futuras no fluxo.",
+    "multi_turn": "S05 e S08 são avaliados por conversa completa (cada execução = os dois turnos numa sessão nova)."
+  },
+  "additional_cases": [
+    {
+      "id": "S05-V",
+      "message": "Minha maquininha não conecta na internet. A tela mostra a mensagem \"Sem conexão\" e não aparece sinal de Wi-Fi.",
+      "group": "additional",
+      "title": "Conectividade com detalhes técnicos na primeira mensagem",
+      "purpose": "Avaliar a recuperação de conhecimento técnico de conectividade, separada do fluxo de atendimento do S05 oficial.",
+      "layer1": {
+        "route": "customer_support",
+        "agent": "customer_support",
+        "tool": "knowledge (via _connectivity_guidance)",
+        "gold_documents": {
+          "required": [],
+          "corpus_gap": "Não há documento de diagnóstico de conectividade de maquininha no corpus.",
+          "not_gold": [
+            {
+              "line": 97,
+              "content_sha256_12": "87ca52aa53e6",
+              "title": "É preciso ter acesso a internet para utilizar o Get Tap?",
+              "why": "Trata do Get Tap (app), não de maquininha; não orienta o diagnóstico."
+            }
+          ]
+        },
+        "requirements": [
+          {
+            "id": "S05V-R1",
+            "description": "Comportamento: sem documento relevante, encaminha para atendimento humano e não apresenta L97 (Get Tap) como orientação para maquininha.",
+            "baseline_expected": "pass",
+            "evidence": "Sondagem em 939d2ba: retrieve devolve [] (cobertura de L97 = 0,41 < 0,45), Knowledge recusa, step_status = handoff."
+          },
+          {
+            "id": "S05V-R2",
+            "description": "Recuperação: nenhum termo da consulta recebe IDF negativo, observado nas chamadas a retriever._idf durante a execução real de retrieve no cenário. Independe do resultado da recuperação.",
+            "baseline_expected": "xfail",
+            "backlog_id": "RAG-01",
+            "reason": "No modo filtrado de conectividade, o IDF usa df do corpus inteiro e o total de documentos filtrados: 'maqui' = -0,80 e 'tela' = -0,34. O limiar de cobertura mascara o defeito no resultado final.",
+            "evidence": "Medição de _idf para a consulta do S05-V em 939d2ba (15 documentos filtrados)."
+          }
+        ]
+      },
+      "layer2": {
+        "rubric": "official_scenarios_rubrics.md#s05-v"
+      },
+      "language": "pt",
+      "message_validation": "Validada antes do congelamento: _looks_like_terminal_connectivity_issue=True; error_hint extraído; has_wifi_signal=False; _missing_terminal_details=[]; no cenário, retrieve é chamado. A mensagem em inglês da v1.1 não alcançava esse caminho (SUP-03)."
+    }
+  ],
+  "history": [
+    {
+      "version": "1.1",
+      "frozen": "2026-11-08",
+      "sha256_official_scenarios_json": "947961a1d5c529ee258977acb6bca2a14d158d7419e371ede729f42f8d77a6a4",
+      "sha256_rubrics_md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff",
+      "superseded_because": "Testes da camada 1 mostraram: S02-R3 exigia step_status=failed, que o código não produz (REL-05); a mensagem em inglês do S05-V não alcança o caminho de orientação (SUP-03)."
+    }
+  ]
+}
