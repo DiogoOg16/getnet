@@ -96,7 +96,7 @@ O roteador é baseado em regras, não em uma chamada de LLM. Isso torna a decis�
 **Colaboração entre agentes (o que existe e o que falta):** o plano encadeia agentes de duas formas.
 
 - **Pelo texto, na criação do plano:** quando a mesma mensagem menciona uma transação recusada e pede orientação ("por que", "o que fazer"), o Customer Support consulta os dados e o Knowledge acrescenta a orientação documentada, recebendo os fatos verificados da etapa anterior.
-- **Pelo resultado da ferramenta, durante a execução (ARCH-02):** depois de cada etapa, o orquestrador olha o resultado verificado de `lookup_transaction`. Transação aprovada ou pendente, negada com motivo registrado, não encontrada ou erro de ferramenta: nenhuma etapa nova. Transação **negada sem motivo registrado**: o orquestrador acrescenta o Knowledge com uma consulta fixa sobre o significado de uma venda negada com cartão, **sem** os fatos da transação, para que a explicação geral não seja apresentada como causa daquela transação. É o que acontece no cenário oficial S08, em que a recusa e o identificador chegam em turnos separados.
+- **Pelo resultado da ferramenta, durante a execução (ARCH-02):** depois de cada etapa, o orquestrador olha o resultado verificado de `lookup_transaction`. Transação aprovada ou pendente, negada com motivo registrado, não encontrada ou erro de ferramenta: nenhuma etapa nova. Transação **negada sem motivo registrado**: o orquestrador acrescenta o Knowledge com uma consulta fixa sobre o significado de uma venda negada com cartão, **sem** os fatos da transação, para que a explicação geral não seja apresentada como causa daquela transação. Nesse passo o Knowledge **não gera texto**: cita o texto do documento recuperado (L48) que define o status "Negada", com a fonte (mesmas palavras e pontuação, sem o marcador de lista e com espaços normalizados). Se nenhum documento recuperado trouxer a definição, a resposta diz isso, a etapa fica com `step_status: no_evidence` no `trace` e um aviso vai para o log; a resposta verificada da transação continua valendo. A geração livre foi retirada daqui depois que a camada 2 mostrou o modelo acrescentando causas não documentadas (ver [Estratégia de avaliação](#estratégia-de-avaliação)). É o que acontece no cenário oficial S08, em que a recusa e o identificador chegam em turnos separados.
 
 O plano tem no máximo 3 etapas e não repete agente. Em execução multi-etapa, `agent` e `tool_used` representam a etapa principal (a primeira) e o `trace` registra todos os agentes, ferramentas e o motivo de cada etapa acrescentada. As respostas são combinadas em partes com cabeçalho (fato verificado; depois a explicação geral, identificada como tal), não sintetizadas por um LLM.
 
@@ -155,6 +155,7 @@ O prompt usado com o Ollama orienta o modelo a responder com base no contexto re
 
 - `tool_used: "ollama"`: o modelo local foi chamado.
 - `tool_used: "retrieval_only"`: resposta sem geração pelo LLM.
+- `tool_used: "retrieval_quote"`: citação do texto de um documento recuperado, sem LLM (usada na etapa acrescentada depois de uma venda negada sem motivo).
 - Respostas diretas por regras podem ser produzidas para perguntas específicas cobertas pela implementação.
 
 O modelo padrão é `qwen2.5:7b`. O uso do Ollama é opcional.
@@ -559,7 +560,7 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.4, a suíte padrão dá `761 passed, 5 skipped, 4 xfailed`.
+Com os critérios v1.5, a suíte padrão dá `771 passed, 5 skipped, 4 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
 - **`xfailed` (4):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
@@ -571,7 +572,7 @@ Com os critérios v1.4, a suíte padrão dá `761 passed, 5 skipped, 4 xfailed`.
 | S09-R3 | RAG-07c | O documento que diz que o limite de parcelas depende do emissor não entra no top 3. |
 | S05V-R2 | RAG-01 | No modo filtrado de conectividade, o IDF usa a contagem do corpus inteiro. |
 
-Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente. Foi o que aconteceu com S08-R4 (ARCH-02, versão 1.3 de `eval/official_scenarios.json`) e com S02-R3 (REL-05, versão 1.4): cada correção fez o requisito passar, e a nova versão o moveu de `xfail` para `pass`, com o motivo e os hashes da versão anterior registrados no histórico do arquivo.
+Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente. Foi o que aconteceu com S08-R4 (ARCH-02, versão 1.3 de `eval/official_scenarios.json`) e com S02-R3 (REL-05, versão 1.4): cada correção fez o requisito passar, e a nova versão o moveu de `xfail` para `pass`, com o motivo e os hashes da versão anterior registrados no histórico do arquivo. A versão 1.5 não mudou nenhum requisito: só o mecanismo de verificação do S08-R4, que passou a exigir o trecho de L48 na resposta (antes, L48 no contexto do LLM), porque a explicação deixou de ser gerada e passou a ser citada.
 
 ### Testes de integração reais com Ollama
 
@@ -658,7 +659,7 @@ A avaliação separa o que é determinístico do que depende do modelo.
 - foi medido antes das mudanças de privacidade e da correção de ARCH-02. Depois delas, os testes da camada 1 dão 32 aprovados e 4 `xfail` (S08-R4 e S02-R3 passaram a ser cumpridos), e só o S08 foi medido de novo na camada 2 (abaixo);
 - os rótulos são de um único avaliador e as amostras são pequenas (3 a 10 execuções por cenário); os arquivos rotulados não estão versionados no repositório.
 
-**Camada 2 do S08 depois da correção de ARCH-02** (2026-11-15, commit `75a8a4a`, `qwen2.5:7b`, 10 execuções, rótulos humanos às cegas, critérios v1.3): **1 Correta, 0 Parciais e 9 Incorretas**, com 100% de disponibilidade. A arquitetura funcionou em todas as execuções: o segundo turno aciona o Knowledge, recupera só L48 e apresenta o fato verificado separado da explicação geral. O problema está na geração: em 9 de 10 respostas o modelo acrescenta causas que L48 não traz (limite de crédito, cartão bloqueado, fraude, saldo insuficiente) ou afirmações não sustentadas, e a rubrica trata isso como informação inventada. Corrigir isso exige restringir a geração (por exemplo, citar o trecho de L48 em vez de gerar texto livre) e uma nova rodada de avaliação; não foi feito.
+**Camada 2 do S08 depois da correção de ARCH-02** (2026-11-15, commit `75a8a4a`, `qwen2.5:7b`, 10 execuções, rótulos humanos às cegas, critérios v1.3): **1 Correta, 0 Parciais e 9 Incorretas**, com 100% de disponibilidade. A arquitetura funcionou em todas as execuções: o segundo turno aciona o Knowledge, recupera só L48 e apresenta o fato verificado separado da explicação geral. O problema está na geração: em 9 de 10 respostas o modelo acrescenta causas que L48 não traz (limite de crédito, cartão bloqueado, fraude, saldo insuficiente) ou afirmações não sustentadas, e a rubrica trata isso como informação inventada. Por isso, em seguida (P2), a explicação desse passo deixou de ser gerada e passou a ser a citação da definição de "Negada" em L48, com a fonte; a geração livre não participa mais desse trecho, então essa classe de erro não pode ocorrer. Não houve nova rodada da camada 2 depois da mudança: o turno 2 do S08 ficou determinístico (fato da ferramenta mais trecho citado), e a resposta é verificada pelos testes da camada 1.
 
 #### Métricas de recuperação (EVAL-02)
 
@@ -757,12 +758,12 @@ A API registra eventos de requisição, decisão de roteamento e resposta. A res
 | `issue_resolved` | Resultado de resolução do problema no nível de negócio. |
 | `resolved` | Campo legado de compatibilidade, espelhando `issue_resolved`. |
 | `awaiting_user_input` | Indica suspensão aguardando informação obrigatória do usuário. |
-| `step_status` | Estado operacional final: `success`, `failed`, `waiting_for_user_input`, `handoff`, `conflict` (fatos verificados contraditórios) ou, no Customer Support, `tool_call_error`, `invalid_result` e `max_iterations_exceeded`. |
+| `step_status` | Estado operacional final: `success`, `failed`, `waiting_for_user_input`, `handoff`, `conflict` (fatos verificados contraditórios), `no_evidence` (a citação não encontrou o trecho na documentação recuperada) ou, no Customer Support, `tool_call_error`, `invalid_result` e `max_iterations_exceeded`. |
 | `handoff_required` | Indica se a solicitação deve ser encaminhada para atendimento humano. |
 | `handoff` | Ticket de handoff quando criado ou consultado no fluxo. |
 | `request_id` | Identificador da requisição, repetido nos logs e no `trace`. |
 | `total_latency_ms` | Latência total da requisição na API. |
-| `trace` | Uma entrada por etapa executada do plano: agente, motivo, status, ferramenta e `duration_ms`. |
+| `trace` | Uma entrada por etapa executada do plano: agente, motivo, status, ferramenta e `duration_ms`. O status é o `step_status` da própria etapa (`success`, `failed`, `no_evidence`, `handoff`...) ou `error` quando a etapa lançou exceção; o `step_status` da resposta resume a execução inteira. |
 | `verified_facts` / `fact_conflicts` | Fatos confirmados por ferramentas (ex.: status e valor de uma transação) e eventuais contradições entre etapas. |
 
 Para observar logs no Docker:
@@ -792,7 +793,7 @@ Os logs registram, por requisição, o `request_id`, a decisão de roteamento, c
 - **Escalonamento:** o protótipo cria e persiste tickets de handoff em armazenamento local de arquivo JSON; não há integração com plataforma externa de atendimento.
 - **Guardrails por regras:** a detecção de intenções sensíveis usa padrões explícitos e não substitui uma solução completa de segurança ou revisão humana.
 - **Mascaramento por padrões:** protege os formatos listados em [Segurança e privacidade](#segurança-e-privacidade), com as limitações descritas lá; não é anonimização.
-- **Orquestração limitada:** o replanejamento pelo resultado das ferramentas cobre um caso (transação negada sem motivo registrado); não há planejamento geral, várias intenções na mesma mensagem não são tratadas e as respostas das etapas são combinadas em partes, não sintetizadas. Na camada 2, o fluxo funcionou em 10 de 10 execuções, mas só 1 resposta foi correta: o modelo acrescenta causas não documentadas à explicação geral.
+- **Orquestração limitada:** o replanejamento pelo resultado das ferramentas cobre um caso (transação negada sem motivo registrado); não há planejamento geral, várias intenções na mesma mensagem não são tratadas e as respostas das etapas são combinadas em partes, não sintetizadas. Na camada 2, o fluxo funcionou em 10 de 10 execuções, mas só 1 resposta gerada foi correta; por isso a explicação desse passo passou a ser citada da fonte, e o texto do LLM continua sem garantia de fidelidade nos demais fluxos.
 - **Persistência em arquivo JSON:** sem bloqueio entre processos; adequada à execução com um único worker, como no `Dockerfile`.
 - **Roteamento lexical:** a decisão principal do roteador é baseada em regras de texto, sem classificador semântico dedicado.
 - **Observabilidade avançada ausente:** não há dashboard operacional, tracing distribuído ou alertas automáticos nativos.

@@ -1,6 +1,6 @@
 {
-  "version": "1.4",
-  "status": "congelado em 2026-11-15 (v1.4: S02-R3 passa de xfail para pass após a correção de REL-05; v1.3 e anteriores no histórico)",
+  "version": "1.5",
+  "status": "congelado em 2026-11-15 (v1.5: verificação do S08-R4 passa a ser feita na resposta, que cita L48; v1.4 e anteriores no histórico)",
   "baseline_commit": "939d2ba",
   "corpus": {
     "path": "app/rag/documents/getnet_sources.jsonl",
@@ -594,6 +594,7 @@
             "backlog_id": "ARCH-02",
             "resolution": "v1.3: o orquestrador decide a próxima etapa pelo resultado verificado de lookup_transaction (_followup_step). Transação negada sem motivo registrado acrescenta o Knowledge com a consulta fixa DECLINED_SALE_QUERY, sem os fatos da transação; o contexto recuperado é só L48. O plano estático continua [customer_support]; o Knowledge é acrescentado durante a execução e aparece no trace.",
             "resolved_reason_v1_2": "O plano não inclui Knowledge: _needs_knowledge_followup exige termo de orientação ('por que', 'o que fazer'), ausente na mensagem oficial; e Support para em awaiting_user_input. O retrieval em si traria L48.",
+            "verification_v1_5": "Até a v1.4, o teste exigia L48 no contexto entregue ao LLM (KnowledgeAgent._generate). Na v1.5 a etapa do Knowledge cita o texto de L48 que define \"Negada\" (mesmas palavras e pontuação, sem o marcador de lista e com espaços normalizados), sem geração (P2, depois de 9 de 10 respostas geradas acrescentarem causas não documentadas na camada 2). O requisito não muda; o teste passa a exigir que L48 tenha sido recuperado e que esse texto, extraído do corpus pelo próprio teste, apareça na resposta do turno 2 (comparação com espaços normalizados).",
             "evidence": "v1.2: E1 top 3 da consulta = L48, L49; E3 orchestrator.create_plan e handle. v1.3: S08-R4 passou a XPASS(strict) com a correção, antes desta mudança de critério; tests/test_conditional_plan.py cobre aprovada, pendente, negada com e sem motivo, erro de ferramenta e os dois turnos do S08. Comportamento do modelo real (camada 2) ainda não medido.",
             "scope": "conversation"
           }
@@ -838,6 +839,13 @@
       "sha256_official_scenarios_json": "ea7bc29d07d178d0d61fbc42110f48fbc6c59772792255befdfde0e8d7615d0a",
       "sha256_rubrics_md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff",
       "superseded_because": "REL-05 corrigido (indisponibilidade de serviço externo reportada como step_status = failed): S02-R3 passou a XPASS(strict). Só S02-R3 mudou de xfail para pass; nenhum outro cenário, requisito, rubrica ou peso foi alterado. Autorizado explicitamente em 2026-11-15."
+    },
+    {
+      "version": "1.4",
+      "frozen": "2026-11-15",
+      "sha256_official_scenarios_json": "29948d76024a9aab69b23ce3c0770b7d245120fad58694387b08bc6446633478",
+      "sha256_rubrics_md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff",
+      "superseded_because": "P2: a explicação do S08 passou a ser a citação do texto de L48 que define \"Negada\", sem LLM. Só o mecanismo de verificação do S08-R4 mudou (contexto do LLM → trecho de L48 na resposta do turno 2); a descrição do requisito, os demais cenários, rubricas e pesos não foram alterados. Autorizado explicitamente em 2026-11-15."
     }
   ]
 }

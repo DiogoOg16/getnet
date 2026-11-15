@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import unicodedata
 
 import requests
 
@@ -370,6 +371,75 @@ class KnowledgeAgent:
             return "O erro de maquininha pode estar relacionado a integração, comunicação, leitura ou configuração do aparelho. Verifique a tela da maquininha, a conexão e os dados de rede antes de prosseguir."
 
         return None
+
+    @staticmethod
+    def _normalize_for_match(text: str) -> str:
+        normalized = unicodedata.normalize("NFKD", text.casefold())
+        return "".join(char for char in normalized if not unicodedata.combining(char))
+
+    @classmethod
+    def _find_passage(cls, content: str, term: str) -> str | None:
+        """Texto do item do documento que define `term` (item "• Termo: ...").
+
+        O documento de status das vendas lista cada status como um item
+        iniciado por "•"; devolve o item cujo rótulo é `term`, com as mesmas
+        palavras e pontuação, sem o marcador "•" e com espaços e quebras de
+        linha normalizados para um espaço.
+        """
+        wanted = cls._normalize_for_match(term).strip()
+        for item in content.split("•"):
+            passage = " ".join(item.split())
+            label = passage.split(":", 1)[0]
+            if ":" in passage and cls._normalize_for_match(label).strip() == wanted:
+                return passage
+        return None
+
+    def quote(self, query: str, term: str) -> dict:
+        """Responde citando o texto da base que define `term` (ver _find_passage).
+
+        Usado quando a explicação precisa ser fiel à fonte (ARCH-02 / P2): não há
+        geração por LLM, então nenhuma causa ou detalhe fora do documento pode
+        ser acrescentado. Se nenhum documento recuperado define o termo, a etapa
+        não improvisa: diz que a documentação não traz a definição, marca
+        step_status = "no_evidence" e registra um aviso no log.
+        """
+        sources = retrieve(query)
+        for source in sources:
+            passage = self._find_passage(source.get("content", ""), term)
+            if passage:
+                title = " ".join(source.get("title", "").split())
+                return {
+                    "agent": "knowledge",
+                    "response": f"“{passage}” (Fonte: {title})",
+                    "sources": [source.get("title", "")],
+                    "tool_used": "retrieval_quote",
+                    "flow_completed": True,
+                    "response_delivered": True,
+                    "issue_resolved": False,
+                    "resolved": False,
+                    "awaiting_user_input": False,
+                    "step_status": "success",
+                    "source_sections": self._group_sources_by_section([source]),
+                }
+        logger.warning(
+            "knowledge_quote_not_found term=%s retrieved=%s", term, len(sources)
+        )
+        return {
+            "agent": "knowledge",
+            "response": (
+                "A documentação recuperada não traz a definição desse status, "
+                "então não há trecho para citar."
+            ),
+            "sources": [],
+            "tool_used": "retrieval_quote",
+            "flow_completed": True,
+            "response_delivered": True,
+            "issue_resolved": False,
+            "resolved": False,
+            "awaiting_user_input": False,
+            "step_status": "no_evidence",
+            "source_sections": {},
+        }
 
     @staticmethod
     def _extractive_answer(sources: list[dict], max_chars: int = 600) -> str:

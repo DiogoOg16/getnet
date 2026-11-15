@@ -57,11 +57,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CRITERIA_PATH = ROOT / "eval" / "official_scenarios.json"
 RUBRICS_PATH = ROOT / "eval" / "official_scenarios_rubrics.md"
 
-# Critérios v1.4 congelados em 2026-11-15 (versões anteriores, com seus hashes,
+# Critérios v1.5 congelados em 2026-11-15 (versões anteriores, com seus hashes,
 # no histórico do próprio JSON). Mudar os critérios exige nova versão e
 # atualização explícita destes valores.
 FROZEN_CRITERIA = {
-    "eval/official_scenarios.json": "29948d76024a9aab69b23ce3c0770b7d245120fad58694387b08bc6446633478",
+    "eval/official_scenarios.json": "a62c6c1e9ed26c57f21dc73142eb75f311d1b74e15abbed299428767a07f0e16",
     "eval/official_scenarios_rubrics.md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff",
 }
 

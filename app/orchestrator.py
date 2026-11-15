@@ -32,8 +32,12 @@ DECLINED_SALE_QUERY = (
 )
 DECLINED_SALE_HEADING = (
     "O que significa uma venda negada, segundo a documentação Getnet "
-    "(explicação geral; não é o motivo registrado desta transação):"
+    "(trecho citado; explicação geral, não é o motivo registrado desta transação):"
 )
+# Status cuja definição é citada do documento recuperado (L48), sem geração.
+# Na camada 2, a geração livre acrescentou causas não documentadas em 9 de 10
+# respostas; a citação não deixa margem para isso (P2).
+DECLINED_SALE_TERM = "Negada"
 
 
 @dataclass(frozen=True)
@@ -42,7 +46,9 @@ class PlanStep:
 
     `query` substitui a mensagem do usuário como entrada do agente;
     `share_facts` controla se a etapa recebe os fatos verificados anteriores;
-    `heading` introduz a resposta da etapa quando ela é combinada com outras.
+    `heading` introduz a resposta da etapa quando ela é combinada com outras;
+    `quote_term`, no Knowledge, troca a geração por LLM pela citação do texto
+    que define esse termo no documento recuperado.
     """
 
     agent: str
@@ -50,6 +56,7 @@ class PlanStep:
     query: str | None = None
     share_facts: bool = True
     heading: str | None = None
+    quote_term: str | None = None
 
 
 @dataclass(frozen=True)
@@ -156,7 +163,9 @@ class ChatOrchestrator:
         | erro, resultado inválido ou transação não encontrada | nenhuma |
 
         A etapa acrescentada não recebe os fatos da transação, para que a
-        explicação geral não seja apresentada como causa desta transação.
+        explicação geral não seja apresentada como causa desta transação, e
+        cita a definição de "Negada" do documento recuperado em vez de gerar
+        texto (P2): não há como acrescentar causas não documentadas.
         """
         if step.agent != "customer_support":
             return None
@@ -181,6 +190,7 @@ class ChatOrchestrator:
             query=DECLINED_SALE_QUERY,
             share_facts=False,
             heading=DECLINED_SALE_HEADING,
+            quote_term=DECLINED_SALE_TERM,
         )
 
     def create_plan(
@@ -227,6 +237,9 @@ class ChatOrchestrator:
         generation_context: str = "",
         resumed_followup: dict | None = None,
     ) -> dict:
+        if step.agent == "knowledge" and step.quote_term:
+            return self.knowledge.quote(message, step.quote_term)
+
         if step.agent == "knowledge":
             parameters = inspect.signature(self.knowledge.answer).parameters
             accepts_any = any(
@@ -511,7 +524,9 @@ class ChatOrchestrator:
                     StepTrace(
                         agent=step.agent,
                         reason=step.reason,
-                        status="success",
+                        # Estado real da etapa (failed, no_evidence, handoff...),
+                        # não só "executou sem exceção".
+                        status=step_result.get("step_status") or "success",
                         tool_used=step_result.get("tool_used"),
                         request_id=request_id,
                         duration_ms=duration_ms,
@@ -521,7 +536,7 @@ class ChatOrchestrator:
                     "orchestrator_step_complete request_id=%s agent=%s status=%s duration_ms=%s tool_used=%s",
                     request_id,
                     step.agent,
-                    "success",
+                    step_result.get("step_status") or "success",
                     duration_ms,
                     step_result.get("tool_used"),
                 )

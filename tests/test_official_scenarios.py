@@ -520,8 +520,21 @@ def s08_r4(env):
             "S08: a conversa não seguiu pelo Customer Support")
     require(turn2["tool_used"] == "lookup_transaction", "S08: turno 2 não consultou a transação")
     document = _doc(SCENARIOS["S08"], "required", 48)
-    assert env.gold_reached_generation(document), (
-        "S08: L48 (significado de 'Negada') não chegou ao contexto de geração em nenhum turno"
+    # v1.5: o requisito ("a resposta usa L48 para explicar o significado da
+    # recusa") é verificado na própria resposta. L48 precisa ter sido recuperado
+    # de fato e o texto que define "Negada" precisa aparecer no turno 2 com as
+    # mesmas palavras e pontuação (comparação com espaços normalizados). Até a
+    # v1.4 a verificação era L48 no contexto do LLM; a explicação agora é
+    # citada, não gerada. O trecho é extraído aqui do corpus, sem usar o código
+    # da aplicação.
+    match = re.search(r"Negada:[^•]*", CORPUS[48]["content"])
+    require(match is not None, "S08: L48 sem a definição de 'Negada' no corpus")
+    passage = " ".join(match.group(0).split())
+    assert document["content_sha256_12"] in env.retrieved_hashes(), (
+        "S08: L48 (significado de 'Negada') não foi recuperado em nenhum turno"
+    )
+    assert passage in " ".join(turn2["response"].split()), (
+        "S08: a resposta do turno 2 não traz o trecho de L48 que define 'Negada'"
     )
 
 

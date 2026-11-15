@@ -21,6 +21,7 @@ from app.agents.knowledge import KnowledgeAgent
 from app.orchestrator import (
     DECLINED_SALE_HEADING,
     DECLINED_SALE_QUERY,
+    DECLINED_SALE_TERM,
     ChatOrchestrator,
     PlanStep,
 )
@@ -31,19 +32,27 @@ PIX_STATUS_SNIPPET = "Qr Code Expirado"
 
 @pytest.fixture
 def knowledge_calls(monkeypatch):
-    """Captura a pergunta, o contexto e os kwargs que chegam ao Knowledge."""
+    """Captura cada chamada ao Knowledge (geração ou citação) e o que o LLM recebe."""
     calls = []
     original_answer = KnowledgeAgent.answer
+    original_quote = KnowledgeAgent.quote
 
     def recording_answer(self, message, **kwargs):
-        calls.append({"message": message, "kwargs": kwargs})
+        calls.append({"kind": "answer", "message": message, "kwargs": kwargs})
         return original_answer(self, message, **kwargs)
+
+    def recording_quote(self, query, term):
+        result = original_quote(self, query, term)
+        calls.append({"kind": "quote", "message": query, "term": term, "result": result})
+        return result
 
     def recording_generate(self, message, context):
         calls[-1]["context"] = context
+        calls[-1]["generated"] = True
         return "Uma venda negada é uma venda não autorizada pelo emissor ou pela bandeira do cartão."
 
     monkeypatch.setattr(KnowledgeAgent, "answer", recording_answer)
+    monkeypatch.setattr(KnowledgeAgent, "quote", recording_quote)
     monkeypatch.setattr(KnowledgeAgent, "_generate", recording_generate)
     return calls
 
@@ -75,7 +84,7 @@ def test_declined_with_recorded_reason_uses_the_verified_reason_only(knowledge_c
     assert "Motivo da recusa: Cartão bloqueado pelo emissor." in execution.result["response"]
 
 
-def test_declined_without_reason_adds_knowledge_with_general_meaning(knowledge_calls):
+def test_declined_without_reason_adds_knowledge_quoting_l48(knowledge_calls):
     execution = handle("The transaction is txn1003.")
     result = execution.result
 
@@ -85,34 +94,35 @@ def test_declined_without_reason_adds_knowledge_with_general_meaning(knowledge_c
     assert execution.trace[1].reason.startswith(
         "lookup_transaction returned a declined transaction with no recorded reason"
     )
-    assert [(step.agent, step.status) for step in execution.trace] == [
-        ("customer_support", "success"),
-        ("knowledge", "success"),
+    assert [(step.agent, step.tool_used, step.status) for step in execution.trace] == [
+        ("customer_support", "lookup_transaction", "success"),
+        ("knowledge", "retrieval_quote", "success"),
     ]
 
-    # O Knowledge recebe a consulta fixa, sem os fatos da transação, e o contexto
-    # tem o documento de status de vendas com cartão (L48), sem o de Pix.
+    # O Knowledge cita, não gera: consulta fixa, termo "Negada", sem LLM e sem
+    # os fatos da transação.
     assert len(knowledge_calls) == 1
     call = knowledge_calls[0]
+    assert call["kind"] == "quote"
     assert call["message"] == DECLINED_SALE_QUERY
-    assert "verified_facts" not in call["kwargs"]
-    assert L48_SNIPPET in call["context"]
-    assert PIX_STATUS_SNIPPET not in call["context"]
-    assert "txn1003" not in call["message"] + call["context"]
+    assert call["term"] == DECLINED_SALE_TERM
+    assert "generated" not in call
+    assert PIX_STATUS_SNIPPET not in call["result"]["response"]
 
     # Campos principais representam a etapa principal (compatibilidade com S08).
     assert result["agent"] == "customer_support"
     assert result["tool_used"] == "lookup_transaction"
     assert result["step_status"] == "success"
 
-    # Resposta em partes distinguíveis: fato verificado, depois explicação geral.
+    # Resposta em partes distinguíveis: fato verificado, depois o trecho citado.
     facts_part, general_part = result["response"].split(DECLINED_SALE_HEADING)
     assert "txn1003" in facts_part and "recusada" in facts_part
     assert re.search(r"n[aã]o h[aá].{0,40}motivo", facts_part.lower())
-    assert "emissor" in general_part
+    assert general_part.strip() == (
+        f"“{L48_SNIPPET}.” (Fonte: Quais são os possíveis status das minhas vendas? - Getnet)"
+    )
     assert "txn1003" not in general_part
-    assert "explicação geral; não é o motivo registrado desta transação" in DECLINED_SALE_HEADING
-    for invented in ("Cartão bloqueado", "AUTH_DECLINED", "saldo insuficiente"):
+    for invented in ("Cartão bloqueado", "AUTH_DECLINED", "saldo insuficiente", "limite", "fraude"):
         assert invented not in result["response"]
     facts = {(fact["entity"], fact["name"]): fact["value"] for fact in result["verified_facts"]}
     assert facts[("txn1003", "status")] == "declined"
@@ -172,8 +182,8 @@ def test_followup_respects_max_steps_and_does_not_duplicate_agents(knowledge_cal
     assert len(execution.plan.steps) <= execution.plan.max_steps == 3
 
 
-def test_official_s08_conversation_now_reaches_l48(knowledge_calls):
-    """Os dois turnos do S08 pela API: o segundo agora aciona o Knowledge."""
+def test_official_s08_conversation_now_quotes_l48(knowledge_calls):
+    """Os dois turnos do S08 pela API: o segundo cita a definição de L48."""
     from fastapi.testclient import TestClient
 
     from app.main import app
@@ -189,5 +199,91 @@ def test_official_s08_conversation_now_reaches_l48(knowledge_calls):
     assert [step["agent"] for step in payloads[1]["trace"]] == ["customer_support", "knowledge"]
     assert payloads[1]["agent"] == "customer_support"
     assert payloads[1]["tool_used"] == "lookup_transaction"
-    assert L48_SNIPPET in knowledge_calls[-1]["context"]
+    assert L48_SNIPPET in payloads[1]["response"]
+    assert [call["kind"] for call in knowledge_calls] == ["quote"]
     assert json.dumps(payloads[1], ensure_ascii=False).count("Cartão bloqueado") == 0
+
+
+# --- P2: citação literal no Knowledge -----------------------------------------
+
+L48_CONTENT_EXAMPLE = (
+    "Entenda os status. • Autorizada: Venda aprovada pelo emissor. "
+    "• Negada: Venda não autorizada pelo emissor/ bandeira do cartão. "
+    "• Desfeita: Ocorre quando a transação não é aprovada dentro do prazo."
+)
+
+
+@pytest.mark.parametrize("term", ["Negada", "negada", "NEGADA"])
+def test_find_passage_returns_the_item_text(term):
+    assert KnowledgeAgent._find_passage(L48_CONTENT_EXAMPLE, term) == (
+        "Negada: Venda não autorizada pelo emissor/ bandeira do cartão."
+    )
+
+
+@pytest.mark.parametrize("term", ["Neg", "Recusada", "emissor"])
+def test_find_passage_requires_the_exact_label(term):
+    assert KnowledgeAgent._find_passage(L48_CONTENT_EXAMPLE, term) is None
+
+
+def test_quote_never_calls_the_llm(monkeypatch):
+    def no_llm(self, message, context):
+        raise AssertionError("a citação não pode chamar o LLM")
+
+    monkeypatch.setattr(KnowledgeAgent, "_generate", no_llm)
+
+    result = KnowledgeAgent().quote(DECLINED_SALE_QUERY, DECLINED_SALE_TERM)
+
+    assert result["tool_used"] == "retrieval_quote"
+    assert result["response"].startswith(f"“{L48_SNIPPET}.”")
+    assert result["sources"] == ["Quais são os possíveis status das minhas vendas?\xa0 - Getnet"]
+
+
+NO_DEFINITION = [{"title": "Outro documento", "content": "Texto sem a definição do status."}]
+
+
+def test_quote_reports_no_evidence_when_no_document_defines_the_term(monkeypatch, caplog):
+    import logging
+
+    caplog.set_level(logging.WARNING, logger="getnet_knowledge")
+    monkeypatch.setattr("app.agents.knowledge.retrieve", lambda query, limit=3: NO_DEFINITION)
+
+    result = KnowledgeAgent().quote("qualquer", "Negada")
+
+    assert result["step_status"] == "no_evidence"
+    assert result["issue_resolved"] is False
+    assert result["sources"] == []
+    assert result["response"] == (
+        "A documentação recuperada não traz a definição desse status, então não há trecho para citar."
+    )
+    assert any("knowledge_quote_not_found term=Negada retrieved=1" in r.getMessage() for r in caplog.records)
+
+
+def test_quote_miss_is_visible_in_the_trace_but_keeps_the_verified_answer(monkeypatch):
+    monkeypatch.setattr("app.agents.knowledge.retrieve", lambda query, limit=3: NO_DEFINITION)
+
+    execution = handle("The transaction is txn1003.")
+    result = execution.result
+
+    assert [(step.agent, step.tool_used, step.status) for step in execution.trace] == [
+        ("customer_support", "lookup_transaction", "success"),
+        ("knowledge", "retrieval_quote", "no_evidence"),
+    ]
+    # A pergunta (status da transação) foi respondida pelo fato verificado.
+    assert result["step_status"] == "success"
+    assert result["agent"] == "customer_support"
+    facts_part, general_part = result["response"].split(DECLINED_SALE_HEADING)
+    assert "txn1003" in facts_part and "recusada" in facts_part
+    assert "não traz a definição desse status" in general_part
+    for invented in ("limite", "fraude", "bloqueado", "saldo"):
+        assert invented not in result["response"]
+
+
+def test_trace_reports_a_failed_step_as_failed(monkeypatch):
+    from app.agents import web_search
+
+    monkeypatch.setattr(web_search, "get_forecast", lambda city, tomorrow=False: {"found": False, "error": "unavailable"})
+
+    execution = handle("What's the weather forecast in Porto Alegre tomorrow?")
+
+    assert [(step.agent, step.status) for step in execution.trace] == [("web_search", "failed")]
+    assert execution.result["step_status"] == "failed"
