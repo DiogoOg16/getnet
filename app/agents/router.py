@@ -2,6 +2,8 @@ from dataclasses import dataclass
 import re
 import unicodedata
 
+from app.privacy import CPF_PATTERN, contains_card_number
+
 
 @dataclass(frozen=True)
 class RoutingDecision:
@@ -133,9 +135,10 @@ HUMAN_ESCALATION = _compile((
     # pedido envolvendo dados pessoais sensíveis do próprio usuário
     r"\bdados pessoais sensiveis\b",
     r"\bmy (?:personal|sensitive) data\b",
-    # guardrail: dado sensível colado na mensagem (CPF ou número de cartão)
-    r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b",
-    r"\b(?:\d[ -]?){13,19}\b",
+    # guardrail: CPF colado na mensagem; o padrão vem de app.privacy, que também
+    # o usa para mascarar. O cartão é verificado em route() por
+    # contains_card_number(), que confere o total de dígitos fora da regex.
+    CPF_PATTERN,
 ))
 
 KNOWLEDGE = _compile((
@@ -319,7 +322,7 @@ class RouterAgent:
             else text
         )
 
-        if HUMAN_ESCALATION.search(text):
+        if HUMAN_ESCALATION.search(text) or contains_card_number(text):
             return RoutingDecision(
                 agent="human_escalation",
                 reason=(

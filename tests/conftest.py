@@ -1,12 +1,26 @@
+import atexit
 import json
 import os
 import re
+import shutil
+import tempfile
+from pathlib import Path
 
 import pytest
 
-from app.agents import customer_support
-from app.agents.knowledge import KnowledgeAgent
-from app.main import handoff_store, orchestrator, session_memory
+# Isolamento do armazenamento: os stores globais de app.main leem estes caminhos
+# quando são importados. Definidos aqui, antes de qualquer import de `app`, a
+# suíte nunca lê, apaga nem sobrescreve os arquivos padrão (/tmp/getnet_*.json)
+# de uma API local. O valor é sobrescrito, e não só preenchido, para que um
+# caminho real configurado no ambiente do desenvolvedor também fique protegido.
+TEST_STATE_DIR = Path(tempfile.mkdtemp(prefix="getnet-tests-"))
+os.environ["GETNET_SESSION_MEMORY_PATH"] = str(TEST_STATE_DIR / "session_memory.json")
+os.environ["GETNET_HUMAN_HANDOFF_PATH"] = str(TEST_STATE_DIR / "human_handoff.json")
+atexit.register(shutil.rmtree, TEST_STATE_DIR, ignore_errors=True)
+
+from app.agents import customer_support  # noqa: E402
+from app.agents.knowledge import KnowledgeAgent  # noqa: E402
+from app.main import handoff_store, orchestrator, session_memory  # noqa: E402
 
 
 class FakeCustomerSupportOllamaClient:

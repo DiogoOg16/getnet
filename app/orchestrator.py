@@ -14,6 +14,7 @@ from app.agents.customer_support import (
 from app.agents.knowledge import KnowledgeAgent
 from app.agents.router import RouterAgent, RoutingDecision
 from app.agents.web_search import WebSearchAgent
+from app.privacy import mask_sensitive
 from app.tools.registry import ToolRegistry, tool_registry
 from app.verified_facts import consolidate_verified_facts
 
@@ -374,7 +375,12 @@ class ChatOrchestrator:
         conversation_history = conversation_context
         # Referências curtas ("e essa?") usam somente a pergunta anterior já
         # resolvida; o histórico completo não vira consulta nem argumento.
-        agent_message = routing_context or current_message
+        # SEC-01: só o roteador (create_plan, abaixo) lê o texto original, porque
+        # precisa dele para detectar CPF/cartão. Todo agente — e, por meio deles,
+        # o LLM, as ferramentas e a busca externa — recebe a versão mascarada.
+        # Os documentos recuperados e os resultados das ferramentas não passam
+        # por aqui e ficam intactos.
+        agent_message = mask_sensitive(routing_context or current_message)
         # A geração só recebe histórico quando a pergunta depende dele: em
         # pergunta nova, falas antigas faziam o modelo recusar sem motivo.
         generation_context = (

@@ -5,6 +5,8 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from app.privacy import mask_sensitive, mask_sensitive_data
+
 
 class SessionMemory:
     """Stores short-lived per-session conversation fragments."""
@@ -108,13 +110,16 @@ class SessionMemory:
         pending_followup: dict | None = None,
     ) -> None:
         key = self._session_key(user_id, session_id)
+        # SEC-01: dados pessoais são mascarados antes de entrar na memória,
+        # que é persistida em disco e reaproveitada como contexto em turnos
+        # seguintes. Entradas antigas já gravadas não são reescritas aqui.
         entry = {
-            "message": message.strip(),
-            "response": response.strip(),
+            "message": mask_sensitive(message.strip()),
+            "response": mask_sensitive(response.strip()),
             "timestamp": datetime.now().isoformat(timespec="seconds"),
         }
         if pending_followup:
-            entry["pending_followup"] = pending_followup
+            entry["pending_followup"] = mask_sensitive_data(pending_followup)
 
         if key not in self._store:
             self._store[key] = []

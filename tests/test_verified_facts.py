@@ -107,8 +107,8 @@ def test_orchestrator_detects_conflicting_verified_facts_and_keeps_conflict_visi
     assert "conflito" in result["response"].lower()
 
 
-def test_verified_facts_are_not_persisted_in_session_memory():
-    session_memory = SessionMemory(storage_path="/tmp/getnet_verified_facts_test.json")
+def test_verified_facts_are_not_persisted_in_session_memory(tmp_path):
+    session_memory = SessionMemory(storage_path=str(tmp_path / "verified_facts.json"))
     session_memory.clear_session(user_id="cliente1988", session_id="session-verified-facts")
     session_memory.add_message(
         user_id="cliente1988",

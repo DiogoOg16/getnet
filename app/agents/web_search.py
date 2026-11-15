@@ -2,6 +2,7 @@ import re
 
 import requests
 from bs4 import BeautifulSoup
+from app.privacy import mask_sensitive
 from app.tools.weather import (
     extract_city,
     get_forecast,
@@ -49,7 +50,9 @@ class WebSearchAgent:
         try:
             response = requests.post(
                 self.SEARCH_URL,
-                data={"q": message},
+                # SEC-02: o provedor externo nunca recebe os dados pessoais
+                # cobertos por app.privacy.
+                data={"q": mask_sensitive(message)},
                 headers={
                     "User-Agent": (
                         "Mozilla/5.0 (X11; Linux x86_64) "

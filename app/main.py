@@ -11,8 +11,9 @@ from pydantic import BaseModel, Field
 
 from app.agents.router import RoutingDecision
 from app.auth import authenticate_user
-from app.human_handoff import HumanHandoffStore, is_attendant_user
+from app.human_handoff import HandoffPermissionError, HumanHandoffStore, is_attendant_user
 from app.orchestrator import ChatOrchestrator
+from app.privacy import mask_sensitive
 from app.session_memory import SessionMemory
 from app.tools.customer_tools import register_customer_tools
 from app.tools.registry import tool_registry
@@ -157,7 +158,9 @@ def complete_handoff(
 
     resolution = payload.get("resolution") if isinstance(payload, dict) else None
     try:
-        record = handoff_store.complete(ticket_id, resolution or "")
+        record = handoff_store.complete(ticket_id, resolution or "", actor=actor_user_id)
+    except HandoffPermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return record
@@ -218,7 +221,7 @@ def chat(
         total_latency_ms = int((time.perf_counter() - started_at) * 1000)
         response = ChatResponse(
             user_id=authenticated_user_id,
-            message=request.message,
+            message=mask_sensitive(request.message),
             response=result["response"],
             agent=result["agent"],
             routing_reason=decision.reason,
@@ -374,7 +377,8 @@ def chat(
 
     response = ChatResponse(
         user_id=authenticated_user_id,
-        message=request.message,
+        # SEC-01: o eco da pergunta não devolve o dado pessoal original.
+        message=mask_sensitive(request.message),
         response=result["response"],
         agent=result["agent"],
         routing_reason=decision.reason,

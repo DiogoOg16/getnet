@@ -7,6 +7,12 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app.privacy import mask_sensitive
+
+
+class HandoffPermissionError(PermissionError):
+    """O ator não tem permissão para a transição pedida no ticket."""
+
 
 def is_attendant_user(user_id: str | None) -> bool:
     if not user_id:
@@ -75,7 +81,8 @@ class HumanHandoffStore:
             "id": ticket_id,
             "user_id": user_id,
             "session_id": session_id,
-            "message": message.strip(),
+            # SEC-01: o ticket é persistido em disco e exibido ao atendente.
+            "message": mask_sensitive(message.strip()),
             "status": "pending",
             "assignee": None,
             "resolution": None,
@@ -154,7 +161,12 @@ class HumanHandoffStore:
         self._save()
         return record.copy()
 
-    def complete(self, ticket_id: str, resolution: str) -> dict:
+    def complete(self, ticket_id: str, resolution: str, *, actor: str) -> dict:
+        """Conclui o ticket; só o atendente atribuído pode concluir.
+
+        A verificação fica aqui, e não só na rota HTTP, para que nenhum
+        chamador consiga concluir um ticket assumido por outra pessoa.
+        """
         record = self._records.get(ticket_id)
         if record is None:
             raise KeyError(f"Ticket {ticket_id} não encontrado.")
@@ -164,9 +176,14 @@ class HumanHandoffStore:
             raise ValueError("Ticket já concluído.")
         if record.get("status") != "assigned":
             raise ValueError("Ticket só pode ser concluído após ser assumido por um atendente.")
+        if not actor or record.get("assignee") != actor.strip():
+            raise HandoffPermissionError(
+                "Somente o atendente que assumiu o ticket pode concluí-lo."
+            )
 
         record["status"] = "completed"
-        record["resolution"] = resolution.strip()
+        # A resolução também é persistida e exibida ao cliente.
+        record["resolution"] = mask_sensitive(resolution.strip())
         record["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         self._save()
         return record.copy()

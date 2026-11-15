@@ -388,7 +388,7 @@ def test_active_ticket_is_reused_for_same_flow_and_session():
 def test_completed_ticket_allows_new_ticket_for_same_flow():
     first = _open_connectivity_ticket("isolation-reopen")
     handoff_store.assume(first["handoff"]["id"], "atendente_01")
-    handoff_store.complete(first["handoff"]["id"], "Resolvido pelo atendente.")
+    handoff_store.complete(first["handoff"]["id"], "Resolvido pelo atendente.", actor="atendente_01")
 
     second = _open_connectivity_ticket("isolation-reopen")
 
