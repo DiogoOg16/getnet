@@ -161,3 +161,48 @@ def test_external_tool_unavailability_is_logged(monkeypatch, caplog, module_path
 
     assert result == {"found": False, "error": "unavailable"}
     assert any(event in r.getMessage() and "error_type=ConnectionError" in r.getMessage() for r in caplog.records)
+
+
+# --- REL-05 -----------------------------------------------------------------
+
+def test_weather_service_unavailable_is_reported_as_failed(monkeypatch):
+    from app.agents import web_search
+
+    monkeypatch.setattr(web_search, "get_forecast", lambda city, tomorrow=False: {"found": False, "error": "unavailable"})
+
+    result = WebSearchAgent().answer("Qual é a previsão do tempo em Porto Alegre amanhã?")
+
+    assert result["step_status"] == "failed"
+    assert result["issue_resolved"] is False and result["resolved"] is False
+    assert result["response_delivered"] is True
+    assert "indisponível" in result["response"] and "°C" not in result["response"]
+
+
+def test_exchange_service_unavailable_is_reported_as_failed(monkeypatch):
+    from app.agents import web_search
+
+    monkeypatch.setattr(web_search, "get_exchange_rate", lambda code: {"found": False, "error": "unavailable"})
+
+    result = WebSearchAgent().answer("Qual a cotação do euro hoje?")
+
+    assert result["step_status"] == "failed"
+    assert result["issue_resolved"] is False
+    assert "indisponível" in result["response"] and "R$" not in result["response"]
+
+
+@pytest.mark.parametrize(
+    ("target", "message", "payload"),
+    [
+        ("get_forecast", "Qual é a previsão do tempo em Atlantis amanhã?", {"found": False, "error": "city_not_found"}),
+        ("get_exchange_rate", "Qual a cotação do euro hoje?", {"found": False, "error": "no_quote"}),
+    ],
+)
+def test_not_found_is_not_reported_as_a_service_failure(monkeypatch, target, message, payload):
+    """Cidade inexistente ou sem cotação recente não é indisponibilidade do serviço."""
+    from app.agents import web_search
+
+    monkeypatch.setattr(web_search, target, lambda *args, **kwargs: payload)
+
+    result = WebSearchAgent().answer(message)
+
+    assert "step_status" not in result

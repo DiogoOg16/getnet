@@ -559,20 +559,19 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.3, a suíte padrão dá `756 passed, 5 skipped, 5 xfailed`.
+Com os critérios v1.4, a suíte padrão dá `761 passed, 5 skipped, 4 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
-- **`xfailed` (5):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
+- **`xfailed` (4):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
 
 | Requisito | Backlog | Defeito |
 |---|---|---|
-| S02-R3 | REL-05 | Com a API de clima indisponível, a resposta não inventa valores, mas o `step_status` volta `success` em vez de `failed`. |
 | S04-R2 | RAG-07a | O documento do Pix no Get Tap fica em 6º lugar e não entra no contexto (`limit=3`). |
 | S06-R3 | RAG-07b | O documento sobre antecipação não entra no top 3. |
 | S09-R3 | RAG-07c | O documento que diz que o limite de parcelas depende do emissor não entra no top 3. |
 | S05V-R2 | RAG-01 | No modo filtrado de conectividade, o IDF usa a contagem do corpus inteiro. |
 
-Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente. Foi o que aconteceu com S08-R4 (ARCH-02): a correção do planejamento condicional o fez passar, e a versão 1.3 de `eval/official_scenarios.json` o moveu de `xfail` para `pass`, com o motivo registrado no histórico do arquivo.
+Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente. Foi o que aconteceu com S08-R4 (ARCH-02, versão 1.3 de `eval/official_scenarios.json`) e com S02-R3 (REL-05, versão 1.4): cada correção fez o requisito passar, e a nova versão o moveu de `xfail` para `pass`, com o motivo e os hashes da versão anterior registrados no histórico do arquivo.
 
 ### Testes de integração reais com Ollama
 
@@ -656,14 +655,14 @@ A avaliação separa o que é determinístico do que depende do modelo.
 **Resultado da camada 2 registrado** (execução de 2026-11-08 sobre o commit `939d2ba`, `qwen2.5:7b`, 86 respostas): 32 Corretas, 48 Parciais e 6 Incorretas, com 100% de disponibilidade. Por cenário: S02, S03, S05 e S07 corretos em todas as execuções; S10 com 5 de 10 corretas; S01 com 1 correta, 7 parciais e 2 incorretas; S04 com 6 parciais e 4 incorretas; S06, S08 e S09 parciais em todas. Leitura honesta desse resultado:
 
 - não é uma aprovação integral: mais da metade das respostas é parcial. Em S04, S06 e S09 as parciais coincidem com os `xfail` de recuperação (RAG-07a/b/c), e em S08 com a falha de orquestração ARCH-02, corrigida depois dessa rodada; em S01 e S10 há respostas parciais ou incorretas sem `xfail` correspondente, ligadas à síntese do modelo;
-- foi medido antes das mudanças de privacidade e da correção de ARCH-02. Depois delas, os testes da camada 1 dão 31 aprovados e 5 `xfail` (S08-R4 passou a ser cumprido), e só o S08 foi medido de novo na camada 2 (abaixo);
+- foi medido antes das mudanças de privacidade e da correção de ARCH-02. Depois delas, os testes da camada 1 dão 32 aprovados e 4 `xfail` (S08-R4 e S02-R3 passaram a ser cumpridos), e só o S08 foi medido de novo na camada 2 (abaixo);
 - os rótulos são de um único avaliador e as amostras são pequenas (3 a 10 execuções por cenário); os arquivos rotulados não estão versionados no repositório.
 
 **Camada 2 do S08 depois da correção de ARCH-02** (2026-11-15, commit `75a8a4a`, `qwen2.5:7b`, 10 execuções, rótulos humanos às cegas, critérios v1.3): **1 Correta, 0 Parciais e 9 Incorretas**, com 100% de disponibilidade. A arquitetura funcionou em todas as execuções: o segundo turno aciona o Knowledge, recupera só L48 e apresenta o fato verificado separado da explicação geral. O problema está na geração: em 9 de 10 respostas o modelo acrescenta causas que L48 não traz (limite de crédito, cartão bloqueado, fraude, saldo insuficiente) ou afirmações não sustentadas, e a rubrica trata isso como informação inventada. Corrigir isso exige restringir a geração (por exemplo, citar o trecho de L48 em vez de gerar texto livre) e uma nova rodada de avaliação; não foi feito.
 
 #### Métricas de recuperação (EVAL-02)
 
-`eval/retrieval_metrics.py` mede Recall@K e MRR sobre os documentos gold dos critérios v1.3, de forma determinística (só `retrieve`, sem LLM e sem rede), e `tests/test_retrieval_metrics.py` roda no CI.
+`eval/retrieval_metrics.py` mede Recall@K e MRR sobre os documentos gold dos critérios (os mesmos na v1.3 e na v1.4), de forma determinística (só `retrieve`, sem LLM e sem rede), e `tests/test_retrieval_metrics.py` roda no CI.
 
 ```bash
 python eval/retrieval_metrics.py              # tabela em Markdown

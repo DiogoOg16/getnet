@@ -21,6 +21,22 @@ from urllib.parse import parse_qs, unquote, urlparse
 logger = logging.getLogger("getnet_web_search")
 
 
+def _tool_failure_fields() -> dict:
+    """REL-05: serviço externo indisponível é falha da etapa, não sucesso.
+
+    A resposta continua entregue (explica a indisponibilidade, sem inventar
+    valores), mas a solicitação não foi resolvida.
+    """
+    return {
+        "flow_completed": True,
+        "response_delivered": True,
+        "issue_resolved": False,
+        "resolved": False,
+        "awaiting_user_input": False,
+        "step_status": "failed",
+    }
+
+
 class WebSearchAgent:
     """Searches the public web and returns validated, sourced results."""
 
@@ -201,12 +217,15 @@ class WebSearchAgent:
                 if result["error"] == "city_not_found"
                 else "O serviço de previsão do tempo está indisponível no momento."
             )
-            return {
+            response = {
                 "agent": "web_search",
                 "response": f"{reason} Tente novamente mais tarde.",
                 "sources": [],
                 "tool_used": "open_meteo",
             }
+            if result["error"] == "unavailable":
+                response.update(_tool_failure_fields())
+            return response
 
         year, month, day = result["date"].split("-")
         place = ", ".join(
@@ -243,7 +262,7 @@ class WebSearchAgent:
                 if result["error"] == "unavailable"
                 else "Não encontrei cotação recente nos últimos dias."
             )
-            return {
+            response = {
                 "agent": "web_search",
                 "response": (
                     f"{reason} Consulte a cotação oficial em "
@@ -252,6 +271,9 @@ class WebSearchAgent:
                 "sources": [],
                 "tool_used": "bcb_ptax",
             }
+            if result["error"] == "unavailable":
+                response.update(_tool_failure_fields())
+            return response
 
         quoted_at = result["quoted_at"]
         return {
