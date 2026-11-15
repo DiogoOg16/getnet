@@ -4,6 +4,8 @@ Assistente de suporte multiagente desenvolvido como desafio técnico. A aplicaç
 
 > **Escopo do protótipo:** dados de clientes e transações são simulados. O sistema não está conectado aos sistemas internos da Getnet e não deve ser usado para decisões operacionais reais.
 
+> **Summary (English):** multi-agent support API (FastAPI) for the Getnet challenge. A rule-based Router builds a bounded plan and dispatches to a Knowledge Agent (BM25 RAG over an ingested Getnet corpus, optional Ollama generation), a Customer Support Agent (Ollama function calling over customer/transaction/settlement tools, with backend validation), a Web Search agent (weather, exchange rate, allow-listed search) and a human escalation flow with persisted tickets. Bearer-token identity is enforced per request; personal data (CPF, CNPJ, card numbers, e-mail, phone) is regex-masked before it reaches agents, the LLM, external search or storage. Tests: deterministic pytest suite plus a human-labelled evaluation of the 10 official scenarios. Known limitations are listed at the end, including the scenarios still marked `xfail`.
+
 ## Índice
 
 - [Checklist de compliance do desafio](#checklist-de-compliance-do-desafio)
@@ -16,11 +18,13 @@ Assistente de suporte multiagente desenvolvido como desafio técnico. A aplicaç
 - [Execução com Docker](#execução-com-docker)
 - [API HTTP](#api-http)
 - [Memória de sessão](#memória-de-sessão)
+- [Segurança e privacidade](#segurança-e-privacidade)
 - [Testes e avaliação](#testes-e-avaliação)
 - [Reprodução da validação final](#reprodução-da-validação-final)
 - [Observabilidade](#observabilidade)
 - [Limitações conhecidas](#limitações-conhecidas)
 - [Estrutura do projeto](#estrutura-do-projeto)
+- [Melhorias futuras](#melhorias-futuras)
 
 ## Checklist de compliance do desafio
 
@@ -30,10 +34,14 @@ Assistente de suporte multiagente desenvolvido como desafio técnico. A aplicaç
 | Knowledge Agent com RAG + busca web | `app/agents/knowledge.py`, `app/rag/retriever.py`, `app/agents/web_search.py` | `tests/test_knowledge.py`, `tests/test_knowledge_fallback.py`, `tests/test_web_search.py` |
 | Customer Support com 2+ tools | `app/tools/customer_tools.py`, `app/tools/registry.py`, `app/agents/customer_support.py` | `tests/test_customer_support.py`, `tests/test_tool_registry.py` |
 | Endpoint `POST /chat` com JSON significativo | `app/main.py` | `tests/test_api.py`, `tests/acceptance/test_resolution_contract.py` |
-| Persistência de sessão e handoff | `app/session_memory.py`, `app/human_handoff.py` | `tests/test_api.py`, `tests/test_behavior_evaluation.py` |
+| Persistência de sessão e handoff | `app/session_memory.py`, `app/human_handoff.py` | `tests/test_api.py`, `tests/test_attendant_flow.py`, `tests/test_handoff_completion.py`, `tests/test_conversation_isolation.py` |
+| Autenticação e identidade | `app/auth.py`, `app/main.py` | `tests/test_api.py`, `tests/test_attendant_flow.py`, `tests/test_scripts_auth.py` |
+| Guardrails e privacidade (bônus) | `app/agents/router.py`, `app/privacy.py`, `app/orchestrator.py` | `tests/test_privacy.py`, `tests/test_privacy_agents.py`, `tests/test_router_escalation.py` |
+| Agente de escalonamento humano (bônus) | `app/human_handoff.py`, endpoints `/human-handoff` em `app/main.py` | `tests/test_attendant_flow.py`, `tests/test_active_handoff_interception.py` |
+| Avaliação dos cenários do desafio (bônus) | `eval/official_scenarios.json`, `eval/official_scenarios_rubrics.md`, `eval/run_official_scenarios.py` | `tests/test_official_scenarios.py` (camada 1); camada 2 com rótulo humano (ver [Estratégia de avaliação](#estratégia-de-avaliação)) |
 | Dockerização para execução padrão | `Dockerfile`, `docker-compose.yml` | validação manual documentada em "Reprodução da validação final" |
 | Testes automatizados e estratégia | `tests/` + seção de estratégia | `python -m pytest -q` (suíte padrão) + testes reais opt-in (`RUN_OLLAMA_INTEGRATION=1`) |
-| CI em push/PR para `main` | `.github/workflows/ci.yml` | [Execução CI aprovada no GitHub Actions](https://github.com/DiogoOg16/getnet/actions/runs/4146379649) |
+| CI em push/PR para `main` e `feat/**` | `.github/workflows/ci.yml` | [Execuções do workflow CI no GitHub Actions](https://github.com/DiogoOg16/getnet/actions/workflows/ci.yml) |
 
 Observação: os testes de integração real com Ollama permanecem opt-in por variável de ambiente e não fazem parte da suíte padrão do CI.
 
@@ -43,9 +51,10 @@ Observação: os testes de integração real com Ollama permanecem opt-in por va
 - **Conhecimento da Getnet:** recuperação de trechos de uma base documental local e geração opcional com Ollama.
 - **Suporte ao cliente:** ferramentas para consultar dados simulados de clientes e transações.
 - **Busca externa:** consultas de clima, câmbio e busca geral na web, com validação de domínios permitidos.
-- **Guardrails e escalonamento:** pedidos sensíveis, solicitações explícitas de atendimento humano e casos que exigem continuidade manual são encaminhados para o agente de escalonamento.
+- **Guardrails e escalonamento:** pedidos sensíveis (incluindo CPF ou número de cartão colado na mensagem), solicitações explícitas de atendimento humano e casos que exigem continuidade manual são encaminhados para o escalonamento, que cria um ticket persistido.
+- **Privacidade:** dados pessoais são mascarados por padrões antes de chegar aos agentes, ao LLM, à busca externa, aos tickets e à memória (ver [Segurança e privacidade](#segurança-e-privacidade)).
 - **Fallback sem LLM:** o serviço pode funcionar sem Ollama, usando respostas extraídas dos documentos recuperados.
-- **Metadados de execução:** a API informa o agente escolhido, motivo do roteamento, fontes, ferramenta usada e necessidade de handoff.
+- **Metadados de execução:** a API informa o agente escolhido, motivo do roteamento, fontes, ferramenta usada, necessidade de handoff, fatos verificados e um `trace` por etapa com duração.
 
 ## Arquitetura e fluxo da mensagem
 
@@ -53,10 +62,11 @@ Observação: os testes de integração real com Ollama permanecem opt-in por va
 Cliente
   |
   v
-FastAPI (/chat)
+FastAPI (/chat) -- autenticação Bearer, user_id == token, memória de sessão
   |
   v
-Router Agent
+ChatOrchestrator -- Router Agent (texto original) monta um plano de até 3 etapas
+  |                 agentes recebem a mensagem já mascarada
   |
   +--> Knowledge Agent ------> Retriever local ------> Ollama (opcional)
   |
@@ -64,10 +74,10 @@ Router Agent
   |
   +--> Web Search -----------> Clima / câmbio / busca web
   |
-  +--> Human Escalation -----> Resposta de encaminhamento
+  +--> Human Escalation -----> Ticket persistido (pending -> assigned -> completed)
   |
   v
-Resposta JSON + metadados
+Resposta JSON + metadados + trace por etapa
 ```
 
 ### Agentes
@@ -79,17 +89,21 @@ Resposta JSON + metadados
 | `CustomerSupportAgent` | Atende solicitações sobre clientes e transações usando ferramentas com dados simulados. |
 | `WebSearchAgent` | Trata perguntas de clima, câmbio e pesquisa externa. |
 | Human escalation | Encaminha solicitações sensíveis ou que exigem atendimento humano. É representado pelo fluxo de escalonamento no orquestrador. |
-| `ChatOrchestrator` | Executa o agente indicado pelo roteador e padroniza o fluxo de resposta. |
+| `ChatOrchestrator` | Monta um plano limitado (`ExecutionPlan`, máximo de 3 etapas) a partir da decisão do roteador, executa as etapas em sequência, compartilha fatos verificados entre elas, detecta conflitos de fatos, registra um `trace` por etapa e padroniza a resposta. |
 
 O roteador é baseado em regras, não em uma chamada de LLM. Isso torna a decisão principal previsível e testável, embora regras lexicais possam não reconhecer todas as formas possíveis de uma intenção.
 
+**Colaboração entre agentes (o que existe e o que falta):** hoje o plano tem mais de uma etapa em um caso: quando a mesma mensagem menciona uma transação recusada e pede orientação ("por que", "o que fazer"), o Customer Support consulta os dados e o Knowledge acrescenta a orientação documentada, recebendo os fatos verificados da etapa anterior. A decisão é tomada na criação do plano, a partir do texto; o orquestrador ainda não replaneja com base no resultado de uma ferramenta. Por isso, no cenário oficial S08 (a recusa e o identificador chegam em turnos separados, sem pedido de orientação), o Knowledge não é acionado: o requisito S08-R4 está marcado como `xfail` (ARCH-02). As respostas de várias etapas são concatenadas, não sintetizadas.
+
 ### Fluxo de uma requisição
 
-1. A API valida `message` e `user_id`.
-2. O orquestrador chama o roteador.
-3. O roteador seleciona o agente de conhecimento, suporte, busca externa, escalonamento ou fallback.
-4. O agente executa sua lógica e, quando aplicável, consulta ferramentas ou documentos.
-5. A API devolve uma resposta JSON com metadados para inspeção e depuração.
+1. A API autentica o token Bearer e exige que o `user_id` do payload seja o do token (`403` caso contrário).
+2. Se a sessão tem um atendimento humano ativo e a mensagem pergunta por ele, a API devolve o estado do ticket.
+3. A memória de sessão fornece contexto recente e resolve referências curtas ("e essa?").
+4. O roteador analisa o texto original (necessário para detectar CPF ou cartão) e o orquestrador monta o plano.
+5. Cada agente do plano recebe a mensagem já mascarada e, quando aplicável, consulta ferramentas, documentos ou o LLM.
+6. Se houver escalonamento, a API cria (ou reaproveita) um ticket de handoff com a mensagem mascarada.
+7. O turno é gravado na memória, mascarado, e a API devolve a resposta JSON com metadados e `trace`.
 
 ## Function Calling no Customer Support (Incremento 5B)
 
@@ -125,7 +139,7 @@ O fluxo operacional do Customer Support usa Function Calling com validação bac
 
 O agente de conhecimento utiliza recuperação lexical; **não há embeddings nem banco vetorial implementados**.
 
-1. **Ingestão:** `app/rag/ingest.py` reúne páginas públicas de ajuda e documentação da Getnet, extrai o conteúdo e prepara os registros.
+1. **Ingestão:** `app/rag/ingest.py` reúne páginas públicas de ajuda e documentação da Getnet (as fontes estão listadas no próprio arquivo), extrai o conteúdo e prepara os registros. Para regenerar a base: `python -m app.rag.ingest`. O comando acessa a internet e **sobrescreve** `app/rag/documents/getnet_sources.jsonl` (se alguma fonte falhar, a base existente é preservada). Como os cenários oficiais e o fixture de ranking fixam hashes do conteúdo e posições dos documentos, uma nova ingestão pode invalidar esses testes; regenere a base só de forma deliberada.
 2. **Armazenamento:** os documentos ficam versionados em `app/rag/documents/getnet_sources.jsonl`. A base representa um retrato da data da ingestão e pode ficar desatualizada.
 3. **Recuperação:** `app/rag/retriever.py` normaliza os termos da consulta e usa BM25, com ajustes lexicais e critérios mínimos de relevância, para selecionar trechos.
 4. **Resposta:** `app/agents/knowledge.py` pode responder diretamente em casos específicos, enviar o contexto recuperado ao Ollama ou usar um fallback extrativo se o modelo estiver indisponível.
@@ -142,7 +156,7 @@ O modelo padrão é `qwen2.5:7b`. O uso do Ollama é opcional.
 
 ## Requisitos
 
-- Python 3.11 ou compatível.
+- Python 3.11 ou mais recente (obrigatório: os padrões de mascaramento em `app/privacy.py` usam quantificadores possessivos, que não existem no 3.10). A imagem Docker e o CI usam 3.11.
 - `pip` e ambiente virtual Python.
 - Docker Engine e Docker Compose v2, se preferir executar em containers.
 - Ollama e o modelo configurado, somente se quiser usar geração por LLM.
@@ -213,6 +227,12 @@ curl -s http://localhost:8000/health
 
 Nesse modo, a API sobe sem iniciar um serviço Ollama próprio. Se não houver Ollama acessível na URL configurada, o agente de conhecimento usa seu fallback.
 
+Observações:
+
+- **Atualizações de código:** use sempre `--build` depois de mudar o código (`docker compose up --build -d`). Sem isso, o Compose reaproveita a imagem antiga e o container continua executando a versão anterior.
+- **Dados persistidos:** tickets e memória de sessão ficam em `/app/data`, no volume `api_data` (no projeto padrão, `getnet_api_data`). Eles sobrevivem a `restart` e a `down`; só são apagados com `docker compose down -v`.
+- **Uma instância por vez:** o `docker-compose.yml` fixa `container_name: getnet-ai-agent` e a porta `8000`. Para subir uma segunda instância em paralelo, use outro nome de projeto (`-p`) e um arquivo de override que troque o nome do container e a porta.
+
 Para acompanhar os logs:
 
 ```bash
@@ -258,6 +278,8 @@ Esse endereço é configurado para o cenário Docker previsto no `docker-compose
 | `OLLAMA_URL` | `http://localhost:11434` no processo local; o Compose define `http://ollama:11434` como padrão do serviço | Endereço base do Ollama. |
 | `OLLAMA_MODEL` | `qwen2.5:7b` | Nome do modelo usado para geração. |
 | `GETNET_DEMO_AUTH_TOKENS` | sem padrão; obrigatória | JSON que mapeia cada token Bearer a um `user_id`. O `.env.example` traz tokens fictícios para `cliente1988`, `cliente2001` e `atendente_01`, só para desenvolvimento. |
+| `GETNET_SESSION_MEMORY_PATH` | `<tmp>/getnet_session_memory.json` no processo local; `/app/data/getnet_session_memory.json` no Compose | Arquivo JSON da memória de sessão. |
+| `GETNET_HUMAN_HANDOFF_PATH` | `<tmp>/getnet_human_handoff.json` no processo local; `/app/data/getnet_human_handoff.json` no Compose | Arquivo JSON dos tickets de handoff. |
 
 Exemplo para execução local:
 
@@ -314,11 +336,20 @@ A resposta inclui os campos abaixo (o conteúdo exato depende da rota e dos dado
   "handoff_required": false,
   "awaiting_user_input": false,
   "step_status": "success",
-  "handoff": null
+  "handoff": null,
+  "request_id": "9f2c…",
+  "total_latency_ms": 12,
+  "verified_facts": [
+    {"entity": "txn1001", "name": "status", "value": "approved", "verified": true}
+  ],
+  "fact_conflicts": [],
+  "trace": [
+    {"agent": "customer_support", "reason": "The message references a specific transaction ID.", "status": "success", "tool_used": "lookup_transaction", "request_id": "9f2c…", "duration_ms": 11}
+  ]
 }
 ```
 
-O exemplo ilustra o contrato da resposta; a mensagem, o status da transação e outros valores dependem dos dados simulados disponíveis na versão executada.
+O exemplo ilustra o contrato da resposta; a mensagem, o status da transação e outros valores dependem dos dados simulados disponíveis na versão executada. O campo `message` devolve a pergunta com os dados pessoais mascarados (ver [Segurança e privacidade](#segurança-e-privacidade)).
 
 ### Endpoints de handoff humano
 
@@ -331,7 +362,7 @@ Os endpoints exigem autenticação Bearer. Usuários cliente só podem acessar t
 
 #### Fluxo do atendente
 
-Um `user_id` que começa com `atendente_` é tratado como atendente. Só atendentes podem assumir e concluir tickets, e cada atendente só pode assumir um ticket para si mesmo. As transições permitidas são `pending` → `assigned` → `completed`: concluir um ticket que ainda não foi assumido devolve `400`.
+Um `user_id` que começa com `atendente_` é tratado como atendente. Só atendentes podem assumir e concluir tickets, e cada atendente só pode assumir um ticket para si mesmo. **Só o atendente que assumiu o ticket pode concluí-lo:** a regra é verificada no armazenamento (`HumanHandoffStore.complete`), não só na rota, e uma tentativa negada não altera o ticket. As transições permitidas são `pending` → `assigned` → `completed`: concluir um ticket que ainda não foi assumido devolve `400`. A mensagem e a resolução do ticket são gravadas com os dados pessoais mascarados.
 
 > **Só para desenvolvimento:** o token `demo-token-atendente_01` do `.env.example` é público e fictício. Substitua todos os tokens antes de usar o projeto em qualquer ambiente real. Se o seu `.env` foi criado antes dessa credencial existir, acrescente o par `"demo-token-atendente_01":"atendente_01"` ao JSON de `GETNET_DEMO_AUTH_TOKENS` e reinicie a API.
 
@@ -392,6 +423,7 @@ Respostas de erro esperadas:
 | Sem token ou com token inválido | `401` |
 | Cliente tenta assumir ou concluir um ticket | `403` |
 | Atendente tenta assumir um ticket em nome de outro (`assignee` diferente do próprio `user_id`) | `403` |
+| Atendente tenta concluir um ticket assumido por outro atendente | `403` |
 | Cliente consulta um ticket de outro cliente | `403` |
 | Ticket inexistente na consulta | `404` |
 | Concluir antes de assumir, assumir de novo, `assignee` ausente ou `resolution` vazia | `400` |
@@ -425,7 +457,7 @@ curl -s -X POST http://127.0.0.1:8000/chat \
   -d '{"message":"Preciso falar com um humano sobre dados sensíveis do meu cadastro.","user_id":"cliente1988"}'
 ```
 
-No caso de escalonamento, espera-se que `agent` seja `human_escalation` e `handoff_required` seja `true`. No protótipo, isso representa o sinal de encaminhamento na resposta; não integra automaticamente com uma fila ou sistema real de atendimento.
+No caso de escalonamento, espera-se que `agent` seja `human_escalation`, `handoff_required` seja `true` e `handoff` traga o ticket criado (`status: pending`). O ticket é persistido em arquivo JSON e operado pelos endpoints de handoff acima; não há integração com uma fila ou plataforma real de atendimento.
 
 ## Memória de sessão
 
@@ -443,7 +475,49 @@ Limitações conhecidas da memória:
 
 - não há política avançada de expiração por tenant;
 - não há criptografia dedicada para o arquivo de memória local;
-- não há rotina automática de governança além dos limites de tamanho e idade configurados na aplicação.
+- não há rotina automática de governança além dos limites de tamanho e idade configurados na aplicação;
+- a resolução de referências curtas reconhece uma lista fixa de expressões ("essa", "isso", "e essa"...), e a lembrança de nome usa padrões de texto.
+
+## Segurança e privacidade
+
+### Identidade
+
+- `POST /chat` e os endpoints `/human-handoff` exigem token Bearer (`/health` e a documentação do FastAPI são públicos). Os tokens vêm de `GETNET_DEMO_AUTH_TOKENS` e são comparados em tempo constante.
+- Em `POST /chat`, o `user_id` do payload precisa ser o do token; caso contrário, `403`. As ferramentas recebem o `user_id` autenticado como contexto confiável, nunca do modelo, e `lookup_transaction` só devolve transações do próprio cliente.
+- Os tokens são estáticos e sem expiração: adequados para demonstração, não para produção.
+
+### Mascaramento de dados pessoais
+
+`app/privacy.py` concentra a detecção e o mascaramento. Os padrões cobertos e os marcadores usados:
+
+| Dado | Formatos detectados | Marcador |
+|---|---|---|
+| CPF | 11 dígitos, com ou sem ponto, espaço ou hífen | `[CPF]` |
+| CNPJ | 14 dígitos, com ou sem pontuação | `[CNPJ]` |
+| Cartão | 13 a 19 dígitos sem separador; grupos 4-4-4-4 (+1 a 3) e 4-6-5/4-6-4 com espaço, ponto ou hífen; e, logo depois de uma palavra de cartão ("cartão", "crédito", "visa"...), outros agrupamentos de 3 a 6 dígitos com 13 a 19 dígitos no total | `[CARTAO]` |
+| E-mail | endereço com domínio | `[EMAIL]` |
+| Telefone | com `+55`, com DDD entre parênteses, ou logo depois de uma palavra de contexto ("telefone", "celular", "whatsapp", "ligue", "meu número"...) | `[TELEFONE]` |
+
+Onde o mascaramento é aplicado:
+
+- **Antes dos agentes:** o roteador lê o texto original, porque precisa dele para detectar CPF ou cartão; depois do roteamento, todos os agentes (e, por meio deles, o LLM, as ferramentas e a busca externa) recebem a versão mascarada.
+- **Na persistência:** mensagem, resposta e follow-up pendente na memória de sessão; mensagem e resolução dos tickets.
+- **Na busca externa:** a consulta enviada ao provedor.
+- **Na resposta HTTP:** o campo `message` devolve a pergunta mascarada.
+
+O que **não** é mascarado: documentos da base de conhecimento (os contatos oficiais da Getnet, como e-mails e telefones de atendimento, continuam disponíveis para o modelo) e resultados das ferramentas. Os logs da aplicação não registram o conteúdo das mensagens, só identificadores, agente, status e latência.
+
+**Guardrail:** CPF ou número de cartão na mensagem leva ao escalonamento humano, com o ticket gravado já mascarado.
+
+**Limitações (o mascaramento é uma proteção adicional, não anonimização):**
+
+- A detecção é por expressões regulares e não garante encontrar todo dado pessoal. Não há validação de dígito verificador (Luhn, CPF).
+- Telefone sem palavra de contexto (ex.: `98765-4321` sozinho) e cartão em agrupamento incomum sem palavra de cartão por perto não são detectados.
+- Onze dígitos sem pontuação são marcados como `[CPF]` mesmo quando são um celular com DDD, e outros números longos (ex.: protocolos) podem ser marcados como cartão ou CNPJ.
+- Nome, RG, CEP, endereço e conta bancária estão fora do escopo.
+- O texto original existe na memória do processo durante o roteamento.
+- Arquivos JSON gravados por versões anteriores não são saneados automaticamente.
+- Os arquivos de memória e de tickets não são criptografados.
 
 ## Testes e avaliação
 
@@ -473,8 +547,27 @@ python -m pytest -q
 
 Comportamento da suíte padrão:
 
-- `tests/conftest.py` substitui `KnowledgeAgent._generate` por resposta simulada;
+- `tests/conftest.py` substitui `KnowledgeAgent._generate` e o cliente Ollama do Customer Support por versões simuladas;
+- `tests/conftest.py` aponta `GETNET_SESSION_MEMORY_PATH` e `GETNET_HUMAN_HANDOFF_PATH` para uma pasta temporária antes de importar a aplicação: a suíte não lê, não apaga e não sobrescreve os arquivos de uma API rodando localmente;
 - testes marcados com `network` são pulados quando `RUN_NETWORK_TESTS` não é `1`.
+
+#### Como ler o resultado
+
+No commit `8e19de4`, a suíte padrão dá `719 passed, 5 skipped, 6 xfailed`.
+
+- **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
+- **`xfailed` (6):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
+
+| Requisito | Backlog | Defeito |
+|---|---|---|
+| S02-R3 | REL-05 | Com a API de clima indisponível, a resposta não inventa valores, mas o `step_status` volta `success` em vez de `failed`. |
+| S04-R2 | RAG-07a | O documento do Pix no Get Tap fica em 6º lugar e não entra no contexto (`limit=3`). |
+| S06-R3 | RAG-07b | O documento sobre antecipação não entra no top 3. |
+| S08-R4 | ARCH-02 | O plano não aciona o Knowledge depois de consultar uma transação recusada (ver [Colaboração entre agentes](#agentes)). |
+| S09-R3 | RAG-07c | O documento que diz que o limite de parcelas depende do emissor não entra no top 3. |
+| S05V-R2 | RAG-01 | No modo filtrado de conectividade, o IDF usa a contagem do corpus inteiro. |
+
+Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente.
 
 ### Testes de integração reais com Ollama
 
@@ -542,9 +635,26 @@ Consulte o código dos scripts para opções e comportamento detalhados.
 
 ### Estratégia de avaliação
 
-A validação combina testes unitários, testes de integração via API, cenários representativos e inspeção manual. A cobertura atual verifica o comportamento implementado, mas não equivale a uma avaliação quantitativa completa da qualidade das respostas geradas por um LLM real.
+A avaliação separa o que é determinístico do que depende do modelo.
 
-Melhorias futuras incluem um conjunto versionado de perguntas e respostas esperadas, métricas de acurácia de roteamento e recuperação, avaliação de fidelidade ao contexto e testes periódicos de contratos com serviços externos.
+1. **Testes unitários e de integração via API** (`pytest`, LLM e rede simulados): contratos de cada agente, ferramentas, autenticação, permissões, memória, privacidade e o fluxo HTTP completo com `TestClient`.
+2. **Camada 1 dos cenários oficiais** (`tests/test_official_scenarios.py`, roda no CI): para os 10 cenários do enunciado, `eval/official_scenarios.json` fixa rota, plano, ferramenta, documentos que precisam ser recuperados (por hash de conteúdo) e o contrato da resposta. Os requisitos ainda não atendidos ficam em `xfail` com o item de backlog (tabela acima).
+3. **Camada 2, com o modelo real** (`eval/run_official_scenarios.py`, fora do CI): gera várias execuções por cenário contra o Ollama, embaralha as respostas e esconde a versão, e um avaliador humano rotula cada resposta como Correta, Parcial ou Incorreta pela rubrica congelada em `eval/official_scenarios_rubrics.md`. Não há juiz LLM. O relatório separa disponibilidade, qualidade e respostas de fallback.
+
+   ```bash
+   python eval/run_official_scenarios.py run --out DIR      # exige Ollama
+   python eval/run_official_scenarios.py blind --runs DIR --out BLIND --seed 20261108
+   python eval/run_official_scenarios.py freeze --blind BLIND   # depois da rotulagem
+   python eval/run_official_scenarios.py report --blind BLIND
+   ```
+
+**Resultado da camada 2 registrado** (execução de 2026-11-08 sobre o commit `939d2ba`, `qwen2.5:7b`, 86 respostas): 32 Corretas, 48 Parciais e 6 Incorretas, com 100% de disponibilidade. Por cenário: S02, S03, S05 e S07 corretos em todas as execuções; S10 com 5 de 10 corretas; S01 com 1 correta, 7 parciais e 2 incorretas; S04 com 6 parciais e 4 incorretas; S06, S08 e S09 parciais em todas. Leitura honesta desse resultado:
+
+- não é uma aprovação integral: mais da metade das respostas é parcial. Em S04, S06, S08 e S09 as parciais coincidem com os `xfail` de recuperação (RAG-07a/b/c) e de orquestração (ARCH-02); em S01 e S10 há respostas parciais ou incorretas sem `xfail` correspondente, ligadas à síntese do modelo;
+- foi medido antes das mudanças de privacidade (`44774e7`, `8e19de4`); depois delas a camada 1 continua idêntica (30 aprovados e 6 `xfail`), mas não houve nova rodada da camada 2;
+- os rótulos são de um único avaliador e as amostras são pequenas (3 a 10 execuções por cenário); os arquivos rotulados não estão versionados no repositório.
+
+Ainda faltam métricas de recuperação independentes dos cenários (Recall@K, MRR) e testes periódicos de contrato com os serviços externos.
 
 ## Reprodução da validação final
 
@@ -614,9 +724,13 @@ A API registra eventos de requisição, decisão de roteamento e resposta. A res
 | `issue_resolved` | Resultado de resolução do problema no nível de negócio. |
 | `resolved` | Campo legado de compatibilidade, espelhando `issue_resolved`. |
 | `awaiting_user_input` | Indica suspensão aguardando informação obrigatória do usuário. |
-| `step_status` | Estado operacional final (`success`, `failed`, `waiting_for_user_input`, `handoff`). |
+| `step_status` | Estado operacional final: `success`, `failed`, `waiting_for_user_input`, `handoff`, `conflict` (fatos verificados contraditórios) ou, no Customer Support, `tool_call_error`, `invalid_result` e `max_iterations_exceeded`. |
 | `handoff_required` | Indica se a solicitação deve ser encaminhada para atendimento humano. |
 | `handoff` | Ticket de handoff quando criado ou consultado no fluxo. |
+| `request_id` | Identificador da requisição, repetido nos logs e no `trace`. |
+| `total_latency_ms` | Latência total da requisição na API. |
+| `trace` | Uma entrada por etapa executada do plano: agente, motivo, status, ferramenta e `duration_ms`. |
+| `verified_facts` / `fact_conflicts` | Fatos confirmados por ferramentas (ex.: status e valor de uma transação) e eventuais contradições entre etapas. |
 
 Para observar logs no Docker:
 
@@ -624,7 +738,7 @@ Para observar logs no Docker:
 docker compose logs -f api
 ```
 
-Os logs atuais são voltados à depuração. O projeto ainda não implementa dashboard, tracing distribuído, alertas operacionais ou persistência dedicada de eventos. Em um ambiente real, também seria necessário revisar a política de logging para evitar registrar mensagens ou dados pessoais desnecessários.
+Os logs registram, por requisição, o `request_id`, a decisão de roteamento, cada etapa do orquestrador (agente, status, ferramenta e duração) e a latência total. O conteúdo das mensagens não é registrado. O projeto ainda não implementa dashboard, tracing distribuído, métricas agregadas, alertas operacionais ou persistência dedicada de eventos, e o `trace` não mede separadamente o tempo de cada chamada ao LLM ou às ferramentas.
 
 ## Limitações conhecidas
 
@@ -644,6 +758,9 @@ Os logs atuais são voltados à depuração. O projeto ainda não implementa das
 - **Idioma:** a geração foi orientada principalmente para respostas em português; não há garantia de responder no mesmo idioma de toda mensagem recebida.
 - **Escalonamento:** o protótipo cria e persiste tickets de handoff em armazenamento local de arquivo JSON; não há integração com plataforma externa de atendimento.
 - **Guardrails por regras:** a detecção de intenções sensíveis usa padrões explícitos e não substitui uma solução completa de segurança ou revisão humana.
+- **Mascaramento por padrões:** protege os formatos listados em [Segurança e privacidade](#segurança-e-privacidade), com as limitações descritas lá; não é anonimização.
+- **Orquestração limitada:** o plano é decidido antes da execução, a partir do texto, e só encadeia agentes no caso de transação recusada com pedido de orientação; não replaneja com base no resultado das ferramentas (S08-R4, ARCH-02), não trata várias intenções na mesma mensagem e concatena as respostas das etapas em vez de sintetizá-las.
+- **Persistência em arquivo JSON:** sem bloqueio entre processos; adequada à execução com um único worker, como no `Dockerfile`.
 - **Roteamento lexical:** a decisão principal do roteador é baseada em regras de texto, sem classificador semântico dedicado.
 - **Observabilidade avançada ausente:** não há dashboard operacional, tracing distribuído ou alertas automáticos nativos.
 
@@ -677,22 +794,33 @@ Os logs atuais são voltados à depuração. O projeto ainda não implementa das
 │   ├── auth.py
 │   ├── human_handoff.py
 │   ├── orchestrator.py
+│   ├── privacy.py
 │   ├── session_memory.py
 │   ├── verified_facts.py
 │   └── main.py
-├── docs/
+├── docs/                       # auditorias, contrato de resposta e transições do orquestrador
 ├── eval/
+│   ├── official_scenarios.json         # critérios congelados dos 10 cenários
+│   ├── official_scenarios_rubrics.md   # rubrica da avaliação humana
+│   └── run_official_scenarios.py       # camada 2 (modelo real)
 ├── scripts/
 │   ├── agent_probe.py
 │   ├── check_scenarios.py
 │   └── validate_functionality.py
 ├── tests/
 │   ├── acceptance/
+│   ├── fixtures/
 │   ├── conftest.py
 │   ├── test_api.py
 │   ├── test_customer_support.py
+│   ├── test_handoff_completion.py
+│   ├── test_official_scenarios.py
+│   ├── test_privacy.py
+│   ├── test_privacy_agents.py
 │   ├── test_router.py
-│   └── test_scripts_auth.py
+│   ├── test_scripts_auth.py
+│   ├── test_storage_isolation.py
+│   └── ...                     # demais testes de agentes, ferramentas e fluxos
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
@@ -701,8 +829,9 @@ Os logs atuais são voltados à depuração. O projeto ainda não implementa das
 
 ## Melhorias futuras
 
-- Criar um dataset de avaliação versionado para os cenários do desafio.
-- Medir separadamente acurácia do roteamento, qualidade da recuperação e fidelidade da geração.
+- Replanejar com base no resultado das ferramentas (ex.: acionar o Knowledge quando uma transação recusada não tem motivo registrado) e compor uma resposta única a partir dos fatos verificados e da orientação documentada (ARCH-02).
+- Corrigir os casos de recuperação marcados como `xfail` (RAG-07a/b/c, RAG-01) com experimentos controlados e uma nova versão dos critérios.
+- Medir separadamente acurácia do roteamento, qualidade da recuperação (Recall@K, MRR) e fidelidade da geração, e repetir a camada 2 a cada mudança relevante.
 - Avaliar embeddings e recuperação semântica como complemento ao BM25.
 - Detectar o idioma da entrada e responder no mesmo idioma.
 - Persistir logs estruturados com política explícita de retenção e privacidade.
