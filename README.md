@@ -237,6 +237,7 @@ Observações:
 
 - **Atualizações de código:** use sempre `--build` depois de mudar o código (`docker compose up --build -d`). Sem isso, o Compose reaproveita a imagem antiga e o container continua executando a versão anterior.
 - **Dados persistidos:** tickets e memória de sessão ficam em `/app/data`, no volume `api_data` (no projeto padrão, `getnet_api_data`). Eles sobrevivem a `restart` e a `down`; só são apagados com `docker compose down -v`.
+- **Variáveis de ambiente:** o Compose só entrega ao container as variáveis listadas em `environment`. `tests/test_docker_config.py` falha se a aplicação ler com `os.getenv` uma variável que o `docker-compose.yml` não repassa (foi o caso de `OLLAMA_TIMEOUT_SECONDS`, corrigido).
 - **Uma instância por vez:** o `docker-compose.yml` fixa `container_name: getnet-ai-agent` e a porta `8000`. Para subir uma segunda instância em paralelo, use outro nome de projeto (`-p`) e um arquivo de override que troque o nome do container e a porta.
 
 Para acompanhar os logs:
@@ -275,6 +276,12 @@ Se o Ollama estiver instalado e rodando no host, configure a URL antes de subir 
 OLLAMA_URL=http://host.docker.internal:11434 docker compose up --build -d
 ```
 
+Em CPU, uma geração do `qwen2.5:7b` pode passar de 50 s. Para uma demonstração, vale aumentar o tempo máximo de cada chamada (o padrão é 60 s):
+
+```bash
+OLLAMA_URL=http://host.docker.internal:11434 OLLAMA_TIMEOUT_SECONDS=120 docker compose up -d api
+```
+
 Esse endereço é configurado para o cenário Docker previsto no `docker-compose.yml`. Em execução local fora do Docker, o padrão do código é `http://localhost:11434`.
 
 ### Variáveis de ambiente
@@ -283,7 +290,7 @@ Esse endereço é configurado para o cenário Docker previsto no `docker-compose
 |---|---|---|
 | `OLLAMA_URL` | `http://localhost:11434` no processo local; o Compose define `http://ollama:11434` como padrão do serviço | Endereço base do Ollama. |
 | `OLLAMA_MODEL` | `qwen2.5:7b` | Nome do modelo usado para geração. |
-| `OLLAMA_TIMEOUT_SECONDS` | `60` | Tempo máximo de cada chamada ao Ollama. Valor inválido (não numérico, zero ou negativo) volta a 60 s, com aviso no log. Nas avaliações com `qwen2.5:7b` em CPU, a geração levou até cerca de 51 s. |
+| `OLLAMA_TIMEOUT_SECONDS` | `60` | Tempo máximo de cada chamada ao Ollama. Valor inválido (não numérico, zero ou negativo) volta a 60 s, com aviso no log. Nas avaliações com `qwen2.5:7b` em CPU, a geração levou até cerca de 51 s. No Compose, a variável é repassada ao container (`${OLLAMA_TIMEOUT_SECONDS:-60}`). |
 | `GETNET_DEMO_AUTH_TOKENS` | sem padrão; obrigatória | JSON que mapeia cada token Bearer a um `user_id`. O `.env.example` traz tokens fictícios para `cliente1988`, `cliente2001` e `atendente_01`, só para desenvolvimento. |
 | `GETNET_SESSION_MEMORY_PATH` | `<tmp>/getnet_session_memory.json` no processo local; `/app/data/getnet_session_memory.json` no Compose | Arquivo JSON da memória de sessão. |
 | `GETNET_HUMAN_HANDOFF_PATH` | `<tmp>/getnet_human_handoff.json` no processo local; `/app/data/getnet_human_handoff.json` no Compose | Arquivo JSON dos tickets de handoff. |
@@ -560,7 +567,7 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.5, a suíte padrão dá `771 passed, 5 skipped, 4 xfailed`.
+Com os critérios v1.5, a suíte padrão dá `773 passed, 5 skipped, 4 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
 - **`xfailed` (4):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
