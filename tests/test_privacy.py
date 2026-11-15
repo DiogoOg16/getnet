@@ -6,12 +6,13 @@ busca inspeciona o argumento efetivamente enviado ao provedor (mock).
 """
 
 import json
+import time
 
 import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from app.agents.router import RouterAgent
+from app.agents.router import RouterAgent, normalize
 from app.agents.web_search import WebSearchAgent
 from app.human_handoff import HumanHandoffStore
 from app.main import app, handoff_store, session_memory
@@ -387,3 +388,73 @@ def test_a2_phone_number_phrases_are_context(text, expected):
 )
 def test_a2_bare_numero_is_not_phone_context(text):
     assert mask_sensitive(text) == text
+
+
+# --- A.3: tempo linear (ReDoS), telefone vs. cartão, "número" como conector ---
+
+@pytest.mark.parametrize("keyword", ["cartão", "crédito", "telefone", "ligue", "contato"])
+@pytest.mark.parametrize("separator", [" ", "\n", " ,-:"])
+def test_a3_long_separator_runs_are_processed_in_linear_time(keyword, separator):
+    """Antes da A.3, 24 espaços depois de "cartão" levavam ~2 s e o tempo
+    dobrava a cada espaço extra. Com separadores possessivos, 20 mil levam
+    milissegundos, inclusive no roteador, que roda em toda mensagem."""
+    text = keyword + separator * 20_000 + "x"
+
+    started = time.perf_counter()
+    mask_sensitive(text)
+    contains_card_number(text)
+    RouterAgent().route(text)
+
+    assert time.perf_counter() - started < 1.0
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("telefone 4111 1111 1111 1111", "telefone [CARTAO]"),
+        ("contato 4111 1111 1111 1111", "contato [CARTAO]"),
+        ("meu número é 4111 1111 1111 1111", "meu número é [CARTAO]"),
+        ("ligue 4111-1111-1111-1111", "ligue [CARTAO]"),
+    ],
+)
+def test_a3_card_after_phone_keyword_is_masked_whole_and_escalated(text, expected):
+    assert mask_sensitive(text) == expected
+    assert contains_card_number(text)
+    assert RouterAgent().route(text).agent == "human_escalation"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("me liga no número 11 98765-4321", "me liga no número [TELEFONE]"),
+        ("whatsapp: número 11 98765-4321", "whatsapp: número [TELEFONE]"),
+        ("telefone 3456-7890 2 vezes", "telefone [TELEFONE] 2 vezes"),
+    ],
+)
+def test_a3_numero_is_a_connector_after_a_phone_keyword(text, expected):
+    assert mask_sensitive(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Meu cartão é 4111 1111 1111 1111",
+        "cartão 4111 1111 1111 111",
+        "cartão de crédito 41111 11111 11111",
+        "telefone 4111 1111 1111 1111",
+        "4111111111111111",
+        "nº do cartão 4111 1111 1111 111",
+        "vendas no cartão de 2026-11-11 2026-11-13",
+        "cartão final 1234",
+        "4111 1111 1111 111",
+        "Qual o status da transação txn1003?",
+    ],
+)
+def test_a3_masking_and_router_agree_on_card_numbers(text):
+    """A mesma entrada dá o mesmo resultado no mascaramento e no roteador,
+    inclusive com o texto normalizado (sem acento) que o roteador usa."""
+    masked_as_card = "[CARTAO]" in mask_sensitive(text)
+
+    assert contains_card_number(text) is masked_as_card
+    assert contains_card_number(normalize(text)) is masked_as_card
+    assert (RouterAgent().route(text).agent == "human_escalation") is masked_as_card

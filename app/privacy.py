@@ -57,7 +57,11 @@ _CARD_KEYWORDS = (
     r"cart[aã]o|cart[oõ]es|card|cr[eé]dito|d[eé]bito"
     r"|visa|master(?:card)?|elo|amex|hipercard"
 )
-_CARD_FILLER = r"(?:[\s:,\-]+|(?:é|e|meu|minha|do|da|de|n[uú]mero|n[º°o]\.?)(?=[\s:,.\-]|$))*?"
+# Separadores possessivos (`++`, Python 3.11+): cada sequência de separadores
+# é consumida inteira, sem retrocesso. Com `+` simples dentro do `*?`, o motor
+# testava todas as divisões possíveis dos espaços e o tempo dobrava a cada
+# espaço extra (ReDoS: ~2 s com 24 espaços depois de "cartão").
+_CARD_FILLER = r"(?:[\s:,\-]++|(?:é|e|meu|minha|do|da|de|n[uú]mero|n[º°o]\.?)(?=[\s:,.\-]|$))*?"
 _CARD_IN_CONTEXT = re.compile(
     r"(?i)(\b(?:" + _CARD_KEYWORDS + r")\b" + _CARD_FILLER + r")"
     r"((?<![\d.-])\d{3,6}(?:[ .-]\d{3,6}){2,5})(?![\d]|[ .-]\d)"
@@ -79,10 +83,17 @@ _PHONE_KEYWORDS = (
     r"|meus?\s+n[uú]meros?"
     r"|n[uú]meros?\s+d[eo]\s+(?:telefone|celular|whatsapp)"
 )
-_PHONE_FILLER = r"(?:[\s:,\-]+|(?:é|eh|e|is|para|pra|pro|no|na|o|meu|minha)\b)*?"
+# Mesmo cuidado com ReDoS: separadores possessivos. "número" é conector (depois
+# de uma palavra de telefone: "me liga no número ..."), mas não palavra-chave.
+_PHONE_FILLER = (
+    r"(?:[\s:,\-]++|(?:é|eh|e|is|para|pra|pro|no|na|o|meu|minha|n[uú]mero)\b)*?"
+)
+# O número não pode continuar em outro grupo de 3+ dígitos: assim um cartão
+# depois de "telefone" não é mascarado pela metade como telefone e fica para
+# as regras de cartão (coerente com o roteador).
 _PHONE_WITH_KEYWORD = re.compile(
     r"(?i)(\b(?:" + _PHONE_KEYWORDS + r")\b" + _PHONE_FILLER + r")"
-    r"((?<!\d)(?:\d{2}[ -]?)?9?\d{4}[ -]?\d{4}\b)"
+    r"((?<!\d)(?:\d{2}[ -]?)?9?\d{4}[ -]?\d{4}\b(?!\d|[ .-]\d{3}))"
 )
 _CNPJ = re.compile(r"\b\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}\b")
 _CARD = re.compile(CARD_PATTERN)
