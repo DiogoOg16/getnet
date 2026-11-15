@@ -1,9 +1,12 @@
 """Weather forecasts from Open-Meteo (no API key)."""
 
+import logging
 import re
 import unicodedata
 
 import requests
+
+from app.logging_utils import log_exception
 
 GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -73,5 +76,6 @@ def get_forecast(city: str, tomorrow: bool = False) -> dict:
             "temp_min": daily["temperature_2m_min"][index],
             "rain_probability": daily["precipitation_probability_max"][index],
         }
-    except (requests.RequestException, ValueError, KeyError, IndexError):
+    except (requests.RequestException, ValueError, KeyError, IndexError) as exc:
+        log_exception(logging.getLogger("getnet_weather"), "weather_unavailable", exc, level=logging.WARNING)
         return {"found": False, "error": "unavailable"}

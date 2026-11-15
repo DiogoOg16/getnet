@@ -1,9 +1,36 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
 import requests
+
+logger = logging.getLogger("getnet_ollama")
+
+DEFAULT_TIMEOUT_SECONDS = 60.0
+
+
+def timeout_from_env() -> float:
+    """Timeout das chamadas ao Ollama (REL-01), em segundos.
+
+    Lido de OLLAMA_TIMEOUT_SECONDS. O padrão de 60 s cobre a geração do
+    qwen2.5:7b em CPU, que levou até ~51 s nas avaliações; um valor ausente,
+    não numérico ou não positivo volta ao padrão, com aviso no log.
+    """
+    raw = os.getenv("OLLAMA_TIMEOUT_SECONDS")
+    if raw is None or not raw.strip():
+        return DEFAULT_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        value = 0.0
+    if value <= 0 or value != value or value == float("inf"):
+        logger.warning(
+            "ollama_timeout_invalid value=%r using_default=%s", raw, DEFAULT_TIMEOUT_SECONDS
+        )
+        return DEFAULT_TIMEOUT_SECONDS
+    return value
 
 
 class OllamaClientError(RuntimeError):
@@ -33,10 +60,16 @@ class OllamaResponseFormatError(OllamaClientError, ValueError):
 class OllamaClient:
     """Thin HTTP client for the local Ollama chat API."""
 
-    def __init__(self, base_url: str | None = None, model: str | None = None, timeout: int = 60) -> None:
+    def __init__(
+        self,
+        base_url: str | None = None,
+        model: str | None = None,
+        timeout: float | None = None,
+    ) -> None:
         self.base_url = (base_url or os.getenv("OLLAMA_URL", "http://localhost:11434")).rstrip("/")
         self.model = model or os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
-        self.timeout = timeout
+        # Argumento explícito tem prioridade; senão, OLLAMA_TIMEOUT_SECONDS ou 60 s.
+        self.timeout = timeout if timeout is not None else timeout_from_env()
 
     def _payload(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {

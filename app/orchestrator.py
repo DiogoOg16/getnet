@@ -14,6 +14,7 @@ from app.agents.customer_support import (
 from app.agents.knowledge import KnowledgeAgent
 from app.agents.router import RouterAgent, RoutingDecision
 from app.agents.web_search import WebSearchAgent
+from app.logging_utils import log_exception
 from app.privacy import mask_sensitive
 from app.tools.registry import ToolRegistry, tool_registry
 from app.verified_facts import consolidate_verified_facts
@@ -553,8 +554,9 @@ class ChatOrchestrator:
                         step.agent,
                     )
 
-            except Exception:
+            except Exception as exc:
                 duration_ms = int((time.perf_counter() - step_started_at) * 1000)
+                log_exception(logger, "orchestrator_step_error", exc, request_id=request_id, agent=step.agent)
                 trace.append(
                     StepTrace(
                         agent=step.agent,

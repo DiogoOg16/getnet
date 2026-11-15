@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 
@@ -5,7 +6,10 @@ import requests
 
 from app.llm.ollama_client import OllamaClient, OllamaClientError
 from app.rag.retriever import retrieve
+from app.logging_utils import log_exception
 from app.verified_facts import PUBLIC_FACT_NAMES, _is_authorized_fact_origin, _validate_fact_value
+
+logger = logging.getLogger("getnet_knowledge")
 
 
 class KnowledgeAgent:
@@ -518,7 +522,8 @@ class KnowledgeAgent:
         try:
             answer = self._generate(message, context)
             tool_used = "ollama"
-        except (requests.RequestException, OllamaClientError, ValueError, KeyError):
+        except (requests.RequestException, OllamaClientError, ValueError, KeyError) as exc:
+            log_exception(logger, "knowledge_generation_fallback", exc, level=logging.WARNING)
             answer = self._extractive_answer(sources)
             tool_used = "retrieval_only"
 

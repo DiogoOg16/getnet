@@ -1,7 +1,9 @@
+import logging
 import re
 
 import requests
 from bs4 import BeautifulSoup
+from app.logging_utils import log_exception
 from app.privacy import mask_sensitive
 from app.tools.weather import (
     extract_city,
@@ -15,6 +17,8 @@ from app.tools.exchange_rate import (
     get_exchange_rate,
 )
 from urllib.parse import parse_qs, unquote, urlparse
+
+logger = logging.getLogger("getnet_web_search")
 
 
 class WebSearchAgent:
@@ -62,7 +66,8 @@ class WebSearchAgent:
                 timeout=self.TIMEOUT,
             )
             response.raise_for_status()
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            log_exception(logger, "web_search_unavailable", exc, level=logging.WARNING)
             result = self._unavailable(
                 "Não foi possível acessar a busca na web neste momento."
             )

@@ -1,3 +1,4 @@
+import logging
 import re
 import unicodedata
 from datetime import date, timedelta
@@ -13,6 +14,9 @@ from app.llm.ollama_tools import registry_to_ollama_tools
 from app.tools.customer_tools import filter_settlement_records, settlement_reference_date
 from app.tools.registry import ToolExecutor, ToolRegistry, tool_registry
 from app.verified_facts import make_verified_fact
+from app.logging_utils import log_exception
+
+logger = logging.getLogger("getnet_customer_support")
 
 TERMINAL_CONNECTIVITY_FLOW = "terminal_connectivity"
 
@@ -289,6 +293,7 @@ class CustomerSupportAgent:
         try:
             result = self._run_function_calling_once(messages, user_id, tool_payload)
         except Exception as exc:  # pragma: no cover - exercised via tests using fake loop failures
+            log_exception(logger, "support_function_calling_error", exc, level=logging.WARNING)
             return {
                 "status": "tool_call_error",
                 "error": str(exc),
@@ -323,6 +328,7 @@ class CustomerSupportAgent:
             try:
                 retry_result = self._run_function_calling_once(retry_messages, user_id, tool_payload)
             except Exception as exc:  # pragma: no cover - exercised via tests using fake loop failures
+                log_exception(logger, "support_function_calling_error", exc, level=logging.WARNING, retry=True)
                 return {
                     "status": "tool_call_error",
                     "error": str(exc),

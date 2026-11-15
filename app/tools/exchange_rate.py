@@ -1,10 +1,13 @@
 """Exchange rates from the Banco Central do Brasil (PTAX), no API key."""
 
+import logging
 import re
 import unicodedata
 from datetime import date, datetime, timedelta
 
 import requests
+
+from app.logging_utils import log_exception
 
 PTAX_URL = (
     "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
@@ -61,7 +64,8 @@ def get_exchange_rate(code: str, today: date | None = None) -> dict:
         day = today - timedelta(days=offset)
         try:
             bulletins = _fetch_day(code, day)
-        except (requests.RequestException, ValueError):
+        except (requests.RequestException, ValueError) as exc:
+            log_exception(logging.getLogger("getnet_exchange_rate"), "exchange_rate_unavailable", exc, level=logging.WARNING)
             return {"found": False, "error": "unavailable"}
 
         closing = [

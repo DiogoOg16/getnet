@@ -282,6 +282,7 @@ Esse endereço é configurado para o cenário Docker previsto no `docker-compose
 |---|---|---|
 | `OLLAMA_URL` | `http://localhost:11434` no processo local; o Compose define `http://ollama:11434` como padrão do serviço | Endereço base do Ollama. |
 | `OLLAMA_MODEL` | `qwen2.5:7b` | Nome do modelo usado para geração. |
+| `OLLAMA_TIMEOUT_SECONDS` | `60` | Tempo máximo de cada chamada ao Ollama. Valor inválido (não numérico, zero ou negativo) volta a 60 s, com aviso no log. Nas avaliações com `qwen2.5:7b` em CPU, a geração levou até cerca de 51 s. |
 | `GETNET_DEMO_AUTH_TOKENS` | sem padrão; obrigatória | JSON que mapeia cada token Bearer a um `user_id`. O `.env.example` traz tokens fictícios para `cliente1988`, `cliente2001` e `atendente_01`, só para desenvolvimento. |
 | `GETNET_SESSION_MEMORY_PATH` | `<tmp>/getnet_session_memory.json` no processo local; `/app/data/getnet_session_memory.json` no Compose | Arquivo JSON da memória de sessão. |
 | `GETNET_HUMAN_HANDOFF_PATH` | `<tmp>/getnet_human_handoff.json` no processo local; `/app/data/getnet_human_handoff.json` no Compose | Arquivo JSON dos tickets de handoff. |
@@ -742,7 +743,7 @@ Para observar logs no Docker:
 docker compose logs -f api
 ```
 
-Os logs registram, por requisição, o `request_id`, a decisão de roteamento, cada etapa do orquestrador (agente, status, ferramenta e duração) e a latência total. O conteúdo das mensagens não é registrado. O projeto ainda não implementa dashboard, tracing distribuído, métricas agregadas, alertas operacionais ou persistência dedicada de eventos, e o `trace` não mede separadamente o tempo de cada chamada ao LLM ou às ferramentas.
+Os logs registram, por requisição, o `request_id`, a decisão de roteamento, cada etapa do orquestrador (agente, status, ferramenta e duração) e a latência total. O conteúdo das mensagens não é registrado. Exceções capturadas para devolver uma resposta segura (falha de um agente no orquestrador, erro no loop de function calling, queda do Ollama com fallback extrativo, indisponibilidade de busca, clima ou câmbio) são registradas com o tipo e o stack trace, com dados pessoais mascarados (`app/logging_utils.py`). O projeto ainda não implementa dashboard, tracing distribuído, métricas agregadas, alertas operacionais ou persistência dedicada de eventos, e o `trace` não mede separadamente o tempo de cada chamada ao LLM ou às ferramentas.
 
 ## Limitações conhecidas
 
