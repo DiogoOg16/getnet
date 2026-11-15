@@ -8,6 +8,7 @@ import requests
 from app.llm.ollama_client import OllamaClient, OllamaClientError
 from app.rag.retriever import retrieve
 from app.logging_utils import log_exception
+from app.observability import record_call
 from app.verified_facts import PUBLIC_FACT_NAMES, _is_authorized_fact_origin, _validate_fact_value
 
 logger = logging.getLogger("getnet_knowledge")
@@ -403,7 +404,8 @@ class KnowledgeAgent:
         não improvisa: diz que a documentação não traz a definição, marca
         step_status = "no_evidence" e registra um aviso no log.
         """
-        sources = retrieve(query)
+        with record_call("retrieval", "bm25"):
+            sources = retrieve(query)
         for source in sources:
             passage = self._find_passage(source.get("content", ""), term)
             if passage:
@@ -539,7 +541,8 @@ class KnowledgeAgent:
                 "source_sections": {},
             }
 
-        sources = retrieve(message)
+        with record_call("retrieval", "bm25"):
+            sources = retrieve(message)
 
         if not sources:
             return {

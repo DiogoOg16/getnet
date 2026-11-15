@@ -8,6 +8,8 @@ from typing import Any, Callable
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 
+from app.observability import record_call
+
 
 class ToolNotFoundError(KeyError):
     """Raised when a tool name is not present in the registry."""
@@ -202,7 +204,8 @@ class ToolExecutor:
 
         payload = dict(copy.deepcopy(arguments))
         payload.update(trusted_context)
-        return tool.handler(**payload)
+        with record_call("tool", tool_name):
+            return tool.handler(**payload)
 
 
 tool_registry = ToolRegistry()

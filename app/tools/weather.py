@@ -7,6 +7,7 @@ import unicodedata
 import requests
 
 from app.logging_utils import log_exception
+from app.observability import record_call
 
 GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -37,31 +38,33 @@ def wants_tomorrow(message: str) -> bool:
 def get_forecast(city: str, tomorrow: bool = False) -> dict:
     """Daily forecast for a city. Never invents values on failure."""
     try:
-        geo = requests.get(
-            GEOCODING_URL,
-            params={"name": city, "count": 1, "language": "pt"},
-            timeout=TIMEOUT,
-        )
+        with record_call("external", "open_meteo_geocoding"):
+            geo = requests.get(
+                GEOCODING_URL,
+                params={"name": city, "count": 1, "language": "pt"},
+                timeout=TIMEOUT,
+            )
         geo.raise_for_status()
         results = geo.json().get("results") or []
         if not results:
             return {"found": False, "error": "city_not_found"}
 
         place = results[0]
-        forecast = requests.get(
-            FORECAST_URL,
-            params={
-                "latitude": place["latitude"],
-                "longitude": place["longitude"],
-                "daily": (
-                    "temperature_2m_max,temperature_2m_min,"
-                    "precipitation_probability_max"
-                ),
-                "timezone": place.get("timezone", "auto"),
-                "forecast_days": 2,
-            },
-            timeout=TIMEOUT,
-        )
+        with record_call("external", "open_meteo_forecast"):
+            forecast = requests.get(
+                FORECAST_URL,
+                params={
+                    "latitude": place["latitude"],
+                    "longitude": place["longitude"],
+                    "daily": (
+                        "temperature_2m_max,temperature_2m_min,"
+                        "precipitation_probability_max"
+                    ),
+                    "timezone": place.get("timezone", "auto"),
+                    "forecast_days": 2,
+                },
+                timeout=TIMEOUT,
+            )
         forecast.raise_for_status()
         daily = forecast.json()["daily"]
         index = 1 if tomorrow else 0

@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta
 import requests
 
 from app.logging_utils import log_exception
+from app.observability import record_call
 
 PTAX_URL = (
     "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
@@ -43,15 +44,16 @@ def detect_currency(message: str) -> str | None:
 
 
 def _fetch_day(code: str, day: date) -> list[dict]:
-    response = requests.get(
-        PTAX_URL,
-        params={
-            "@moeda": f"'{code}'",
-            "@dataCotacao": f"'{day.strftime('%m-%d-%Y')}'",
-            "$format": "json",
-        },
-        timeout=TIMEOUT,
-    )
+    with record_call("external", "bcb_ptax"):
+        response = requests.get(
+            PTAX_URL,
+            params={
+                "@moeda": f"'{code}'",
+                "@dataCotacao": f"'{day.strftime('%m-%d-%Y')}'",
+                "$format": "json",
+            },
+            timeout=TIMEOUT,
+        )
     response.raise_for_status()
     return response.json().get("value", [])
 

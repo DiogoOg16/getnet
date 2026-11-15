@@ -4,6 +4,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from app.logging_utils import log_exception
+from app.observability import record_call
 from app.privacy import mask_sensitive
 from app.tools.weather import (
     extract_city,
@@ -68,19 +69,20 @@ class WebSearchAgent:
             return self._weather_answer(message)
 
         try:
-            response = requests.post(
-                self.SEARCH_URL,
-                # SEC-02: o provedor externo nunca recebe os dados pessoais
-                # cobertos por app.privacy.
-                data={"q": mask_sensitive(message)},
-                headers={
-                    "User-Agent": (
-                        "Mozilla/5.0 (X11; Linux x86_64) "
-                        "AppleWebKit/537.36 Chrome/130 Safari/537.36"
-                    )
-                },
-                timeout=self.TIMEOUT,
-            )
+            with record_call("external", "duckduckgo_search"):
+                response = requests.post(
+                    self.SEARCH_URL,
+                    # SEC-02: o provedor externo nunca recebe os dados pessoais
+                    # cobertos por app.privacy.
+                    data={"q": mask_sensitive(message)},
+                    headers={
+                        "User-Agent": (
+                            "Mozilla/5.0 (X11; Linux x86_64) "
+                            "AppleWebKit/537.36 Chrome/130 Safari/537.36"
+                        )
+                    },
+                    timeout=self.TIMEOUT,
+                )
             response.raise_for_status()
         except requests.RequestException as exc:
             log_exception(logger, "web_search_unavailable", exc, level=logging.WARNING)

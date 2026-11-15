@@ -15,6 +15,7 @@ from app.agents.knowledge import KnowledgeAgent
 from app.agents.router import RouterAgent, RoutingDecision
 from app.agents.web_search import WebSearchAgent
 from app.logging_utils import log_exception
+from app.observability import collect_calls
 from app.privacy import mask_sensitive
 from app.tools.registry import ToolRegistry, tool_registry
 from app.verified_facts import consolidate_verified_facts
@@ -38,6 +39,17 @@ DECLINED_SALE_HEADING = (
 # Na camada 2, a geração livre acrescentou causas não documentadas em 9 de 10
 # respostas; a citação não deixa margem para isso (P2).
 DECLINED_SALE_TERM = "Negada"
+
+
+def _summarize_calls(calls: list[dict]) -> str:
+    """Resumo compacto para o log: kind:name:duração[:status se não ok]."""
+    parts = []
+    for call in calls:
+        part = f"{call['kind']}:{call['name']}:{call['duration_ms']}ms"
+        if call.get("status") != "ok":
+            part += f":{call.get('status')}"
+        parts.append(part)
+    return ",".join(parts) or "-"
 
 
 @dataclass(frozen=True)
@@ -75,6 +87,9 @@ class StepTrace:
     tool_used: str | None = None
     request_id: str | None = None
     duration_ms: int = 0
+    # Chamadas feitas dentro da etapa (LLM, ferramenta, recuperação, serviço
+    # externo), cada uma com tipo, nome, duração e status.
+    calls: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -505,15 +520,17 @@ class ChatOrchestrator:
             step = steps[index]
             index += 1
             step_started_at = time.perf_counter()
+            step_calls: list[dict] = []
             try:
-                step_result = self._execute_step(
-                    step,
-                    step.query or agent_message,
-                    user_id,
-                    verified_facts=shared_verified_facts,
-                    generation_context=generation_context,
-                    resumed_followup=resumed_followup,
-                )
+                with collect_calls() as step_calls:
+                    step_result = self._execute_step(
+                        step,
+                        step.query or agent_message,
+                        user_id,
+                        verified_facts=shared_verified_facts,
+                        generation_context=generation_context,
+                        resumed_followup=resumed_followup,
+                    )
                 shared_verified_facts.extend(step_result.get("verified_facts", []))
                 results.append(step_result)
                 headings.append(step.heading)
@@ -530,15 +547,17 @@ class ChatOrchestrator:
                         tool_used=step_result.get("tool_used"),
                         request_id=request_id,
                         duration_ms=duration_ms,
+                        calls=tuple(step_calls),
                     )
                 )
                 logger.info(
-                    "orchestrator_step_complete request_id=%s agent=%s status=%s duration_ms=%s tool_used=%s",
+                    "orchestrator_step_complete request_id=%s agent=%s status=%s duration_ms=%s tool_used=%s calls=%s",
                     request_id,
                     step.agent,
                     step_result.get("step_status") or "success",
                     duration_ms,
                     step_result.get("tool_used"),
+                    _summarize_calls(step_calls),
                 )
 
                 if step_result.get("handoff_required", False):
@@ -579,15 +598,17 @@ class ChatOrchestrator:
                         status="error",
                         request_id=request_id,
                         duration_ms=duration_ms,
+                        calls=tuple(step_calls),
                     )
                 )
                 logger.info(
-                    "orchestrator_step_complete request_id=%s agent=%s status=%s duration_ms=%s tool_used=%s",
+                    "orchestrator_step_complete request_id=%s agent=%s status=%s duration_ms=%s tool_used=%s calls=%s",
                     request_id,
                     step.agent,
                     "error",
                     duration_ms,
                     None,
+                    _summarize_calls(step_calls),
                 )
                 results.append(
                     {

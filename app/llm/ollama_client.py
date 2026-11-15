@@ -6,6 +6,8 @@ from typing import Any
 
 import requests
 
+from app.observability import record_call
+
 logger = logging.getLogger("getnet_ollama")
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
@@ -84,6 +86,11 @@ class OllamaClient:
     def chat(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         if not isinstance(messages, list):
             raise TypeError("messages must be a list of message dictionaries.")
+        # Cada chamada ao modelo entra no trace da etapa com sua duração.
+        with record_call("llm", self.model):
+            return self._chat(messages, tools)
+
+    def _chat(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> dict[str, Any]:
 
         try:
             response = requests.post(

@@ -358,7 +358,9 @@ A resposta inclui os campos abaixo (o conteúdo exato depende da rota e dos dado
   ],
   "fact_conflicts": [],
   "trace": [
-    {"agent": "customer_support", "reason": "The message references a specific transaction ID.", "status": "success", "tool_used": "lookup_transaction", "request_id": "9f2c…", "duration_ms": 11}
+    {"agent": "customer_support", "reason": "The message references a specific transaction ID.", "status": "success", "tool_used": "lookup_transaction", "request_id": "9f2c…", "duration_ms": 12713,
+     "calls": [{"kind": "llm", "name": "qwen2.5:7b", "duration_ms": 12690, "status": "ok"},
+               {"kind": "tool", "name": "lookup_transaction", "duration_ms": 0, "status": "ok"}]}
   ]
 }
 ```
@@ -567,7 +569,7 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.5, a suíte padrão dá `773 passed, 5 skipped, 4 xfailed`.
+Com os critérios v1.5, a suíte padrão dá `781 passed, 5 skipped, 4 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
 - **`xfailed` (4):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
@@ -770,7 +772,7 @@ A API registra eventos de requisição, decisão de roteamento e resposta. A res
 | `handoff` | Ticket de handoff quando criado ou consultado no fluxo. |
 | `request_id` | Identificador da requisição, repetido nos logs e no `trace`. |
 | `total_latency_ms` | Latência total da requisição na API. |
-| `trace` | Uma entrada por etapa executada do plano: agente, motivo, status, ferramenta e `duration_ms`. O status é o `step_status` da própria etapa (`success`, `failed`, `no_evidence`, `handoff`...) ou `error` quando a etapa lançou exceção; o `step_status` da resposta resume a execução inteira. |
+| `trace` | Uma entrada por etapa executada do plano: agente, motivo, status, ferramenta e `duration_ms`. O status é o `step_status` da própria etapa (`success`, `failed`, `no_evidence`, `handoff`...) ou `error` quando a etapa lançou exceção; o `step_status` da resposta resume a execução inteira. Cada etapa traz `calls`: as chamadas feitas dentro dela, cada uma com `kind` (`llm`, `tool`, `retrieval` ou `external`), `name`, `duration_ms` e `status` (`ok` ou `error`). |
 | `verified_facts` / `fact_conflicts` | Fatos confirmados por ferramentas (ex.: status e valor de uma transação) e eventuais contradições entre etapas. |
 
 Para observar logs no Docker:
@@ -779,7 +781,7 @@ Para observar logs no Docker:
 docker compose logs -f api
 ```
 
-Os logs registram, por requisição, o `request_id`, a decisão de roteamento, cada etapa do orquestrador (agente, status, ferramenta e duração) e a latência total. O conteúdo das mensagens não é registrado. Exceções capturadas para devolver uma resposta segura (falha de um agente no orquestrador, erro no loop de function calling, queda do Ollama com fallback extrativo, indisponibilidade de busca, clima ou câmbio) são registradas com o tipo e o stack trace, com dados pessoais mascarados (`app/logging_utils.py`). O projeto ainda não implementa dashboard, tracing distribuído, métricas agregadas, alertas operacionais ou persistência dedicada de eventos, e o `trace` não mede separadamente o tempo de cada chamada ao LLM ou às ferramentas.
+Os logs registram, por requisição, o `request_id`, a decisão de roteamento, cada etapa do orquestrador (agente, status, ferramenta, duração e o resumo das chamadas, ex.: `calls=llm:qwen2.5:7b:12690ms,tool:lookup_transaction:0ms`) e a latência total. O conteúdo das mensagens não é registrado. Exceções capturadas para devolver uma resposta segura (falha de um agente no orquestrador, erro no loop de function calling, queda do Ollama com fallback extrativo, indisponibilidade de busca, clima ou câmbio) são registradas com o tipo e o stack trace, com dados pessoais mascarados (`app/logging_utils.py`). O projeto ainda não implementa dashboard, tracing distribuído, métricas agregadas, alertas operacionais ou persistência dedicada de eventos,.
 
 ## Limitações conhecidas
 

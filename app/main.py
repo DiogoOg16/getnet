@@ -306,6 +306,7 @@ def chat(
                 "tool_used": step.tool_used,
                 "request_id": step.request_id,
                 "duration_ms": step.duration_ms,
+                "calls": [dict(call) for call in step.calls],
             }
             for step in execution.trace
         ]
