@@ -30,7 +30,7 @@ Assistente de suporte multiagente desenvolvido como desafio técnico. A aplicaç
 
 | Requisito do desafio | Implementação (código) | Evidência de testes |
 |---|---|---|
-| Router e fluxo multiagente | `app/orchestrator.py`, `app/agents/router.py` | `tests/test_router.py`, `tests/test_router_scenarios.py`, `tests/test_orchestrator.py` |
+| Router e fluxo multiagente | `app/orchestrator.py`, `app/agents/router.py` | `tests/test_router.py`, `tests/test_router_scenarios.py`, `tests/test_orchestrator.py`, `tests/test_conditional_plan.py` |
 | Knowledge Agent com RAG + busca web | `app/agents/knowledge.py`, `app/rag/retriever.py`, `app/agents/web_search.py` | `tests/test_knowledge.py`, `tests/test_knowledge_fallback.py`, `tests/test_web_search.py` |
 | Customer Support com 2+ tools | `app/tools/customer_tools.py`, `app/tools/registry.py`, `app/agents/customer_support.py` | `tests/test_customer_support.py`, `tests/test_tool_registry.py` |
 | Endpoint `POST /chat` com JSON significativo | `app/main.py` | `tests/test_api.py`, `tests/acceptance/test_resolution_contract.py` |
@@ -89,11 +89,16 @@ Resposta JSON + metadados + trace por etapa
 | `CustomerSupportAgent` | Atende solicitações sobre clientes e transações usando ferramentas com dados simulados. |
 | `WebSearchAgent` | Trata perguntas de clima, câmbio e pesquisa externa. |
 | Human escalation | Encaminha solicitações sensíveis ou que exigem atendimento humano. É representado pelo fluxo de escalonamento no orquestrador. |
-| `ChatOrchestrator` | Monta um plano limitado (`ExecutionPlan`, máximo de 3 etapas) a partir da decisão do roteador, executa as etapas em sequência, compartilha fatos verificados entre elas, detecta conflitos de fatos, registra um `trace` por etapa e padroniza a resposta. |
+| `ChatOrchestrator` | Monta um plano limitado (`ExecutionPlan`, máximo de 3 etapas) a partir da decisão do roteador, executa as etapas em sequência, compartilha fatos verificados entre elas, detecta conflitos de fatos, acrescenta uma etapa durante a execução quando o resultado verificado de uma ferramenta pede (ver abaixo), registra um `trace` por etapa e padroniza a resposta. |
 
 O roteador é baseado em regras, não em uma chamada de LLM. Isso torna a decisão principal previsível e testável, embora regras lexicais possam não reconhecer todas as formas possíveis de uma intenção.
 
-**Colaboração entre agentes (o que existe e o que falta):** hoje o plano tem mais de uma etapa em um caso: quando a mesma mensagem menciona uma transação recusada e pede orientação ("por que", "o que fazer"), o Customer Support consulta os dados e o Knowledge acrescenta a orientação documentada, recebendo os fatos verificados da etapa anterior. A decisão é tomada na criação do plano, a partir do texto; o orquestrador ainda não replaneja com base no resultado de uma ferramenta. Por isso, no cenário oficial S08 (a recusa e o identificador chegam em turnos separados, sem pedido de orientação), o Knowledge não é acionado: o requisito S08-R4 está marcado como `xfail` (ARCH-02). As respostas de várias etapas são concatenadas, não sintetizadas.
+**Colaboração entre agentes (o que existe e o que falta):** o plano encadeia agentes de duas formas.
+
+- **Pelo texto, na criação do plano:** quando a mesma mensagem menciona uma transação recusada e pede orientação ("por que", "o que fazer"), o Customer Support consulta os dados e o Knowledge acrescenta a orientação documentada, recebendo os fatos verificados da etapa anterior.
+- **Pelo resultado da ferramenta, durante a execução (ARCH-02):** depois de cada etapa, o orquestrador olha o resultado verificado de `lookup_transaction`. Transação aprovada ou pendente, negada com motivo registrado, não encontrada ou erro de ferramenta: nenhuma etapa nova. Transação **negada sem motivo registrado**: o orquestrador acrescenta o Knowledge com uma consulta fixa sobre o significado de uma venda negada com cartão, **sem** os fatos da transação, para que a explicação geral não seja apresentada como causa daquela transação. É o que acontece no cenário oficial S08, em que a recusa e o identificador chegam em turnos separados.
+
+O plano tem no máximo 3 etapas e não repete agente. Em execução multi-etapa, `agent` e `tool_used` representam a etapa principal (a primeira) e o `trace` registra todos os agentes, ferramentas e o motivo de cada etapa acrescentada. As respostas são combinadas em partes com cabeçalho (fato verificado; depois a explicação geral, identificada como tal), não sintetizadas por um LLM.
 
 ### Fluxo de uma requisição
 
@@ -553,21 +558,20 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-No commit `8e19de4`, a suíte padrão dá `719 passed, 5 skipped, 6 xfailed`.
+Com os critérios v1.3, a suíte padrão dá `728 passed, 5 skipped, 5 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
-- **`xfailed` (6):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
+- **`xfailed` (5):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
 
 | Requisito | Backlog | Defeito |
 |---|---|---|
 | S02-R3 | REL-05 | Com a API de clima indisponível, a resposta não inventa valores, mas o `step_status` volta `success` em vez de `failed`. |
 | S04-R2 | RAG-07a | O documento do Pix no Get Tap fica em 6º lugar e não entra no contexto (`limit=3`). |
 | S06-R3 | RAG-07b | O documento sobre antecipação não entra no top 3. |
-| S08-R4 | ARCH-02 | O plano não aciona o Knowledge depois de consultar uma transação recusada (ver [Colaboração entre agentes](#agentes)). |
 | S09-R3 | RAG-07c | O documento que diz que o limite de parcelas depende do emissor não entra no top 3. |
 | S05V-R2 | RAG-01 | No modo filtrado de conectividade, o IDF usa a contagem do corpus inteiro. |
 
-Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente.
+Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente. Foi o que aconteceu com S08-R4 (ARCH-02): a correção do planejamento condicional o fez passar, e a versão 1.3 de `eval/official_scenarios.json` o moveu de `xfail` para `pass`, com o motivo registrado no histórico do arquivo.
 
 ### Testes de integração reais com Ollama
 
@@ -650,8 +654,8 @@ A avaliação separa o que é determinístico do que depende do modelo.
 
 **Resultado da camada 2 registrado** (execução de 2026-11-08 sobre o commit `939d2ba`, `qwen2.5:7b`, 86 respostas): 32 Corretas, 48 Parciais e 6 Incorretas, com 100% de disponibilidade. Por cenário: S02, S03, S05 e S07 corretos em todas as execuções; S10 com 5 de 10 corretas; S01 com 1 correta, 7 parciais e 2 incorretas; S04 com 6 parciais e 4 incorretas; S06, S08 e S09 parciais em todas. Leitura honesta desse resultado:
 
-- não é uma aprovação integral: mais da metade das respostas é parcial. Em S04, S06, S08 e S09 as parciais coincidem com os `xfail` de recuperação (RAG-07a/b/c) e de orquestração (ARCH-02); em S01 e S10 há respostas parciais ou incorretas sem `xfail` correspondente, ligadas à síntese do modelo;
-- foi medido antes das mudanças de privacidade (`44774e7`, `8e19de4`); depois delas a camada 1 continua idêntica (30 aprovados e 6 `xfail`), mas não houve nova rodada da camada 2;
+- não é uma aprovação integral: mais da metade das respostas é parcial. Em S04, S06 e S09 as parciais coincidem com os `xfail` de recuperação (RAG-07a/b/c), e em S08 com a falha de orquestração ARCH-02, corrigida depois dessa rodada; em S01 e S10 há respostas parciais ou incorretas sem `xfail` correspondente, ligadas à síntese do modelo;
+- foi medido antes das mudanças de privacidade e da correção de ARCH-02. Depois delas, os testes da camada 1 dão 31 aprovados e 5 `xfail` (S08-R4 passou a ser cumprido), mas não houve nova rodada da camada 2: não está medido se o modelo real explica o significado da recusa sem inventar uma causa;
 - os rótulos são de um único avaliador e as amostras são pequenas (3 a 10 execuções por cenário); os arquivos rotulados não estão versionados no repositório.
 
 Ainda faltam métricas de recuperação independentes dos cenários (Recall@K, MRR) e testes periódicos de contrato com os serviços externos.
@@ -714,7 +718,7 @@ A API registra eventos de requisição, decisão de roteamento e resposta. A res
 
 | Campo | Finalidade |
 |---|---|
-| `agent` | Agente que processou a mensagem. |
+| `agent` | Agente que processou a mensagem; em execução multi-etapa, o agente da etapa principal (o `trace` lista todos). |
 | `routing_reason` | Justificativa registrada pelo roteador. |
 | `tool_used` | Ferramenta ou caminho de execução utilizado, quando aplicável. |
 | `sources` | URLs ou fontes usadas pelo agente. |
@@ -759,7 +763,7 @@ Os logs registram, por requisição, o `request_id`, a decisão de roteamento, c
 - **Escalonamento:** o protótipo cria e persiste tickets de handoff em armazenamento local de arquivo JSON; não há integração com plataforma externa de atendimento.
 - **Guardrails por regras:** a detecção de intenções sensíveis usa padrões explícitos e não substitui uma solução completa de segurança ou revisão humana.
 - **Mascaramento por padrões:** protege os formatos listados em [Segurança e privacidade](#segurança-e-privacidade), com as limitações descritas lá; não é anonimização.
-- **Orquestração limitada:** o plano é decidido antes da execução, a partir do texto, e só encadeia agentes no caso de transação recusada com pedido de orientação; não replaneja com base no resultado das ferramentas (S08-R4, ARCH-02), não trata várias intenções na mesma mensagem e concatena as respostas das etapas em vez de sintetizá-las.
+- **Orquestração limitada:** o replanejamento pelo resultado das ferramentas cobre um caso (transação negada sem motivo registrado); não há planejamento geral, várias intenções na mesma mensagem não são tratadas e as respostas das etapas são combinadas em partes, não sintetizadas. O comportamento do modelo real nesse fluxo ainda não foi medido na camada 2.
 - **Persistência em arquivo JSON:** sem bloqueio entre processos; adequada à execução com um único worker, como no `Dockerfile`.
 - **Roteamento lexical:** a decisão principal do roteador é baseada em regras de texto, sem classificador semântico dedicado.
 - **Observabilidade avançada ausente:** não há dashboard operacional, tracing distribuído ou alertas automáticos nativos.
@@ -829,7 +833,7 @@ Os logs registram, por requisição, o `request_id`, a decisão de roteamento, c
 
 ## Melhorias futuras
 
-- Replanejar com base no resultado das ferramentas (ex.: acionar o Knowledge quando uma transação recusada não tem motivo registrado) e compor uma resposta única a partir dos fatos verificados e da orientação documentada (ARCH-02).
+- Estender o replanejamento pelo resultado das ferramentas a outros casos e compor uma resposta única a partir dos fatos verificados e da orientação documentada, medindo o fluxo de ARCH-02 com o modelo real (camada 2).
 - Corrigir os casos de recuperação marcados como `xfail` (RAG-07a/b/c, RAG-01) com experimentos controlados e uma nova versão dos critérios.
 - Medir separadamente acurácia do roteamento, qualidade da recuperação (Recall@K, MRR) e fidelidade da geração, e repetir a camada 2 a cada mudança relevante.
 - Avaliar embeddings e recuperação semântica como complemento ao BM25.
