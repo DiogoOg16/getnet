@@ -19,12 +19,36 @@ from app.tools.registry import ToolRegistry, tool_registry
 from app.verified_facts import consolidate_verified_facts
 
 
+KNOWLEDGE_HEADING = "Orientações da base de conhecimento:"
+
+# Consulta fixa da etapa acrescentada depois de uma transação negada sem motivo.
+# Menciona emissor e bandeira (quem autoriza a venda com cartão) para recuperar
+# só o documento de status das vendas com cartão (L48); as formulações neutras
+# também traziam o documento de status do Pix (L49), que não se aplica aqui.
+# Não contém "status" + "venda", que acionaria a resposta direta do Knowledge.
+DECLINED_SALE_QUERY = (
+    "O que significa quando uma venda com cartão é negada pelo emissor ou pela bandeira?"
+)
+DECLINED_SALE_HEADING = (
+    "O que significa uma venda negada, segundo a documentação Getnet "
+    "(explicação geral; não é o motivo registrado desta transação):"
+)
+
+
 @dataclass(frozen=True)
 class PlanStep:
-    """One explicit step in a planned agent execution."""
+    """One explicit step in a planned agent execution.
+
+    `query` substitui a mensagem do usuário como entrada do agente;
+    `share_facts` controla se a etapa recebe os fatos verificados anteriores;
+    `heading` introduz a resposta da etapa quando ela é combinada com outras.
+    """
 
     agent: str
     reason: str
+    query: str | None = None
+    share_facts: bool = True
+    heading: str | None = None
 
 
 @dataclass(frozen=True)
@@ -119,6 +143,45 @@ class ChatOrchestrator:
 
         return mentions_decline and asks_for_guidance
 
+    @staticmethod
+    def _followup_step(step: PlanStep, result: dict) -> PlanStep | None:
+        """Decide a próxima etapa a partir do resultado verificado da anterior (ARCH-02).
+
+        | Resultado de lookup_transaction | Próxima etapa |
+        |---|---|
+        | aprovada ou pendente | nenhuma |
+        | negada, com motivo registrado | nenhuma (o Support já informa o motivo verificado) |
+        | negada, sem motivo registrado | Knowledge, para o significado geral de venda negada |
+        | erro, resultado inválido ou transação não encontrada | nenhuma |
+
+        A etapa acrescentada não recebe os fatos da transação, para que a
+        explicação geral não seja apresentada como causa desta transação.
+        """
+        if step.agent != "customer_support":
+            return None
+        if result.get("step_status") != "success" or result.get("tool_used") != "lookup_transaction":
+            return None
+        if result.get("decline_reason_recorded") is not False:
+            return None
+        declined = any(
+            fact.get("name") == "status"
+            and fact.get("value") == "declined"
+            and fact.get("source_tool") == "lookup_transaction"
+            for fact in result.get("verified_facts", [])
+        )
+        if not declined:
+            return None
+        return PlanStep(
+            agent="knowledge",
+            reason=(
+                "lookup_transaction returned a declined transaction with no recorded "
+                "reason; retrieve the documented general meaning of a declined sale."
+            ),
+            query=DECLINED_SALE_QUERY,
+            share_facts=False,
+            heading=DECLINED_SALE_HEADING,
+        )
+
     def create_plan(
         self,
         message: str,
@@ -170,7 +233,7 @@ class ChatOrchestrator:
                 for parameter in parameters.values()
             )
             kwargs = {}
-            if "verified_facts" in parameters or accepts_any:
+            if step.share_facts and ("verified_facts" in parameters or accepts_any):
                 kwargs["verified_facts"] = verified_facts
             if generation_context and (
                 "generation_context" in parameters or accepts_any
@@ -239,7 +302,11 @@ class ChatOrchestrator:
             )
         return "; ".join(summaries)
 
-    def _combine_results(self, results: list[dict]) -> dict:
+    def _combine_results(
+        self,
+        results: list[dict],
+        headings: list[str | None] | None = None,
+    ) -> dict:
         all_verified_facts: list[dict] = []
         for result in results:
             all_verified_facts.extend(result.get("verified_facts", []))
@@ -280,15 +347,23 @@ class ChatOrchestrator:
                     merged["step_status"] = "failed"
             return merged
 
-        responses = [
-            result["response"].strip()
-            for result in results
+        headings = list(headings or [])
+        headings += [None] * (len(results) - len(headings))
+        # (cabeçalho, texto) de cada etapa com resposta. A primeira resposta
+        # entra sem cabeçalho; as seguintes, com o cabeçalho da etapa ou o padrão.
+        sections = [
+            (heading or KNOWLEDGE_HEADING, result["response"].strip())
+            for result, heading in zip(results, headings)
             if result.get("response", "").strip()
         ]
+        responses = [text for _, text in sections]
+        composed = "".join(
+            text if position == 0 else f"\n\n{heading}\n{text}"
+            for position, (heading, text) in enumerate(sections)
+        )
 
         sources: list[str] = []
         source_sections: dict[str, list[str]] = {}
-        tools: list[str] = []
 
         for result in results:
             for item in result.get("sources", []):
@@ -300,12 +375,6 @@ class ChatOrchestrator:
                 for item in items:
                     if item not in section_items:
                         section_items.append(item)
-
-            tool = result.get("tool_used")
-            if tool:
-                for name in tool.split(", "):
-                    if name not in tools:
-                        tools.append(name)
 
         any_awaiting = any(
             result.get("awaiting_user_input", False) for result in results
@@ -331,26 +400,28 @@ class ChatOrchestrator:
             )
         elif any_failed:
             step_status = "failed"
-            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
+            response = composed
         elif any_handoff:
             step_status = "handoff"
-            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
+            response = composed
         elif any_awaiting:
             step_status = "waiting_for_user_input"
-            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
+            response = composed
         elif any_resolution or responses:
             step_status = "success"
-            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
+            response = composed
         else:
             step_status = "failed"
-            response = "\n\nOrientações da base de conhecimento:\n".join(responses)
+            response = composed
 
         return {
-            "agent": "multi_agent",
+            # Execução multi-etapa: agent e tool_used representam a etapa principal
+            # (a primeira); o trace registra todos os agentes e ferramentas.
+            "agent": results[0].get("agent", "fallback"),
             "response": response,
             "sources": sources,
             "source_sections": source_sections,
-            "tool_used": ", ".join(tools) if tools else None,
+            "tool_used": results[0].get("tool_used"),
             "flow_completed": True,
             "response_delivered": bool(responses) or bool(fact_conflicts),
             "issue_resolved": not fact_conflicts and any_resolution,
@@ -408,15 +479,22 @@ class ChatOrchestrator:
 
         executed_steps: list[str] = []
         results: list[dict] = []
+        headings: list[str | None] = []
         trace: list[StepTrace] = []
         shared_verified_facts: list[dict] = []
+        # O plano pode crescer durante a execução (_followup_step), sempre
+        # limitado a max_steps e sem repetir um agente já planejado.
+        steps: list[PlanStep] = list(plan.steps[:plan.max_steps])
 
-        for step in plan.steps[:plan.max_steps]:
+        index = 0
+        while index < len(steps):
+            step = steps[index]
+            index += 1
             step_started_at = time.perf_counter()
             try:
                 step_result = self._execute_step(
                     step,
-                    agent_message,
+                    step.query or agent_message,
                     user_id,
                     verified_facts=shared_verified_facts,
                     generation_context=generation_context,
@@ -424,6 +502,7 @@ class ChatOrchestrator:
                 )
                 shared_verified_facts.extend(step_result.get("verified_facts", []))
                 results.append(step_result)
+                headings.append(step.heading)
                 executed_steps.append(step.agent)
 
                 duration_ms = int((time.perf_counter() - step_started_at) * 1000)
@@ -459,6 +538,20 @@ class ChatOrchestrator:
                 # an operational terminal state was reached.
                 if step_result.get("step_status") in {"handoff", "waiting_for_user_input"}:
                     break
+
+                followup = self._followup_step(step, step_result)
+                if (
+                    followup is not None
+                    and len(steps) < plan.max_steps
+                    and all(planned.agent != followup.agent for planned in steps)
+                ):
+                    steps.append(followup)
+                    logger.info(
+                        "orchestrator_step_added request_id=%s agent=%s after=%s",
+                        request_id,
+                        followup.agent,
+                        step.agent,
+                    )
 
             except Exception:
                 duration_ms = int((time.perf_counter() - step_started_at) * 1000)
@@ -496,10 +589,11 @@ class ChatOrchestrator:
                         "step_status": "failed",
                     }
                 )
+                headings.append(None)
                 break
 
         if results:
-            result = self._combine_results(results)
+            result = self._combine_results(results, headings)
         else:
             result = {
                 "agent": "fallback",
@@ -520,7 +614,7 @@ class ChatOrchestrator:
         return ChatExecution(
             decision=decision,
             result=result,
-            plan=plan,
+            plan=ExecutionPlan(steps=tuple(steps), max_steps=plan.max_steps),
             executed_steps=tuple(executed_steps),
             trace=tuple(trace),
         )

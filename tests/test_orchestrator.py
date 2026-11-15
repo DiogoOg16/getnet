@@ -60,11 +60,17 @@ def test_two_agents_cooperate_and_merge_results(monkeypatch):
         ("customer_support", message, "cliente2001"),
         ("knowledge", message),
     ]
-    assert execution.result["agent"] == "multi_agent"
+    # Contrato multi-etapa: agent e tool_used representam a etapa principal;
+    # o trace registra todos os agentes e ferramentas.
+    assert execution.result["agent"] == "customer_support"
     assert "R$ 250,00" in execution.result["response"]
     assert "Orientações da base de conhecimento" in execution.result["response"]
     assert execution.result["sources"] == ["Status das vendas"]
-    assert execution.result["tool_used"] == "lookup_transaction, retrieval_only"
+    assert execution.result["tool_used"] == "lookup_transaction"
+    assert [(step.agent, step.tool_used) for step in execution.trace] == [
+        ("customer_support", "lookup_transaction"),
+        ("knowledge", "retrieval_only"),
+    ]
 
 
 def test_orchestrator_continues_when_next_step_is_valid_even_after_success(monkeypatch):
@@ -127,7 +133,12 @@ def test_orchestrator_continues_when_next_step_is_valid_even_after_success(monke
         "web_search",
     )
     assert "Get Conta" in execution.result["response"]
-    assert execution.result["agent"] == "multi_agent"
+    assert execution.result["agent"] == "customer_support"
+    assert [step.agent for step in execution.trace] == [
+        "customer_support",
+        "knowledge",
+        "web_search",
+    ]
 
 
 def test_transaction_lookup_respects_customer_ownership():

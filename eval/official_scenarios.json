@@ -1,6 +1,6 @@
 {
-  "version": "1.2",
-  "status": "congelado em 2026-11-08 (v1.2: S02-R3/REL-05, S05-V em português dividido em R1/R2, SUP-03 suspeito)",
+  "version": "1.3",
+  "status": "congelado em 2026-11-15 (v1.3: S08-R4 passa de xfail para pass após a correção de ARCH-02; v1.2 no histórico)",
   "baseline_commit": "939d2ba",
   "corpus": {
     "path": "app/rag/documents/getnet_sources.jsonl",
@@ -590,10 +590,11 @@
           {
             "id": "S08-R4",
             "description": "Conversa completa (turnos 1 e 2): em algum turno a resposta usa L48 para explicar o significado da recusa (venda não autorizada pelo emissor/bandeira). A orientação deve ser sustentada por informação disponível, não atribuir causa específica sem evidência, não contradizer lookup_transaction e não inventar procedimento. Não é exigido orientar antes de receber o identificador.",
-            "baseline_expected": "xfail",
+            "baseline_expected": "pass",
             "backlog_id": "ARCH-02",
-            "reason": "O plano não inclui Knowledge: _needs_knowledge_followup exige termo de orientação ('por que', 'o que fazer'), ausente na mensagem oficial; e Support para em awaiting_user_input. O retrieval em si traria L48.",
-            "evidence": "E1 top 3 da consulta = L48, L49; E3 orchestrator.create_plan e handle.",
+            "resolution": "v1.3: o orquestrador decide a próxima etapa pelo resultado verificado de lookup_transaction (_followup_step). Transação negada sem motivo registrado acrescenta o Knowledge com a consulta fixa DECLINED_SALE_QUERY, sem os fatos da transação; o contexto recuperado é só L48. O plano estático continua [customer_support]; o Knowledge é acrescentado durante a execução e aparece no trace.",
+            "resolved_reason_v1_2": "O plano não inclui Knowledge: _needs_knowledge_followup exige termo de orientação ('por que', 'o que fazer'), ausente na mensagem oficial; e Support para em awaiting_user_input. O retrieval em si traria L48.",
+            "evidence": "v1.2: E1 top 3 da consulta = L48, L49; E3 orchestrator.create_plan e handle. v1.3: S08-R4 passou a XPASS(strict) com a correção, antes desta mudança de critério; tests/test_conditional_plan.py cobre aprovada, pendente, negada com e sem motivo, erro de ferramenta e os dois turnos do S08. Comportamento do modelo real (camada 2) ainda não medido.",
             "scope": "conversation"
           }
         ],
@@ -823,6 +824,13 @@
       "sha256_official_scenarios_json": "947961a1d5c529ee258977acb6bca2a14d158d7419e371ede729f42f8d77a6a4",
       "sha256_rubrics_md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff",
       "superseded_because": "Testes da camada 1 mostraram: S02-R3 exigia step_status=failed, que o código não produz (REL-05); a mensagem em inglês do S05-V não alcança o caminho de orientação (SUP-03)."
+    },
+    {
+      "version": "1.2",
+      "frozen": "2026-11-08",
+      "sha256_official_scenarios_json": "f2f6875105fc96a98b63b2cbf199e7fb84145e230f4939b1ab179354ffc1b5de",
+      "sha256_rubrics_md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff",
+      "superseded_because": "ARCH-02 corrigido (planejamento condicional pelo resultado de lookup_transaction): S08-R4 passou a XPASS(strict). Só S08-R4 mudou de xfail para pass; nenhum outro cenário, requisito, rubrica ou peso foi alterado. Autorizado explicitamente em 2026-11-15."
     }
   ]
 }

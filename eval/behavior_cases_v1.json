@@ -76,9 +76,10 @@
       "session_mode": "isolated",
       "user_id": "cliente1988",
       "message": "Minha transação txn1001 foi recusada, por que isso acontece e como resolver?",
-      "expected_agent": "multi_agent",
+      "expected_agent": "customer_support",
       "expected_handoff": false,
-      "expected_trace_min": 2
+      "expected_trace_min": 2,
+      "note": "2026-11-15: em execução multi-etapa, agent representa a etapa principal (contrato de ARCH-02); antes era multi_agent. A colaboração continua exigida por expected_trace_min = 2."
     },
     {
       "id": "BEH-009",

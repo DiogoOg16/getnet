@@ -592,6 +592,17 @@ class CustomerSupportAgent:
 
         return f"{notice} {heading}: " + "; ".join(details) + "."
 
+    @staticmethod
+    def _decline_outcome(transaction: dict) -> dict:
+        """Resultado verificado da consulta, para o orquestrador decidir o próximo passo.
+
+        Vem direto do registro devolvido por lookup_transaction: o orquestrador
+        não precisa interpretar o texto da resposta.
+        """
+        if transaction.get("status") != "declined":
+            return {}
+        return {"decline_reason_recorded": bool(transaction.get("decline_reason"))}
+
     def answer(self, message: str, user_id: str) -> dict:
         text = self._normalize_text(message)
 
@@ -750,6 +761,7 @@ class CustomerSupportAgent:
                         "awaiting_user_input": False,
                         "step_status": "success",
                         "verified_facts": verified_facts,
+                        **self._decline_outcome(transaction),
                     }
                 return {
                     "agent": "customer_support",
@@ -905,6 +917,7 @@ class CustomerSupportAgent:
                         "awaiting_user_input": False,
                         "step_status": "success",
                         "verified_facts": verified_facts,
+                        **self._decline_outcome(transaction),
                     }
                 if recognized is False:
                     result = self._execute_backend_tool("lookup_transaction", {"transaction_id": transaction_id}, user_id)
@@ -985,6 +998,7 @@ class CustomerSupportAgent:
                         "awaiting_user_input": False,
                         "step_status": "success",
                         "verified_facts": verified_facts,
+                        **self._decline_outcome(transaction),
                     }
 
             result = self._execute_backend_tool("lookup_transaction", {"transaction_id": transaction_id}, user_id)
@@ -1068,6 +1082,7 @@ class CustomerSupportAgent:
                 "awaiting_user_input": False,
                 "step_status": "success",
                 "verified_facts": verified_facts,
+                **self._decline_outcome(transaction),
             }
 
         if declined_transaction:
