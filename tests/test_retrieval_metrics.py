@@ -1,6 +1,7 @@
 """EVAL-02: Recall@K e MRR sobre os documentos gold dos critérios v1.3."""
 
 import hashlib
+import math
 import json
 import sys
 from pathlib import Path
@@ -111,3 +112,65 @@ def test_evaluation_does_not_modify_criteria_or_corpus():
     metrics.evaluate()
 
     assert {path: sha256(path) for path in watched} == before
+
+
+# --- R1: precision, nDCG, latência, retriever plugável, comparação -------------
+
+RANKED = ["d1", "d2", "d3", "d4", "d5"]
+
+
+def test_precision_divides_by_k():
+    assert metrics.precision_at_k(RANKED, {"d2", "d4", "d9"}, 5) == pytest.approx(2 / 5)
+    assert metrics.precision_at_k(["d2"], {"d2"}, 10) == pytest.approx(1 / 10)
+
+
+def test_ndcg_binary_hand_computed():
+    # relevantes nas posições 2 e 4; ideal = 3 relevantes nas posições 1..3
+    dcg = 1 / math.log2(3) + 1 / math.log2(5)
+    idcg = 1 / math.log2(2) + 1 / math.log2(3) + 1 / math.log2(4)
+    assert metrics.ndcg_at_k(RANKED, {"d2": 1, "d4": 1, "d9": 1}, 5) == pytest.approx(dcg / idcg)
+
+
+def test_ndcg_graded_prefers_the_higher_grade_first():
+    assert metrics.ndcg_at_k(["a", "b"], {"a": 2, "b": 1}, 10) == pytest.approx(1.0)
+    assert metrics.ndcg_at_k(["b", "a"], {"a": 2, "b": 1}, 10) < 1.0
+    # ganho exponencial: grau 2 vale 3, grau 1 vale 1
+    assert metrics.dcg_at_k([2, 1], 2) == pytest.approx(3 / 1 + 1 / math.log2(3))
+
+
+def test_ndcg_requires_grades():
+    with pytest.raises(ValueError):
+        metrics.ndcg_at_k(["a"], {}, 3)
+
+
+def test_result_reports_new_metrics_and_latency(result):
+    summary = result["summary"]
+    assert set(summary["mean_precision"]) == set(summary["mean_ndcg"]) == set(metrics.K_VALUES)
+    assert summary["latency_ms"]["max"] >= summary["latency_ms"]["mean"] >= 0
+    for row in result["rows"]:
+        assert 0.0 <= row["ndcg"][3] <= 1.0 and 0.0 <= row["ndcg_graded"][3] <= 1.0
+        assert row["latency_ms"] >= 0
+    # nDCG binário bate com o Recall nos casos com um único required no top 1
+    s08 = next(row for row in result["rows"] if row["id"] == "S08")
+    assert s08["ndcg"][3] == 1.0
+
+
+def test_pluggable_retriever_and_compare_flags_regressions():
+    cases = [case for case in metrics.load_cases() if case["id"] in ("S08", "S10")]
+    baseline = metrics.evaluate(cases)
+    s08_gold = next(iter(cases[0]["required"]))
+
+    def worse_retriever(query, limit=10):
+        docs = metrics.retrieve(query, limit=limit)
+        # Põe um documento irrelevante na frente do gold do S08, simulando uma
+        # regressão (a consulta do S08 recupera só L48).
+        if any(metrics.content_id(doc["content"]) == s08_gold for doc in docs):
+            return [{"content": "documento irrelevante"}] + docs
+        return docs
+
+    candidate = metrics.evaluate(cases, retriever=worse_retriever, name="pior")
+    changes = {change["id"]: change for change in metrics.compare(baseline, candidate)}
+
+    assert candidate["retriever"] == "pior"
+    assert changes["S08"]["regression"] is True and changes["S08"]["delta"]["RR"] < 0
+    assert changes["S10"]["regression"] is False

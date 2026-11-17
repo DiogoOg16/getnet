@@ -569,7 +569,7 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.5, a suíte padrão dá `781 passed, 5 skipped, 4 xfailed`.
+Com os critérios v1.5, a suíte padrão dá `787 passed, 5 skipped, 4 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
 - **`xfailed` (4):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
@@ -672,7 +672,7 @@ A avaliação separa o que é determinístico do que depende do modelo.
 
 #### Métricas de recuperação (EVAL-02)
 
-`eval/retrieval_metrics.py` mede Recall@K e MRR sobre os documentos gold dos critérios (os mesmos na v1.3 e na v1.4), de forma determinística (só `retrieve`, sem LLM e sem rede), e `tests/test_retrieval_metrics.py` roda no CI.
+`eval/retrieval_metrics.py` mede Recall@K, MRR, Precision@K, nDCG@K e a latência de cada consulta sobre os documentos gold dos critérios, de forma determinística (só `retrieve`, sem LLM e sem rede), e `tests/test_retrieval_metrics.py` roda no CI.
 
 ```bash
 python eval/retrieval_metrics.py              # tabela em Markdown
@@ -681,17 +681,18 @@ python eval/retrieval_metrics.py --json OUT   # também grava o resultado em JSO
 
 - **Casos:** os 6 cenários com documentos `required` (S01, S04, S06, S08, S09, S10). Os demais não têm documento gold (ferramentas externas, dados do cliente ou lacuna do corpus).
 - **Consulta:** o texto que o sistema envia ao `retrieve`. É a mensagem do usuário nos cenários do Knowledge e a consulta fixa do orquestrador (`DECLINED_SALE_QUERY`) no S08.
-- **Métricas:** Recall@K com K ∈ {1, 3, 5, 10} (K = 3 é o `limit` de produção) e MRR sobre os 10 primeiros, ambos com os documentos `required`; e Recall@3 sobre o conjunto ampliado (`required` + `any_of` + `supporting`). Os documentos são identificados pelo hash do conteúdo, como nos critérios.
+- **Métricas:** Recall@K e Precision@K com K ∈ {1, 3, 5, 10} (K = 3 é o `limit` de produção) e MRR sobre os 10 primeiros, com os documentos `required`; nDCG@K com ganho exponencial, como no BEIR, em duas versões: binária (`required`) e graduada (`required` = 2, `any_of`/`supporting` = 1, escolha deste código, não dos critérios); Recall@3 sobre o conjunto ampliado (`required` + `any_of` + `supporting`); e latência por consulta. Os documentos são identificados pelo hash do conteúdo, como nos critérios.
+- **Comparação de estratégias:** `evaluate(retriever=...)` aceita outro retriever, e `compare(base, candidato)` mostra a diferença por cenário e marca regressões, para que nenhuma média esconda uma piora. Experimentos de ranking usam isso em memória, sem mudar a produção.
 
-| Cenário | Posição dos `required` | R@1 | R@3 | R@5 | R@10 | RR | R@3 ampliado |
-|---|---|---|---|---|---|---|---|
-| S01 | L269: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.75 |
-| S04 | L16: 6 | 0.00 | 0.00 | 0.00 | 1.00 | 0.17 | 0.75 |
-| S06 | L145: 5 | 0.00 | 0.00 | 1.00 | 1.00 | 0.20 | 0.50 |
-| S08 | L48: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| S09 | L267: 1, L183: 5 | 0.50 | 0.50 | 1.00 | 1.00 | 1.00 | 0.33 |
-| S10 | L203: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| **Média (6)** | | 0.58 | 0.58 | 0.83 | 1.00 | **MRR 0.73** | 0.72 |
+| Cenário | Posição dos `required` | R@1 | R@3 | R@5 | R@10 | RR | nDCG@3 | nDCG@3 graduado | R@3 ampliado |
+|---|---|---|---|---|---|---|---|---|---|
+| S01 | L269: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.75 |
+| S04 | L16: 6 | 0.00 | 0.00 | 0.00 | 1.00 | 0.17 | 0.00 | 0.52 | 0.75 |
+| S06 | L145: 5 | 0.00 | 0.00 | 1.00 | 1.00 | 0.20 | 0.00 | 0.36 | 0.50 |
+| S08 | L48: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| S09 | L267: 1, L183: 5 | 0.50 | 0.50 | 1.00 | 1.00 | 1.00 | 0.61 | 0.56 | 0.33 |
+| S10 | L203: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| **Média (6)** | | 0.58 | 0.58 | 0.83 | 1.00 | **MRR 0.73** | 0.60 | 0.74 | 0.72 |
 
 Leitura: todos os documentos `required` aparecem entre os 10 primeiros, mas só 58% entram no contexto de produção (top 3). As três ausências no top 3 são exatamente os `xfail` de recuperação (RAG-07a/b/c). Com K = 5, a cobertura subiria para 83%; mudar o `limit` não foi feito, porque altera o contexto de todas as respostas e exige avaliação própria.
 
@@ -845,7 +846,7 @@ Os logs registram, por requisição, o `request_id`, a decisão de roteamento, c
 ├── eval/
 │   ├── official_scenarios.json         # critérios congelados dos 10 cenários
 │   ├── official_scenarios_rubrics.md   # rubrica da avaliação humana
-│   ├── retrieval_metrics.py            # Recall@K e MRR (EVAL-02)
+│   ├── retrieval_metrics.py            # Recall@K, MRR, nDCG, Precision, latência (EVAL-02)
 │   └── run_official_scenarios.py       # camada 2 (modelo real)
 ├── scripts/
 │   ├── agent_probe.py
