@@ -7,6 +7,10 @@ documentos de domicílio e de Get Conta.
 
 Estes testes protegem o comportamento de recuperação da linha de base 848ca9f;
 não garantem a qualidade semântica das respostas geradas.
+
+O fixture de 848ca9f não é editado. As consultas cujo top 3 mudou depois dele
+ficam listadas em `CHANGED_SINCE_848CA9F`, com o motivo, para que toda mudança
+de ranking seja explícita e revisável.
 """
 
 import json
@@ -23,6 +27,41 @@ BASELINE = json.loads(
 )["consultas"]
 
 LINKING = "1. Vinculação da conta (primeiro uso)"
+# H1b (2026-11-17): o radical da marca ("Getnet") saiu da pontuação BM25 e da
+# cobertura e ficou só no boost de título (ver retriever.BRAND_TERMS). Só as 5
+# consultas do fixture com a marca e outros termos mudam; todas foram rotuladas
+# no H2 (~/getnet-experiments/2026-11-16_h2-relevancia-fixture/).
+CHANGED_SINCE_848CA9F = {
+    "How does receivables advance (antecipação) work with Getnet?": [
+        "O que é antecipação de vendas?",
+        "Qual a taxa para Antecipação Automática?",
+        "Como antecipar suas vendas pelo app - Getnet",
+    ],
+    "Como funciona a antecipação de recebíveis na Getnet?": [
+        "O que é antecipação de vendas?",
+        "Qual a taxa para Antecipação Automática?",
+        "Como antecipar suas vendas pelo app - Getnet",
+    ],
+    # L116 continua em 1º; as posições 2 e 3 passam a ser documentos
+    # irrelevantes (Pix Agendado, Pix Saque/Troco) no lugar de L5 e L1
+    # (supporting). nDCG graduado@3: 1,00 → 0,73. Limitação conhecida.
+    "Como funciona o Pix na Getnet?": [
+        "Como funciona o Pix na Getnet?",
+        "O que é Pix agendado? Como faço o agendamento do Pix?",
+        "O que é Pix Saque e Pix Troco?",
+    ],
+    "Como funciona o Pix da Getnet?": [
+        "Como funciona o Pix na Getnet?",
+        "O que é Pix agendado? Como faço o agendamento do Pix?",
+        "O que é Pix Saque e Pix Troco?",
+    ],
+    "Quais produtos a Getnet oferece para pequenos negócios?": [
+        "Crediário: vantagens",
+        "Benefícios de habilitar o Pix:",
+        "Link de Pagamento: benefícios",
+    ],
+}
+
 DOMICILE_CHANGE = "Como eu altero/atualizado meu domicílio bancário?"
 LOCK_DIFFERENCE = "Qual é a diferença entre Gravame e Trava de Domicílio Bancário?"
 GRAVAME = "O que é gravame e como ele funciona?"
@@ -49,7 +88,16 @@ def test_baseline_has_the_expected_query_split():
     ids=lambda item: item["consulta"][:40],
 )
 def test_ranking_matches_the_baseline(item):
-    assert titles(item["consulta"]) == item["top3"]
+    expected = CHANGED_SINCE_848CA9F.get(item["consulta"], item["top3"])
+    assert titles(item["consulta"]) == expected
+
+
+def test_changes_since_the_baseline_are_real_and_only_in_brand_queries():
+    by_query = {item["consulta"]: item for item in BASELINE}
+    for query, top3 in CHANGED_SINCE_848CA9F.items():
+        assert query in by_query, query
+        assert top3 != by_query[query]["top3"], query
+        assert "getne" in query_terms(query), query
 
 
 @pytest.mark.parametrize(

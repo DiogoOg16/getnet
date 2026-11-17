@@ -569,19 +569,18 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.5, a suíte padrão dá `787 passed, 5 skipped, 4 xfailed`.
+Com os critérios v1.6, a suíte padrão dá `810 passed, 5 skipped, 3 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
-- **`xfailed` (4):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
+- **`xfailed` (3):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
 
 | Requisito | Backlog | Defeito |
 |---|---|---|
 | S04-R2 | RAG-07a | O documento do Pix no Get Tap fica em 6º lugar e não entra no contexto (`limit=3`). |
-| S06-R3 | RAG-07b | O documento sobre antecipação não entra no top 3. |
 | S09-R3 | RAG-07c | O documento que diz que o limite de parcelas depende do emissor não entra no top 3. |
 | S05V-R2 | RAG-01 | No modo filtrado de conectividade, o IDF usa a contagem do corpus inteiro. |
 
-Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente. Foi o que aconteceu com S08-R4 (ARCH-02, versão 1.3 de `eval/official_scenarios.json`) e com S02-R3 (REL-05, versão 1.4): cada correção fez o requisito passar, e a nova versão o moveu de `xfail` para `pass`, com o motivo e os hashes da versão anterior registrados no histórico do arquivo. A versão 1.5 não mudou nenhum requisito: só o mecanismo de verificação do S08-R4, que passou a exigir o trecho de L48 na resposta (antes, L48 no contexto do LLM), porque a explicação deixou de ser gerada e passou a ser citada.
+Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente. Foi o que aconteceu com S08-R4 (ARCH-02, versão 1.3 de `eval/official_scenarios.json`) e com S02-R3 (REL-05, versão 1.4): cada correção fez o requisito passar, e a nova versão o moveu de `xfail` para `pass`, com o motivo e os hashes da versão anterior registrados no histórico do arquivo. A versão 1.5 não mudou nenhum requisito: só o mecanismo de verificação do S08-R4, que passou a exigir o trecho de L48 na resposta (antes, L48 no contexto do LLM), porque a explicação deixou de ser gerada e passou a ser citada. Na versão 1.6, S06-R3 (RAG-07b) passou de `xfail` para `pass` com a mudança do termo de marca no retriever (H1b, ver Métricas de recuperação).
 
 ### Testes de integração reais com Ollama
 
@@ -665,7 +664,7 @@ A avaliação separa o que é determinístico do que depende do modelo.
 **Resultado da camada 2 registrado** (execução de 2026-11-08 sobre o commit `939d2ba`, `qwen2.5:7b`, 86 respostas): 32 Corretas, 48 Parciais e 6 Incorretas, com 100% de disponibilidade. Por cenário: S02, S03, S05 e S07 corretos em todas as execuções; S10 com 5 de 10 corretas; S01 com 1 correta, 7 parciais e 2 incorretas; S04 com 6 parciais e 4 incorretas; S06, S08 e S09 parciais em todas. Leitura honesta desse resultado:
 
 - não é uma aprovação integral: mais da metade das respostas é parcial. Em S04, S06 e S09 as parciais coincidem com os `xfail` de recuperação (RAG-07a/b/c), e em S08 com a falha de orquestração ARCH-02, corrigida depois dessa rodada; em S01 e S10 há respostas parciais ou incorretas sem `xfail` correspondente, ligadas à síntese do modelo;
-- foi medido antes das mudanças de privacidade e da correção de ARCH-02. Depois delas, os testes da camada 1 dão 32 aprovados e 4 `xfail` (S08-R4 e S02-R3 passaram a ser cumpridos), e só o S08 foi medido de novo na camada 2 (abaixo);
+- foi medido antes das mudanças de privacidade e da correção de ARCH-02. Depois delas, os testes da camada 1 davam 32 aprovados e 4 `xfail` (S08-R4 e S02-R3 passaram a ser cumpridos); com o H1b (critérios v1.6), 33 aprovados e 3 `xfail` (S06-R3). Só o S08 foi medido de novo na camada 2 (abaixo); o S06 ainda não foi medido com o modelo real depois do H1b;
 - os rótulos são de um único avaliador e as amostras são pequenas (3 a 10 execuções por cenário); os arquivos rotulados não estão versionados no repositório.
 
 **Camada 2 do S08 depois da correção de ARCH-02** (2026-11-15, commit `75a8a4a`, `qwen2.5:7b`, 10 execuções, rótulos humanos às cegas, critérios v1.3): **1 Correta, 0 Parciais e 9 Incorretas**, com 100% de disponibilidade. A arquitetura funcionou em todas as execuções: o segundo turno aciona o Knowledge, recupera só L48 e apresenta o fato verificado separado da explicação geral. O problema está na geração: em 9 de 10 respostas o modelo acrescenta causas que L48 não traz (limite de crédito, cartão bloqueado, fraude, saldo insuficiente) ou afirmações não sustentadas, e a rubrica trata isso como informação inventada. Por isso, em seguida (P2), a explicação desse passo deixou de ser gerada e passou a ser a citação da definição de "Negada" em L48, com a fonte; a geração livre não participa mais desse trecho, então essa classe de erro não pode ocorrer. Não houve nova rodada da camada 2 depois da mudança: o turno 2 do S08 ficou determinístico (fato da ferramenta mais trecho citado), e a resposta é verificada pelos testes da camada 1.
@@ -688,13 +687,15 @@ python eval/retrieval_metrics.py --json OUT   # também grava o resultado em JSO
 |---|---|---|---|---|---|---|---|---|---|
 | S01 | L269: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.75 |
 | S04 | L16: 6 | 0.00 | 0.00 | 0.00 | 1.00 | 0.17 | 0.00 | 0.52 | 0.75 |
-| S06 | L145: 5 | 0.00 | 0.00 | 1.00 | 1.00 | 0.20 | 0.00 | 0.36 | 0.50 |
+| S06 | L145: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.85 | 0.50 |
 | S08 | L48: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 | S09 | L267: 1, L183: 5 | 0.50 | 0.50 | 1.00 | 1.00 | 1.00 | 0.61 | 0.56 | 0.33 |
 | S10 | L203: 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| **Média (6)** | | 0.58 | 0.58 | 0.83 | 1.00 | **MRR 0.73** | 0.60 | 0.74 | 0.72 |
+| **Média (6)** | | 0.75 | 0.75 | 0.83 | 1.00 | **MRR 0.86** | 0.77 | 0.82 | 0.72 |
 
-Leitura: todos os documentos `required` aparecem entre os 10 primeiros, mas só 58% entram no contexto de produção (top 3). As três ausências no top 3 são exatamente os `xfail` de recuperação (RAG-07a/b/c). Com K = 5, a cobertura subiria para 83%; mudar o `limit` não foi feito, porque altera o contexto de todas as respostas e exige avaliação própria.
+Leitura: todos os documentos `required` aparecem entre os 10 primeiros, e 75% entram no contexto de produção (top 3). As duas ausências no top 3 são exatamente os `xfail` de recuperação restantes (RAG-07a, L16 em 6º; RAG-07c, L183 em 5º). Com K = 5, a cobertura subiria para 83%; mudar o `limit` não foi feito, porque altera o contexto de todas as respostas e exige avaliação própria.
+
+**Termo de marca (H1b, critérios v1.6).** Quase todo documento menciona "Getnet", então o termo não separa documentos pelo assunto, mas punia os poucos que não o trazem: no S06, "O que é antecipação de vendas?" (L145) ficava em 5º. O radical da marca saiu da pontuação BM25 e da cobertura e ficou só no boost de título (`BRAND_TERMS` em `app/rag/retriever.py`); consulta só com a marca ("O que é a Getnet?") mantém o termo. Antes da mudança, as variantes (k1/b do BM25, marca fora da consulta, marca só no título) foram comparadas em memória com os 6 cenários e com 20 consultas do fixture de ranking rotuladas de forma independente (`required`/`any_of`/`supporting`/`irrelevante`, rótulos congelados por hash). Nessas 20 consultas, a configuração adotada levou Recall@3 de 0,78 para 0,88 e MRR de 0,76 para 0,84, sem nenhuma consulta pior; os ajustes de k1/b foram descartados porque o ganho nos cenários oficiais não se repetiu nelas. Limitação registrada: em "Como funciona o Pix na/da Getnet?" o documento certo continua em 1º, mas as posições 2 e 3 passam a ser documentos irrelevantes (nDCG graduado@3 de 1,00 para 0,73). O teste do fixture lista as 5 consultas cujo top 3 mudou.
 
 Limitações: são 6 consultas e 7 documentos `required`, então as médias descrevem os cenários oficiais, não a qualidade geral da recuperação; os documentos gold foram definidos por um único autor dos critérios; a relevância é binária e não mede se o contexto é suficiente nem a qualidade da geração; a consulta do S08 foi escolhida para recuperar L48, então o resultado perfeito desse caso é em parte construído; com mais de um documento `required`, o MRR considera só o primeiro (no S09, RR = 1,00 embora L183 esteja em 5º), por isso deve ser lido junto com o Recall@K; os resultados valem para o retrato atual do corpus.
 
@@ -875,8 +876,8 @@ Os logs registram, por requisição, o `request_id`, a decisão de roteamento, c
 ## Melhorias futuras
 
 - Estender o replanejamento pelo resultado das ferramentas a outros casos e compor uma resposta única a partir dos fatos verificados e da orientação documentada, medindo o fluxo de ARCH-02 com o modelo real (camada 2).
-- Corrigir os casos de recuperação marcados como `xfail` (RAG-07a/b/c, RAG-01) com experimentos controlados e uma nova versão dos critérios.
-- Ampliar o conjunto de consultas com relevância anotada (hoje 6 cenários), medir a acurácia do roteamento e a fidelidade da geração, e repetir a camada 2 a cada mudança relevante.
+- Corrigir os casos de recuperação ainda marcados como `xfail` (RAG-07a/c, RAG-01) com experimentos controlados e uma nova versão dos critérios; para L16 (S04), nenhuma variante do BM25 o leva ao top 3, e o próximo experimento é comparar BM25, recuperação densa e híbrida com os mesmos rótulos.
+- Ampliar o conjunto de consultas com relevância anotada (hoje 6 cenários oficiais e 20 consultas do fixture), medir a acurácia do roteamento e a fidelidade da geração, e repetir a camada 2 a cada mudança relevante.
 - Avaliar embeddings e recuperação semântica como complemento ao BM25.
 - Detectar o idioma da entrada e responder no mesmo idioma.
 - Persistir logs estruturados com política explícita de retenção e privacidade.

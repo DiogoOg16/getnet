@@ -23,6 +23,15 @@ STEM_LEN = 5
 MIN_SCORE = 1.7
 MIN_COVERAGE = 0.45
 
+# Radical do nome da marca. Quase todo documento traz "Getnet" (título ou
+# conteúdo), então o termo não separa documentos pelo assunto, mas punia os
+# poucos que não o mencionam: "O que é antecipação de vendas?" (L145) caía para
+# 5º em "antecipação de recebíveis na Getnet". O termo fica fora da pontuação
+# BM25 e da cobertura e continua no boost de título. Medido no experimento H1b
+# (2026-11-17) com 6 consultas oficiais e 20 consultas rotuladas: nenhuma pior.
+# Consulta só com a marca ("O que é a Getnet?") mantém o termo na pontuação.
+BRAND_TERMS = frozenset({"getne"})
+
 STOPWORDS = {
     # português
     "a", "o", "as", "os", "um", "uma", "de", "do", "da", "dos", "das",
@@ -218,7 +227,9 @@ def retrieve(query: str, limit: int = 3) -> list[dict]:
     if not known:
         return []
 
-    idf = {t: _idf(df, len(docs), t) for t in known}
+    # A marca só conta no boost de título (`known`); ver BRAND_TERMS.
+    scoring = [t for t in known if t not in BRAND_TERMS] or known
+    idf = {t: _idf(df, len(docs), t) for t in scoring}
     total_idf = sum(idf.values())
 
     results = []
@@ -247,7 +258,7 @@ def retrieve(query: str, limit: int = 3) -> list[dict]:
             })
             continue
 
-        for term in known:
+        for term in scoring:
             freq = tf.get(term, 0)
             if not freq:
                 continue

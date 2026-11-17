@@ -77,11 +77,11 @@ def result():
 def test_metrics_agree_with_the_documented_retrieval_gaps(result):
     rows = {row["id"]: row for row in result["rows"]}
 
-    # Requisitos de recuperação ainda em xfail nos critérios v1.3.
+    # Requisitos de recuperação ainda em xfail nos critérios v1.6.
     assert rows["S04"]["required_positions"]["L16"] > 3   # RAG-07a
-    assert rows["S06"]["required_positions"]["L145"] > 3  # RAG-07b
     assert rows["S09"]["required_positions"]["L183"] > 3  # RAG-07c
     # Documentos que os testes da camada 1 exigem e que estão no contexto.
+    assert rows["S06"]["required_positions"]["L145"] == 1  # RAG-07b, corrigido pelo H1b (v1.6)
     assert rows["S08"]["required_positions"]["L48"] <= 3  # ARCH-02 corrigido
     assert rows["S09"]["required_positions"]["L267"] <= 3
     assert rows["S01"]["required_positions"]["L269"] <= 3

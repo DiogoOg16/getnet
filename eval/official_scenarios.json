@@ -1,6 +1,6 @@
 {
-  "version": "1.5",
-  "status": "congelado em 2026-11-15 (v1.5: verificação do S08-R4 passa a ser feita na resposta, que cita L48; v1.4 e anteriores no histórico)",
+  "version": "1.6",
+  "status": "congelado em 2026-11-17 (v1.6: S06-R3 passa de xfail para pass com o H1b, marca fora da pontuação BM25; v1.5 e anteriores no histórico)",
   "baseline_commit": "939d2ba",
   "corpus": {
     "path": "app/rag/documents/getnet_sources.jsonl",
@@ -20,7 +20,7 @@
       "title": "Documento gold existente e relevante fora do limite de recuperação (top 3); distinto de RAG-01 (IDF)",
       "cases": {
         "RAG-07a": "Cenário 4: documento Get Tap (L16) fora do top 3 para a consulta de conta bancária/Pix (posição 6). Limitação já documentada no README; investigação do cenário 4 encerrada.",
-        "RAG-07b": "Cenário 6: documento-base de antecipação (L145, 'O que é antecipação de vendas?') fora do top 3.",
+        "RAG-07b": "Cenário 6: documento-base de antecipação (L145, 'O que é antecipação de vendas?') fora do top 3. Corrigido na v1.6 (H1b): L145 em 1º.",
         "RAG-07c": "Cenário 9: FAQ sobre limite de parcelas (L183, 'Até quantas parcelas posso fazer…') fora do top 3."
       }
     },
@@ -445,10 +445,11 @@
           {
             "id": "S06-R3",
             "description": "L145 presente no contexto recuperado.",
-            "baseline_expected": "xfail",
+            "baseline_expected": "pass",
             "backlog_id": "RAG-07b",
-            "reason": "L145 não entra no top 3; L176 (Receba Já) ocupa a posição 2.",
-            "evidence": "E1 top 3 = L46, L176, L158; E2 resposta equipara antecipação a Receba Já."
+            "resolution": "v1.6 (H1b): o radical da marca ('getne', de 'Getnet') saiu da pontuação BM25 e da cobertura e ficou só no boost de título (app/rag/retriever.py, BRAND_TERMS). A consulta do S06 deixa de premiar documentos só por mencionarem 'Getnet'; o top 3 passa a L145, L207, L46 (L145 em 1º). Consulta só com a marca mantém o termo na pontuação.",
+            "resolved_reason_v1_5": "L145 não entra no top 3; L176 (Receba Já) ocupa a posição 2.",
+            "evidence": "E1 (848ca9f) top 3 = L46, L176, L158; E2 resposta equipara antecipação a Receba Já. v1.6: S06-R3 passou a XPASS(strict) com o H1b, antes desta mudança de critério. Decisão baseada no experimento H1b (~/getnet-experiments/2026-11-17_h1b-marca-titulo/), avaliado com os 6 cenários com gold e com 20 consultas do fixture rotuladas de forma independente (H2, rótulos congelados sha256 63f6874315e7ad93…): oficiais R@3 0,58 → 0,75, sem regressão; H2 R@3 0,775 → 0,875, MRR 0,76 → 0,84, nenhuma consulta pior que o baseline. Limitação registrada: em 'Como funciona o Pix na/da Getnet?' L116 continua em 1º, mas as posições 2–3 passam a documentos irrelevantes (nDCG graduado@3 1,00 → 0,73). Comportamento do modelo real (camada 2) no S06 ainda não medido com esta mudança."
           }
         ]
       },
@@ -846,6 +847,13 @@
       "sha256_official_scenarios_json": "29948d76024a9aab69b23ce3c0770b7d245120fad58694387b08bc6446633478",
       "sha256_rubrics_md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff",
       "superseded_because": "P2: a explicação do S08 passou a ser a citação do texto de L48 que define \"Negada\", sem LLM. Só o mecanismo de verificação do S08-R4 mudou (contexto do LLM → trecho de L48 na resposta do turno 2); a descrição do requisito, os demais cenários, rubricas e pesos não foram alterados. Autorizado explicitamente em 2026-11-15."
+    },
+    {
+      "version": "1.5",
+      "frozen": "2026-11-15",
+      "sha256_official_scenarios_json": "a62c6c1e9ed26c57f21dc73142eb75f311d1b74e15abbed299428767a07f0e16",
+      "sha256_rubrics_md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff",
+      "superseded_because": "H1b (RAG-07b): o radical da marca 'Getnet' saiu da pontuação BM25 e da cobertura do retriever e ficou só no boost de título; L145 passou ao 1º lugar no S06 e S06-R3 passou a XPASS(strict). Só S06-R3 mudou de xfail para pass (e o texto do caso RAG-07b registra a correção); a descrição do requisito, os demais cenários, requisitos, rubricas e pesos não foram alterados. Autorizado explicitamente em 2026-11-17."
     }
   ]
 }
