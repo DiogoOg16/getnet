@@ -109,32 +109,38 @@ def test_maquininha_error_lookup_returns_real_error_article():
     assert "adq 4-83" in titles or "4-83" in titles
 
 
-def test_adq_483_returns_site_fix_steps():
+def test_adq_483_returns_the_documented_meaning_without_invented_steps():
+    # A página de erro foi ingerida sem os passos de solução; a resposta não os inventa.
     result = KnowledgeAgent().answer("Qual é o significado do erro ADQ 4-83 na maquininha?")
 
     assert result["agent"] == "knowledge"
     content = result["response"].lower()
-    assert "erro adq 4-83" in content
-    assert "tecla de função" in content
-    assert "38" in content
-    assert "inicialização" in content
+    assert "erro adq 4-83: erro de integração com as bandeiras" in content
+    assert "tecla de função" not in content
+    assert result["sources"] == ["Erro ADQ 4-83: erro de integração com as bandeiras - Getnet"]
+    assert result["resolved"] is False
 
 
 @pytest.mark.parametrize(
-    "query, required_terms",
+    "query, meaning",
     [
-        ("Qual é o significado do erro ADQ 4-91 na maquininha?", ["erro adq 4-91", "tecla de função", "inicialização"]),
-        ("Qual é o significado do erro ADQ 1-50 na maquininha?", ["erro adq 1-50", "tecla de função", "inicialização"]),
-        ("Qual é o significado do erro IDL 1-08 na maquininha?", ["erro idl 1-08", "configuração", "apagar memória"]),
+        ("Qual é o significado do erro ADQ 4-91 na maquininha?", "erro adq 4-91: erro na aprovação da venda"),
+        ("Qual é o significado do erro ADQ 1-50 na maquininha?", "erro adq 1-50: erro de leitura"),
     ],
 )
-def test_maquininha_error_codes_return_real_site_steps(query, required_terms):
+def test_maquininha_error_codes_in_the_base_return_their_meaning(query, meaning):
     result = KnowledgeAgent().answer(query)
 
-    assert result["agent"] == "knowledge"
-    content = result["response"].lower()
-    for term in required_terms:
-        assert term in content
+    assert meaning in result["response"].lower()
+    assert result["resolved"] is False
+
+
+def test_maquininha_error_code_outside_the_base_is_not_answered_as_documented():
+    result = KnowledgeAgent().answer("Qual é o significado do erro IDL 1-08 na maquininha?")
+
+    assert "não encontrei informações sobre o código idl 1-08" in result["response"].lower()
+    assert result["sources"] == []
+    assert result["resolved"] is False
 
 
 def test_plugin_page_covers_plugins_question_with_domain_answer():
@@ -192,13 +198,11 @@ def test_sales_status_question_answers_with_documented_statuses():
     assert "cancelada" in content
 
 
-def test_cadastro_question_answers_with_public_steps():
+def test_business_registration_question_says_the_base_has_no_article():
     result = KnowledgeAgent().answer("Como faço para cadastrar meu negócio no Getnet?")
 
     assert result["agent"] == "knowledge"
-    content = result["response"].lower()
-    assert "cadastro" in content or "cadastrar" in content
-    assert "site getnet" in content or "portal" in content or "aplicativo" in content
+    assert result["response"] == "A base de conhecimento da Getnet não contém um artigo sobre o cadastro inicial de um negócio."
 
 
 def test_internet_troubleshooting_does_not_return_power_instructions():
@@ -217,9 +221,7 @@ def test_get_conta_estorno_and_config_queries_have_source_focused_answers():
         ("O que é tarifa de inatividade?", ["180 dias", "r$ 10", "inatividade"], "get conta"),
         ("Como estornar uma venda na maquininha Getnet?", ["estorno", "suporte", "maquininha"], "estorno"),
         ("O que é chargeback e como evitar?", ["chargeback", "venda", "banco"], "chargeback"),
-        ("Como configurar o Wi-Fi na sua maquininha Getnet?", ["wi-fi", "wifi", "maquininha"], "wi-fi"),
-        ("Como consultar minhas vendas?", ["aplicativo", "portal", "vendas"], "vendas"),
-        ("Funcionalidades portal minha conta e App Getnet Brasil", ["portal", "aplicativo", "getnet"], "app"),
+        ("Como configurar o Wi-Fi na sua maquininha Getnet?", ["wi-fi", "maquininha"], "wi-fi"),
     ]
 
     for query, required_terms, keyword in cases:

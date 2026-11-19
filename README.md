@@ -569,7 +569,7 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.6, a suíte padrão dá `810 passed, 5 skipped, 3 xfailed`.
+Com os critérios v1.6, a suíte padrão dá `870 passed, 5 skipped, 3 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
 - **`xfailed` (3):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
@@ -808,6 +808,7 @@ Os logs registram, por requisição, o `request_id`, a decisão de roteamento, c
   - **Geração, com o Get Tap inserido no contexto:** o modelo restringe a exigência ao Get Tap quando o documento aparece sozinho (19 de 20 respostas). Junto com documentos de outras modalidades, transforma a exigência em regra geral (20 de 20).
   - **Instrução de escopo no prompt:** só ajudou no contexto montado com o Get Tap, onde as respostas corretas foram de 0 para 7 em 20. No contexto real, as recusas subiram de 9 para 16 em 20, e por isso não foi adotada.
   - **Alcance:** a limitação vale para essa configuração. Não foi verificado se persiste com outros modelos.
+- **Respostas fixas do Knowledge:** cerca de 15 perguntas frequentes (acesso à Get Conta, limites de transferência, estorno, status de vendas, chave Pix…) têm resposta determinística antes do LLM. As respostas documentadas citam só o documento da base que as sustenta; se ele não estiver na base, a resposta fixa não é entregue e a pergunta segue o fluxo normal. As meta-respostas (a base não cobre o assunto, como cadastro inicial de um negócio ou configuração de Wi-Fi) não citam fonte e não marcam o caso como resolvido (`tests/test_knowledge_direct_answers.py`). As páginas de erro da maquininha foram ingeridas sem os passos de solução: para os 6 códigos da base, a resposta dá o significado e não marca o caso como resolvido; para códigos fora da base, diz que não há informação.
 - **Busca externa:** a pesquisa geral via DuckDuckGo pode ser instável ou bloqueada. Resumos do mecanismo de busca não são verificação independente das páginas.
 - **Câmbio:** a fonte e o tipo de cotação seguem a implementação da ferramenta; não se deve interpretar o valor como uma cotação comercial em tempo real sem verificar a resposta e a fonte.
 - **Idioma:** a geração foi orientada principalmente para respostas em português; não há garantia de responder no mesmo idioma de toda mensagem recebida.

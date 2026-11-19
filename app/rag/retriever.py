@@ -190,6 +190,21 @@ def _index() -> dict:
     return {"docs": docs, "df": df, "avgdl": avgdl}
 
 
+def _public(doc: dict) -> dict:
+    return {
+        "title": doc["title"],
+        "content": doc["content"],
+        "source_url": doc["source_url"],
+        "category": doc["category"],
+        "section": doc.get("section", doc.get("category", "Geral")),
+    }
+
+
+def all_documents() -> list[dict]:
+    """Documentos da base (sem os chunks de ruído), no formato de `retrieve`."""
+    return [_public(doc) for doc in _index()["docs"]]
+
+
 def _idf(df: Counter, total: int, term: str) -> float:
     n = df.get(term, 0)
     return math.log(1 + (total - n + 0.5) / (n + 0.5))
