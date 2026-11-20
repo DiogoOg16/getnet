@@ -20,6 +20,8 @@ services:
       - GETNET_DEMO_AUTH_TOKENS=${GETNET_DEMO_AUTH_TOKENS:?Configure GETNET_DEMO_AUTH_TOKENS no arquivo .env}
       - GETNET_SESSION_MEMORY_PATH=${GETNET_SESSION_MEMORY_PATH:-/app/data/getnet_session_memory.json}
       - GETNET_HUMAN_HANDOFF_PATH=${GETNET_HUMAN_HANDOFF_PATH:-/app/data/getnet_human_handoff.json}
+      - GETNET_MAX_MESSAGE_CHARS=${GETNET_MAX_MESSAGE_CHARS:-2000}
+      - GETNET_RATE_LIMIT_PER_MINUTE=${GETNET_RATE_LIMIT_PER_MINUTE:-30}
     volumes:
       - api_data:/app/data
     extra_hosts:

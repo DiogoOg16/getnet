@@ -237,6 +237,18 @@ def mask_dates(text: str, execution_day: date) -> str:
 # --------------------------------------------------------------------------
 
 
+def configure_run_environment(state_dir: Path, token: str, *, ollama_url: str, model: str) -> None:
+    """Estado, credenciais e Ollama da execução; sobrescreve o que estiver no ambiente."""
+    os.environ["GETNET_HUMAN_HANDOFF_PATH"] = str(state_dir / "handoff.json")
+    os.environ["GETNET_SESSION_MEMORY_PATH"] = str(state_dir / "session.json")
+    # Avaliação em lote: o limite por usuário da API não se aplica, mesmo que o
+    # ambiente defina outro valor.
+    os.environ["GETNET_RATE_LIMIT_PER_MINUTE"] = "0"
+    os.environ["GETNET_DEMO_AUTH_TOKENS"] = json.dumps({token: "cliente1988"})
+    os.environ["OLLAMA_URL"] = ollama_url
+    os.environ["OLLAMA_MODEL"] = model
+
+
 def cmd_run(args: argparse.Namespace) -> None:
     criteria_hashes = check_frozen_criteria()
     criteria = load_criteria()
@@ -256,11 +268,7 @@ def cmd_run(args: argparse.Namespace) -> None:
     # Estado e credenciais isolados, definidos antes de importar a aplicação.
     state_dir = Path(tempfile.mkdtemp(prefix="eval01-state-"))
     token = "eval-" + secrets.token_hex(16)
-    os.environ["GETNET_HUMAN_HANDOFF_PATH"] = str(state_dir / "handoff.json")
-    os.environ["GETNET_SESSION_MEMORY_PATH"] = str(state_dir / "session.json")
-    os.environ["GETNET_DEMO_AUTH_TOKENS"] = json.dumps({token: "cliente1988"})
-    os.environ["OLLAMA_URL"] = args.ollama_url
-    os.environ["OLLAMA_MODEL"] = args.model
+    configure_run_environment(state_dir, token, ollama_url=args.ollama_url, model=args.model)
     sys.path.insert(0, str(ROOT))
 
     import requests

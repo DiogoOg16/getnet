@@ -44,6 +44,9 @@ TOKEN_BY_USER = {
     "atendente_01": "test-token-atendente_01",
 }
 
+# Avaliação em lote: o limite por usuário da API não se aplica, mesmo que o
+# ambiente defina outro valor.
+os.environ["GETNET_RATE_LIMIT_PER_MINUTE"] = "0"
 os.environ["GETNET_DEMO_AUTH_TOKENS"] = json.dumps(
     {
         "test-token-cliente1988": "cliente1988",

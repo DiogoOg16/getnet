@@ -20,7 +20,7 @@ atexit.register(shutil.rmtree, TEST_STATE_DIR, ignore_errors=True)
 
 from app.agents import customer_support  # noqa: E402
 from app.agents.knowledge import KnowledgeAgent  # noqa: E402
-from app.main import handoff_store, orchestrator, session_memory  # noqa: E402
+from app.main import handoff_store, orchestrator, rate_limiter, session_memory  # noqa: E402
 
 
 class FakeCustomerSupportOllamaClient:
@@ -146,6 +146,9 @@ def configure_demo_auth_tokens(monkeypatch):
 
     handoff_store._records = {}
     handoff_store.storage_path.unlink(missing_ok=True)
+
+    # Cada teste começa com a cota de requisições cheia.
+    rate_limiter.reset()
 
 
 def pytest_configure(config):

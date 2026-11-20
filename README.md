@@ -294,6 +294,8 @@ Esse endereço é configurado para o cenário Docker previsto no `docker-compose
 | `GETNET_DEMO_AUTH_TOKENS` | sem padrão; obrigatória | JSON que mapeia cada token Bearer a um `user_id`. O `.env.example` traz tokens fictícios para `cliente1988`, `cliente2001` e `atendente_01`, só para desenvolvimento. |
 | `GETNET_SESSION_MEMORY_PATH` | `<tmp>/getnet_session_memory.json` no processo local; `/app/data/getnet_session_memory.json` no Compose | Arquivo JSON da memória de sessão. |
 | `GETNET_HUMAN_HANDOFF_PATH` | `<tmp>/getnet_human_handoff.json` no processo local; `/app/data/getnet_human_handoff.json` no Compose | Arquivo JSON dos tickets de handoff. |
+| `GETNET_MAX_MESSAGE_CHARS` | `2000` | Tamanho máximo de `message` em `POST /chat`; acima disso, `422` antes de qualquer agente. Lido na inicialização. `user_id` e `session_id` têm limite fixo de 128 caracteres. |
+| `GETNET_RATE_LIMIT_PER_MINUTE` | `30` | Requisições por minuto por usuário autenticado em `POST /chat` (janela deslizante em memória); acima disso, `429` com `Retry-After`. `0` desliga; valor inválido dá `500`. Os scripts de avaliação em lote usam `0`. |
 
 Exemplo para execução local:
 
@@ -366,6 +368,8 @@ A resposta inclui os campos abaixo (o conteúdo exato depende da rota e dos dado
 ```
 
 O exemplo ilustra o contrato da resposta; a mensagem, o status da transação e outros valores dependem dos dados simulados disponíveis na versão executada. O campo `message` devolve a pergunta com os dados pessoais mascarados (ver [Segurança e privacidade](#segurança-e-privacidade)).
+
+Erros de `POST /chat`: `401` sem token ou com token inválido; `403` quando o `user_id` do payload não é o do token; `422` para payload inválido, inclusive `message` acima de `GETNET_MAX_MESSAGE_CHARS`; `429` acima de `GETNET_RATE_LIMIT_PER_MINUTE` (ver [Limites de entrada e prompt injection](#limites-de-entrada-e-prompt-injection)).
 
 ### Endpoints de handoff humano
 
@@ -502,6 +506,13 @@ Limitações conhecidas da memória:
 - Em `POST /chat`, o `user_id` do payload precisa ser o do token; caso contrário, `403`. As ferramentas recebem o `user_id` autenticado como contexto confiável, nunca do modelo, e `lookup_transaction` só devolve transações do próprio cliente.
 - Os tokens são estáticos e sem expiração: adequados para demonstração, não para produção.
 
+### Limites de entrada e prompt injection
+
+- **Tamanho:** `message` com no máximo `GETNET_MAX_MESSAGE_CHARS` caracteres (padrão 2000); `user_id` e `session_id` com no máximo 128. Acima disso, `422`.
+- **Frequência:** no máximo `GETNET_RATE_LIMIT_PER_MINUTE` requisições por minuto por usuário autenticado (padrão 30), contadas depois da autenticação: credencial inválida não consome a cota de ninguém. Acima disso, `429` com `Retry-After`. O contador fica na memória do processo, adequado a um único worker.
+- **Injeção:** a defesa é de desenho, não de filtro de texto. O modelo só recebe as ferramentas autorizadas para a etapa; `user_id` é contexto confiável do backend e o executor recusa esse campo como argumento do modelo; ferramenta fora do registro não é executada; o chat não tem ação sobre tickets. `tests/test_input_limits_and_injection.py` simula o pior caso, um modelo que obedece à injeção e pede os dados de outro cliente, e verifica que nenhum dado do `cliente2001` aparece para o `cliente1988` e que nenhuma ferramenta roda com outro `user_id`.
+- **Fora do alcance desses testes:** injeção que altere o texto gerado (por exemplo, uma resposta enganosa sobre o próprio cliente) não é detectada; os testes cobrem vazamento de dados e execução de ações.
+
 ### Mascaramento de dados pessoais
 
 `app/privacy.py` concentra a detecção e o mascaramento. Os padrões cobertos e os marcadores usados:
@@ -569,7 +580,7 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.6, a suíte padrão dá `870 passed, 5 skipped, 3 xfailed`.
+Com os critérios v1.6, a suíte padrão dá `900 passed, 5 skipped, 3 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
 - **`xfailed` (3):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:

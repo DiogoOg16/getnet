@@ -1,5 +1,6 @@
 import hmac
 import logging
+import os
 import re
 import time
 import unicodedata
@@ -14,6 +15,7 @@ from app.auth import authenticate_user
 from app.human_handoff import HandoffPermissionError, HumanHandoffStore, is_attendant_user
 from app.orchestrator import ChatOrchestrator
 from app.privacy import mask_sensitive
+from app.rate_limit import RateLimiter, requests_per_minute
 from app.session_memory import SessionMemory
 from app.tools.customer_tools import register_customer_tools
 from app.tools.registry import tool_registry
@@ -43,12 +45,26 @@ orchestrator = ChatOrchestrator(registry=registry)
 session_memory = SessionMemory()
 handoff_store = HumanHandoffStore()
 bearer_scheme = HTTPBearer(auto_error=False)
+rate_limiter = RateLimiter()
+
+
+def _max_message_chars() -> int:
+    raw = os.getenv("GETNET_MAX_MESSAGE_CHARS", "").strip()
+    value = int(raw) if raw else 2000
+    if value < 1:
+        raise RuntimeError("GETNET_MAX_MESSAGE_CHARS deve ser um inteiro >= 1.")
+    return value
+
+
+# Lido na importação: o limite faz parte do esquema da requisição (resposta 422).
+MAX_MESSAGE_CHARS = _max_message_chars()
+MAX_ID_CHARS = 128
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(min_length=1)
-    user_id: str = Field(min_length=1)
-    session_id: str | None = None
+    message: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
+    user_id: str = Field(min_length=1, max_length=MAX_ID_CHARS)
+    session_id: str | None = Field(default=None, max_length=MAX_ID_CHARS)
 
 
 class ChatResponse(BaseModel):
@@ -179,6 +195,23 @@ def chat(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="O usuário informado não corresponde à identidade autenticada.",
+        )
+
+    # Por usuário autenticado, depois da autenticação: credencial inválida não consome a cota.
+    try:
+        limit = requests_per_minute()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Configuração de limite de requisições indisponível.",
+        ) from exc
+    retry_after = rate_limiter.check(authenticated_user_id, limit)
+    if retry_after is not None:
+        logger.warning("chat_rate_limited request_id=%s", request_id)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Muitas requisições. Tente novamente em instantes.",
+            headers={"Retry-After": RateLimiter.retry_after_header(retry_after)},
         )
 
     # Nunca registrar o conteúdo da mensagem: pode conter dados pessoais.
