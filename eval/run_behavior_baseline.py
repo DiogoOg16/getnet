@@ -22,8 +22,8 @@ if str(ROOT) not in sys.path:
 
 from app.main import app, handoff_store, session_memory
 
-CASES_PATH = ROOT / "eval" / "behavior_cases_v1.json"
-OUTPUT_PATH = ROOT / "eval" / "behavior_baseline_v1_results.json"
+CASES_PATH = ROOT / "eval" / "behavior_cases_v2.json"
+OUTPUT_PATH = ROOT / "eval" / "behavior_baseline_v2_results.json"
 
 TOKEN_BY_USER = {
     "cliente1988": "test-token-cliente1988",
@@ -174,7 +174,7 @@ def main() -> None:
     )
 
     output = {
-        "dataset": "behavior_cases_v1",
+        "dataset": "behavior_cases_v2",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": {
             "total_cases": total,

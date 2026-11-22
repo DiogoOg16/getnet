@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 import pytest
@@ -754,21 +755,23 @@ def test_two_consecutive_execution_calls_do_not_share_verified_facts():
 
 
 def test_real_customer_support_to_orchestrator_to_knowledge_flow_preserves_verified_facts():
+    # P2: a etapa de venda recusada cita a base sem receber os fatos da transação,
+    # para que a explicação geral não vire causa desta transação.
     orchestrator = ChatOrchestrator()
-    with patch.object(KnowledgeAgent, "answer", wraps=KnowledgeAgent().answer) as knowledge_spy:
+    with patch.object(KnowledgeAgent, "answer", wraps=KnowledgeAgent().answer) as generation_spy, \
+            patch.object(KnowledgeAgent, "quote", wraps=KnowledgeAgent().quote) as quote_spy:
         execution = orchestrator.handle(
-            "Por que a transação txn1001 foi recusada?",
+            "Por que a transação txn1003 foi recusada?",
             "cliente1988",
             request_id="req-flow",
         )
 
     assert execution.result["verified_facts"]
-    assert knowledge_spy.call_count == 1
-    called_kwargs = knowledge_spy.call_args.kwargs
-    assert called_kwargs["verified_facts"]
-    assert any(fact["name"] == "status" for fact in called_kwargs["verified_facts"])
-    assert all(fact.get("source_agent") == "customer_support" for fact in called_kwargs["verified_facts"])
-    assert any(fact["entity"] == "txn1001" for fact in execution.result["verified_facts"])
+    assert generation_spy.call_count == 0
+    assert quote_spy.call_count == 1
+    assert "txn1003" not in json.dumps(quote_spy.call_args.args, ensure_ascii=False)
+    assert all(fact.get("source_agent") == "customer_support" for fact in execution.result["verified_facts"])
+    assert any(fact["entity"] == "txn1003" for fact in execution.result["verified_facts"])
 
 
 def test_chat_http_response_exposes_only_public_fields_without_sensitive_data():

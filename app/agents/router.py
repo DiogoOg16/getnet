@@ -141,6 +141,18 @@ HUMAN_ESCALATION = _compile((
     CPF_PATTERN,
 ))
 
+# Assuntos da base da Getnet que não têm a marca no texto. Uma pergunta conceitual
+# ("O que é chargeback?") com um desses termos é da base, não da busca web.
+# Só expressões específicas dos documentos: "tarifa" ou "transferência" sozinhas
+# também aparecem fora do domínio ("tarifa de ônibus", "transferência de calor").
+GETNET_DOMAIN = _compile((
+    r"\bchargebacks?\b",
+    r"\bget conta\b",
+    r"\btarifa de inatividade\b",
+    r"\btransferencias? (?:bancarias?|entre contas|da get conta|na get conta|pelo aplicativo)\b",
+    r"\blimites? (?:diarios?|de transferencias?|de saque)\b",
+))
+
 KNOWLEDGE = _compile((
     r"\bqual a diferenca\b",
     r"\bdiferenca entre\b",
@@ -170,6 +182,7 @@ KNOWLEDGE = _compile((
     r"\bgetnet\b",
     r"\bget (?:classica|smart)\b",
     r"\bwhatsapp\b",
+    GETNET_DOMAIN.pattern,
 ))
 
 
@@ -374,7 +387,7 @@ class RouterAgent:
                 reason="The message appears to concern a customer account or transaction.",
             )
 
-        if GENERAL_CONCEPT.search(text) and not re.search(
+        if GENERAL_CONCEPT.search(text) and not GETNET_DOMAIN.search(text) and not re.search(
             r"\b(?:habilitar|desabilitar|vender|configur|antecip|status|recus|consultar|pagamento|pix no|portal|get tap|getnet)\b",
             text,
         ):

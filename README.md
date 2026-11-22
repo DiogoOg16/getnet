@@ -84,7 +84,7 @@ Resposta JSON + metadados + trace por etapa
 
 | Componente | Responsabilidade |
 |---|---|
-| `RouterAgent` | Normaliza a mensagem e classifica a intenção por regras explícitas. |
+| `RouterAgent` | Normaliza a mensagem e classifica a intenção por regras explícitas. Perguntas conceituais com termos da base sem a marca (chargeback, tarifa, inatividade, Get Conta, transferência) vão para o Knowledge, não para a busca web. |
 | `KnowledgeAgent` | Recupera informações da base local, aplica respostas diretas em casos específicos e pode consultar o Ollama. |
 | `CustomerSupportAgent` | Atende solicitações sobre clientes e transações usando ferramentas com dados simulados. |
 | `WebSearchAgent` | Trata perguntas de clima, câmbio e pesquisa externa. |
@@ -93,10 +93,9 @@ Resposta JSON + metadados + trace por etapa
 
 O roteador é baseado em regras, não em uma chamada de LLM. Isso torna a decisão principal previsível e testável, embora regras lexicais possam não reconhecer todas as formas possíveis de uma intenção.
 
-**Colaboração entre agentes (o que existe e o que falta):** o plano encadeia agentes de duas formas.
+**Colaboração entre agentes (o que existe e o que falta):** o plano começa com o agente escolhido pelo roteador, e o orquestrador acrescenta etapas pelo resultado das ferramentas, não pelo texto da mensagem. "Por que a transação txn1001 foi recusada?" sobre uma transação aprovada roda só o Customer Support, que informa o status real.
 
-- **Pelo texto, na criação do plano:** quando a mesma mensagem menciona uma transação recusada e pede orientação ("por que", "o que fazer"), o Customer Support consulta os dados e o Knowledge acrescenta a orientação documentada, recebendo os fatos verificados da etapa anterior.
-- **Pelo resultado da ferramenta, durante a execução (ARCH-02):** depois de cada etapa, o orquestrador olha o resultado verificado de `lookup_transaction`. Transação aprovada ou pendente, negada com motivo registrado, não encontrada ou erro de ferramenta: nenhuma etapa nova. Transação **negada sem motivo registrado**: o orquestrador acrescenta o Knowledge com uma consulta fixa sobre o significado de uma venda negada com cartão, **sem** os fatos da transação, para que a explicação geral não seja apresentada como causa daquela transação. Nesse passo o Knowledge **não gera texto**: cita o texto do documento recuperado (L48) que define o status "Negada", com a fonte (mesmas palavras e pontuação, sem o marcador de lista e com espaços normalizados). Se nenhum documento recuperado trouxer a definição, a resposta diz isso, a etapa fica com `step_status: no_evidence` no `trace` e um aviso vai para o log; a resposta verificada da transação continua valendo. A geração livre foi retirada daqui depois que a camada 2 mostrou o modelo acrescentando causas não documentadas (ver [Estratégia de avaliação](#estratégia-de-avaliação)). É o que acontece no cenário oficial S08, em que a recusa e o identificador chegam em turnos separados.
+- **Pelo resultado da ferramenta, durante a execução (ARCH-02):** depois de cada etapa, o orquestrador olha o resultado verificado de `lookup_transaction`. Transação aprovada ou pendente, negada com motivo registrado, não encontrada ou erro de ferramenta: nenhuma etapa nova. Transação **negada sem motivo registrado**: o orquestrador acrescenta o Knowledge com uma consulta fixa sobre o significado de uma venda negada com cartão, **sem** os fatos da transação, para que a explicação geral não seja apresentada como causa daquela transação. Nesse passo o Knowledge **não gera texto**: cita o texto do documento recuperado (L48) que define o status "Negada", com a fonte (mesmas palavras e pontuação, sem o marcador de lista e com espaços normalizados). Se nenhum documento recuperado trouxer a definição, a resposta diz isso, a etapa fica com `step_status: no_evidence` no `trace` e um aviso vai para o log; a resposta verificada da transação continua valendo. A geração livre foi retirada daqui depois que a camada 2 mostrou o modelo acrescentando causas não documentadas (ver [Estratégia de avaliação](#estratégia-de-avaliação)). É o que acontece no cenário oficial S08, em que a recusa e o identificador chegam em turnos separados, e também quando a pergunta e o identificador vêm na mesma mensagem ("Por que a transação txn1003 foi recusada?").
 
 O plano tem no máximo 3 etapas e não repete agente. Em execução multi-etapa, `agent` e `tool_used` representam a etapa principal (a primeira) e o `trace` registra todos os agentes, ferramentas e o motivo de cada etapa acrescentada. As respostas são combinadas em partes com cabeçalho (fato verificado; depois a explicação geral, identificada como tal), não sintetizadas por um LLM.
 
@@ -580,10 +579,10 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.6, a suíte padrão dá `900 passed, 5 skipped, 3 xfailed`.
+Com os critérios v1.6, a suíte padrão dá `968 passed, 5 skipped, 9 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
-- **`xfailed` (3):** requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
+- **`xfailed` (9):** 3 requisitos dos cenários oficiais (tabela abaixo) e 6 itens do checklist do enunciado e do feedback anterior (`tests/acceptance/test_mission_and_v4_checklist.py`, ver adiante). Os 3 primeiros são requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
 
 | Requisito | Backlog | Defeito |
 |---|---|---|
@@ -592,6 +591,19 @@ Com os critérios v1.6, a suíte padrão dá `900 passed, 5 skipped, 3 xfailed`.
 | S05V-R2 | RAG-01 | No modo filtrado de conectividade, o IDF usa a contagem do corpus inteiro. |
 
 Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a suíte falha de propósito, para que o critério seja atualizado conscientemente. Foi o que aconteceu com S08-R4 (ARCH-02, versão 1.3 de `eval/official_scenarios.json`) e com S02-R3 (REL-05, versão 1.4): cada correção fez o requisito passar, e a nova versão o moveu de `xfail` para `pass`, com o motivo e os hashes da versão anterior registrados no histórico do arquivo. A versão 1.5 não mudou nenhum requisito: só o mecanismo de verificação do S08-R4, que passou a exigir o trecho de L48 na resposta (antes, L48 no contexto do LLM), porque a explicação deixou de ser gerada e passou a ser citada. Na versão 1.6, S06-R3 (RAG-07b) passou de `xfail` para `pass` com a mudança do termo de marca no retriever (H1b, ver Métricas de recuperação).
+
+#### Checklist do enunciado e do feedback anterior
+
+`tests/acceptance/test_mission_and_v4_checklist.py` verifica, item por item e de preferência pela API, o que o plano de trabalho e a avaliação anterior (V4) pediam: os 10 cenários do enunciado chegam ao agente esperado, a sequência Support → Knowledge decidida pelo resultado da ferramenta, citação de L48 em vez de geração nas perguntas sobre venda negada, identidade pelo token, ausência de dados pessoais em logs, respostas e arquivos, memória por sessão, handoff com ticket, critérios congelados, trace com latência, container sem root. Nenhum teste do arquivo acessa a rede. Itens ainda em aberto ficam como `xfail(strict=True)`:
+
+| Item | Em aberto |
+|---|---|
+| V4-1 | Perguntas em inglês recebem resposta em português |
+| V4-3 | "Como funciona…" vai para o Knowledge mesmo fora do domínio ("Como funciona a transferência de calor?"); "O que é…" fora do domínio vai para a busca web |
+| V4-9 | Logs em texto `chave=valor`, não JSON |
+| V4-10 | O `Dockerfile` copia `tests/` para a imagem |
+| V4-10 | Imagem do Ollama sem versão (`ollama/ollama:latest`) |
+| V4-10 | `requirements.txt` com versões exatas, mas sem hashes |
 
 ### Testes de integração reais com Ollama
 

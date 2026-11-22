@@ -22,8 +22,8 @@ if str(ROOT) not in sys.path:
 from app.main import app, handoff_store, session_memory
 
 
-CASES_PATH = ROOT / "eval" / "behavior_cases_v1.json"
-OUTPUT_PATH = ROOT / "eval" / "semantic_sample_v1_results.json"
+CASES_PATH = ROOT / "eval" / "behavior_cases_v2.json"
+OUTPUT_PATH = ROOT / "eval" / "semantic_sample_v2_results.json"
 
 SAMPLE_IDS = [
     "BEH-001",

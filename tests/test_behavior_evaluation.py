@@ -8,7 +8,7 @@ from app.main import app
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-CASES_PATH = BASE_DIR / "eval" / "behavior_cases_v1.json"
+CASES_PATH = BASE_DIR / "eval" / "behavior_cases_v2.json"
 
 with CASES_PATH.open("r", encoding="utf-8") as fh:
     CASES = json.load(fh)["cases"]

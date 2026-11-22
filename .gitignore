@@ -11,3 +11,6 @@ logs/
 logs/agent_probe_*.txt
 logs/validation_*.json
 app/rag/documents/*.backup.jsonl
+
+# Feedback de avaliações anteriores: documento pessoal, fora do repositório.
+feedback_*.md

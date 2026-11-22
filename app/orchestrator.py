@@ -147,25 +147,6 @@ class ChatOrchestrator:
             if not unicodedata.combining(char)
         )
 
-    @classmethod
-    def _needs_knowledge_followup(cls, message: str) -> bool:
-        text = cls._normalize_text(message)
-
-        mentions_decline = any(
-            term in text
-            for term in ("recusad", "negad", "declin")
-        )
-        asks_for_guidance = any(
-            term in text
-            for term in (
-                "por que", "porque", "como resolver",
-                "como corrigir", "o que fazer",
-                "why", "how to fix", "how can i",
-            )
-        )
-
-        return mentions_decline and asks_for_guidance
-
     @staticmethod
     def _followup_step(step: PlanStep, result: dict) -> PlanStep | None:
         """Decide a próxima etapa a partir do resultado verificado da anterior (ARCH-02).
@@ -222,20 +203,9 @@ class ChatOrchestrator:
             )
         ]
 
-        if (
-            decision.agent == "customer_support"
-            and self._needs_knowledge_followup(message)
-        ):
-            steps.append(
-                PlanStep(
-                    agent="knowledge",
-                    reason=(
-                        "Retrieve documented guidance for the declined "
-                        "transaction after checking customer support data."
-                    ),
-                )
-            )
-
+        # A etapa do Knowledge para venda recusada não sai do texto da mensagem:
+        # é acrescentada durante a execução por `_followup_step`, só quando a
+        # consulta mostra a transação negada sem motivo registrado (P1/P2).
         plan = ExecutionPlan(
             steps=tuple(steps[:3]),
             max_steps=3,
