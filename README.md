@@ -11,7 +11,7 @@ Assistente de suporte multiagente desenvolvido como desafio técnico. A aplicaç
 - [Checklist de compliance do desafio](#checklist-de-compliance-do-desafio)
 - [Principais funcionalidades](#principais-funcionalidades)
 - [Arquitetura e fluxo da mensagem](#arquitetura-e-fluxo-da-mensagem)
-- [Function Calling no Customer Support (Incremento 5B)](#function-calling-no-customer-support-incremento-5b)
+- [Function Calling no Customer Support](#function-calling-no-customer-support)
 - [Pipeline de RAG](#pipeline-de-rag)
 - [Requisitos](#requisitos)
 - [Execução local](#execução-local)
@@ -109,7 +109,7 @@ O plano tem no máximo 3 etapas e não repete agente. Em execução multi-etapa,
 6. Se houver escalonamento, a API cria (ou reaproveita) um ticket de handoff com a mensagem mascarada.
 7. O turno é gravado na memória, mascarado, e a API devolve a resposta JSON com metadados e `trace`.
 
-## Function Calling no Customer Support (Incremento 5B)
+## Function Calling no Customer Support
 
 O fluxo operacional do Customer Support usa Function Calling com validação backend antes de qualquer execução de ferramenta.
 
@@ -142,6 +142,8 @@ O fluxo operacional do Customer Support usa Function Calling com validação bac
 ## Pipeline de RAG
 
 O agente de conhecimento utiliza recuperação lexical; **não há embeddings nem banco vetorial implementados**.
+
+**Fontes:** o enunciado sugere `getnet.net/en` e pede que se busquem outras fontes. A base foi montada com as páginas públicas de ajuda, de produtos e de documentação técnica da Getnet: 266 documentos de `site.getnet.com.br` e 3 de `getstore.getnet.com.br`, cada um com `source_url` e data de ingestão. A lista exata de URLs está em `SOURCES`, em `app/rag/ingest.py`.
 
 1. **Ingestão:** `app/rag/ingest.py` reúne páginas públicas de ajuda e documentação da Getnet (as fontes estão listadas no próprio arquivo), extrai o conteúdo e prepara os registros. Para regenerar a base: `python -m app.rag.ingest`. O comando acessa a internet e **sobrescreve** `app/rag/documents/getnet_sources.jsonl` (se alguma fonte falhar, a base existente é preservada). Como os cenários oficiais e o fixture de ranking fixam hashes do conteúdo e posições dos documentos, uma nova ingestão pode invalidar esses testes; regenere a base só de forma deliberada.
 2. **Armazenamento:** os documentos ficam versionados em `app/rag/documents/getnet_sources.jsonl`. A base representa um retrato da data da ingestão e pode ficar desatualizada.
@@ -877,7 +879,8 @@ Os logs registram, por requisição, o `request_id`, a decisão de roteamento, c
 │   ├── session_memory.py
 │   ├── verified_facts.py
 │   └── main.py
-├── docs/                       # auditorias, contrato de resposta e transições do orquestrador
+├── docs/                       # contrato de resposta, transições do orquestrador e auditorias anteriores
+├── logs/                       # registro de validação de 21/10/2026 (histórico)
 ├── eval/
 │   ├── official_scenarios.json         # critérios congelados dos 10 cenários
 │   ├── official_scenarios_rubrics.md   # rubrica da avaliação humana
@@ -906,6 +909,8 @@ Os logs registram, por requisição, o `request_id`, a decisão de roteamento, c
 ├── requirements.txt
 └── README.md
 ```
+
+**Registros históricos:** `logs/validation_20261021_143155.json` e os documentos `docs/priority1_*`, `docs/priority2_*` e `docs/stage5_*` registram etapas anteriores do projeto e não descrevem o comportamento atual (por exemplo, o log de 21/10 mostra a abstenção na pergunta sobre o Pix, para a qual a versão atual recupera os documentos do Pix). O estado atual está neste README, nos testes e em `eval/`.
 
 ## Melhorias futuras
 

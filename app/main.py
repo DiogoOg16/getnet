@@ -30,7 +30,7 @@ logger = logging.getLogger("getnet_api")
 app = FastAPI(
     title="Getnet AI Agent",
     description="API para o sistema multiagente de suporte.",
-    version="0.3.0",
+    version="1.0.0",
 )
 
 registry = register_customer_tools(tool_registry)
