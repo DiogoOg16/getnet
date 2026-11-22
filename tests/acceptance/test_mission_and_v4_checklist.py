@@ -637,10 +637,15 @@ def test_v4_10_dependencies_are_pinned():
     assert lines and all("==" in line for line in lines)
 
 
-@pytest.mark.xfail(strict=True, reason="V4-10: o Dockerfile ainda copia tests/ para a imagem")
 def test_v4_10_tests_are_not_copied_into_the_image():
     dockerfile = (ROOT / "Dockerfile").read_text()
     assert not re.search(r"^COPY\s+tests\b", dockerfile, flags=re.MULTILINE)
+
+
+def test_v4_10_only_the_data_directory_is_writable_by_the_app_user():
+    dockerfile = (ROOT / "Dockerfile").read_text()
+    assert not re.search(r"chown\s+-R\s+\S+\s+/app\b(?!/)", dockerfile)
+    assert re.search(r"chown\s+app:app\s+/app/data\b", dockerfile)
 
 
 @pytest.mark.xfail(strict=True, reason="V4-10: imagem do Ollama sem versão (ollama/ollama:latest)")

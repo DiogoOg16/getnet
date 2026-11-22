@@ -1,0 +1,770 @@
+{
+  "S01-001": {
+    "label": "P",
+    "justification": "Os valores e limites de isenção estão corretos, e as funcionalidades descritas da Get Smart são sustentadas pelos documentos. Entretanto, o uso de \"funcionalidades exclusivas\" e a afirmação de que a Smart oferece \"mais funcionalidades\" sugerem que a Get Clássica não possui esses recursos, algo que não está demonstrado pelas evidências recuperadas.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G01"
+    }
+  },
+  "S01-002": {
+    "label": "C",
+    "justification": "A resposta apresenta corretamente os valores e limites de isenção, descreve funcionalidades documentadas da Get Smart e explicita que o contexto não detalha diferenças funcionais específicas da Get Clássica. Assim, evita transformar a ausência de informação em uma afirmação sobre limitações da Clássica.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G02"
+    }
+  },
+  "S01-003": {
+    "label": "P",
+    "justification": "Os valores, limites de isenção e funcionalidades da Get Smart estão sustentados. Porém, expressões como \"funções adicionais\" e \"mais operações\" sugerem uma comparação funcional com a Get Clássica que os documentos não comprovam. A ressalva sobre hardware e design não resolve essa extrapolação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G03"
+    }
+  },
+  "S01-004": {
+    "label": "P",
+    "justification": "Os valores e as funcionalidades descritas estão corretos, mas a conclusão afirma explicitamente que a Get Smart oferece funcionalidades adicionais em comparação à Get Clássica. Essa diferença funcional não está demonstrada pelos documentos recuperados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G04"
+    }
+  },
+  "S01-005": {
+    "label": "P",
+    "justification": "Os valores, limites de isenção e funcionalidades descritas da Get Smart estão sustentados pelos documentos. Entretanto, a afirmação de que a Get Clássica possui menos funcionalidades que a Get Smart não está comprovada pelas evidências recuperadas. A resposta também poderia ser mais precisa ao explicar que a cobrança depende de não atingir o faturamento mínimo.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G05"
+    }
+  },
+  "S01-006": {
+    "label": "P",
+    "justification": "A resposta apresenta corretamente os valores mensais e descreve funcionalidades documentadas da Get Smart. Porém, omite a comparação dos limites de faturamento para isenção do aluguel, informação disponível no contexto e necessária para uma resposta Correta. Além disso, apresenta as funcionalidades como diferenças em relação à Clássica sem evidência direta dessa comparação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G06"
+    }
+  },
+  "S01-007": {
+    "label": "I",
+    "justification": "A resposta se recusa a apresentar informações mesmo reconhecendo que o contexto contém os valores de utilização mensal. Como L269 fornece evidências suficientes para comparar os preços e os limites de isenção, a recusa em responder caracteriza resposta Incorreta.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G07"
+    }
+  },
+  "S01-008": {
+    "label": "I",
+    "justification": "Embora os valores e limites de isenção estejam corretos e a resposta reconheça que não há comparação funcional direta, acrescenta \"controle de caixa\" como funcionalidade da Get Smart sem suporte explícito nos documentos recuperados. A inclusão de uma funcionalidade não comprovada caracteriza resposta Incorreta segundo a rubrica.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G08"
+    }
+  },
+  "S01-009": {
+    "label": "P",
+    "justification": "A resposta apresenta corretamente os valores de aluguel da Get Smart e da Get Clássica e menciona funcionalidades da Smart respaldadas pelos documentos. Porém, omite os limites de faturamento que determinam a isenção do aluguel e afirma que a Get Clássica não oferece essas funcionalidades, comparação que não é sustentada pelo contexto recuperado.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G09"
+    }
+  },
+  "S01-010": {
+    "label": "P",
+    "justification": "A resposta apresenta corretamente os valores e descreve funcionalidades da Get Smart respaldadas pelos documentos, mas omite os limites de faturamento para isenção do aluguel. Além disso, caracteriza a Get Clássica como tendo apenas funcionalidades básicas, uma comparação não sustentada pelas evidências disponíveis. Trata-se de uma extrapolação, não da invenção de uma funcionalidade específica.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G10"
+    }
+  },
+  "S02-001": {
+    "label": "C",
+    "justification": "A resposta informa Porto Alegre, a data correta de amanhã (segunda-feira), mínima, máxima e chance de chuva, identificando a Open-Meteo como fonte. Todos os critérios da rubrica S02 estão atendidos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G11"
+    }
+  },
+  "S02-002": {
+    "label": "C",
+    "justification": "A resposta informa Porto Alegre, a data correta de amanhã (segunda-feira), mínima, máxima e chance de chuva, identificando a Open-Meteo como fonte. Todos os critérios da rubrica S02 estão atendidos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G11"
+    }
+  },
+  "S02-003": {
+    "label": "C",
+    "justification": "A resposta informa Porto Alegre, a data correta de amanhã (segunda-feira), mínima, máxima e chance de chuva, identificando a Open-Meteo como fonte. Todos os critérios da rubrica S02 estão atendidos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G11"
+    }
+  },
+  "S03-001": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S03-002": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S03-003": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S03-004": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S03-005": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S03-006": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S03-007": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S03-008": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S03-009": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S03-010": {
+    "label": "C",
+    "justification": "A resposta consulta a ferramenta, identifica a venda realizada ontem, separa a data da venda da data prevista de liquidação, apresenta o status em português e informa explicitamente que os dados são simulados. Atende aos critérios da S03.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G12"
+    }
+  },
+  "S04-001": {
+    "label": "P",
+    "justification": "A resposta reconhece a falta de informação direta e apresenta uma inferência compatível com o documento recuperado, sem afirmar que a Get Conta é obrigatória.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G13"
+    }
+  },
+  "S04-002": {
+    "label": "I",
+    "justification": "A resposta confunde a possibilidade de vender por Pix com o prazo de recebimento em dois dias úteis no cartão, atribuindo esse prazo ao Pix.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G14"
+    }
+  },
+  "S04-003": {
+    "label": "P",
+    "justification": "A resposta reconhece a limitação das evidências e apresenta uma conclusão cautelosa, baseada na necessidade de vincular uma conta ao recebimento.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G15"
+    }
+  },
+  "S04-004": {
+    "label": "I",
+    "justification": "A resposta afirma inicialmente que não é necessária uma conta em instituição financeira, contradizendo a própria conclusão e as evidências recuperadas.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G16"
+    }
+  },
+  "S04-005": {
+    "label": "I",
+    "justification": "A resposta atribui ao recebimento por Pix o prazo de dois dias úteis descrito para vendas no cartão pela Get Conta. Essa confusão é usada diretamente para sustentar a conclusão de que uma conta bancária é necessária, caracterizando uma conclusão apoiada em uma contradição das evidências.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G17"
+    }
+  },
+  "S04-006": {
+    "label": "P",
+    "justification": "A resposta limita a conclusão à ausência de necessidade de uma conta bancária específica, sem afirmar que nenhuma conta é necessária. Também reconhece a falta de detalhes sobre o recebimento, embora não incorpore a informação de que o dinheiro é creditado em uma conta bancária no Pix da POS Digital.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G18"
+    }
+  },
+  "S04-007": {
+    "label": "P",
+    "justification": "A conclusão de que não é necessária uma conta bancária específica é compatível com as evidências disponíveis. Entretanto, a afirmação de que o recebimento pela Get Conta independe do tipo de conta bancária não está demonstrada nos documentos recuperados, impedindo uma classificação como Correta.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G19"
+    }
+  },
+  "S04-008": {
+    "label": "P",
+    "justification": "A resposta reconhece que a informação é indireta e utiliza corretamente o trecho que menciona o crédito em conta bancária em até 10 segundos. Porém, generaliza uma informação específica da POS Digital para o recebimento por Pix em geral, sem distinguir a modalidade.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G20"
+    }
+  },
+  "S04-009": {
+    "label": "P",
+    "justification": "A resposta apresenta corretamente que o recebimento por Pix exige uma conta bancária, conforme a evidência da POS Digital, e distingue esse recebimento do prazo de vendas no cartão da Get Conta. Entretanto, sugere que a Get Conta seria uma alternativa para empresas sem conta bancária, algo que os documentos não comprovam. A ressalva final reduz a extrapolação, mas não elimina a falta de evidência.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G21"
+    }
+  },
+  "S04-010": {
+    "label": "I",
+    "justification": "Apesar de mencionar que o pagamento é direcionado à conta bancária do destinatário, a resposta interpreta incorretamente essa evidência e termina recusando-se a responder. Como havia evidência parcial disponível, a recusa em fornecer uma conclusão limitada ao que estava sustentado caracteriza resposta Incorreta segundo D4-b.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G22"
+    }
+  },
+  "S05-001": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-002": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-003": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-004": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-005": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-006": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-007": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-008": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-009": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-010": {
+    "label": "C",
+    "justification": "No primeiro turno, solicita os dois dados previstos na rubrica: disponibilidade de sinal/Wi-Fi e mensagem exibida na tela. No segundo, reconhece a falta de orientação técnica documentada e encaminha para atendimento humano com ticket efetivamente criado. Não inventa procedimentos.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G24"
+    }
+  },
+  "S05-V-001": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S05-V-002": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S05-V-003": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S05-V-004": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S05-V-005": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S05-V-006": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S05-V-007": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S05-V-008": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S05-V-009": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S05-V-010": {
+    "label": "C",
+    "justification": "Como não há documentação relevante no corpus, a resposta reconhece a insuficiência da base e encaminha para atendimento humano, sem inventar procedimentos. O handoff e a abertura do ticket estão confirmados.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G23"
+    }
+  },
+  "S06-001": {
+    "label": "P",
+    "justification": "Reconhece a limitação das informações disponíveis e informa corretamente que a antecipação de vendas no crédito pode ser solicitada pelo aplicativo Getnet Brasil. Entretanto, não explica o conceito de receber antes do prazo de compensação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G25"
+    }
+  },
+  "S06-002": {
+    "label": "P",
+    "justification": "Informa corretamente que o aplicativo Getnet Brasil permite antecipar vendas no crédito, à vista ou parceladas, e reconhece a ausência de informações sobre taxas e procedimentos detalhados. Não explica que a antecipação permite receber antes do prazo normal de compensação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G26"
+    }
+  },
+  "S06-003": {
+    "label": "P",
+    "justification": "Apresenta a possibilidade de antecipar vendas no crédito, à vista ou parceladas pelo aplicativo e reconhece a falta de detalhes adicionais. Entretanto, não apresenta o conceito de antecipação em relação ao prazo de compensação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G27"
+    }
+  },
+  "S06-004": {
+    "label": "P",
+    "justification": "Informa corretamente o uso do aplicativo Getnet Brasil e reconhece limitações quanto a informações específicas para não correntistas Santander. Contudo, não explica o conceito de receber os valores antes do prazo de compensação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G28"
+    }
+  },
+  "S06-005": {
+    "label": "P",
+    "justification": "Apesar de afirmar que não há informações suficientes sobre o funcionamento completo, apresenta a possibilidade de antecipar vendas pelo aplicativo Getnet. É uma resposta limitada, não uma recusa completa, mas falta a explicação conceitual.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G29"
+    }
+  },
+  "S06-006": {
+    "label": "P",
+    "justification": "Descreve corretamente a possibilidade de antecipar vendas no crédito, à vista ou parceladas pelo aplicativo e reconhece a falta de detalhes sobre taxas e procedimentos. Não explica a antecipação como recebimento anterior ao prazo normal de compensação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G30"
+    }
+  },
+  "S06-007": {
+    "label": "P",
+    "justification": "Apresenta o aplicativo como canal de antecipação e reconhece explicitamente que faltam informações sobre o processamento financeiro e os requisitos. Entretanto, não explica o conceito de antecipação em relação ao prazo de compensação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G31"
+    }
+  },
+  "S06-008": {
+    "label": "P",
+    "justification": "Informa corretamente que o aplicativo permite antecipar vendas no crédito, à vista ou parceladas e reconhece a ausência de detalhes adicionais. Não apresenta a explicação conceitual exigida para C.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G32"
+    }
+  },
+  "S06-009": {
+    "label": "P",
+    "justification": "Informa corretamente o aplicativo e menciona a Central de Atendimento para antecipação automática e eventual, conforme L158. Entretanto, não explica que a antecipação permite receber antes do prazo de compensação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G33"
+    }
+  },
+  "S06-010": {
+    "label": "P",
+    "justification": "Informa corretamente a possibilidade de antecipar vendas pelo aplicativo e reconhece a falta de detalhes sobre o processo, taxas e prazos. Não explica o conceito de recebimento antecipado em relação ao prazo normal de compensação.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G34"
+    }
+  },
+  "S07-001": {
+    "label": "C",
+    "justification": "Informa que se trata da PTAX de fechamento do Banco Central, apresenta compra e venda, data e horário do boletim, esclarece que não é cotação em tempo real e utiliza o último dia útil, adequado à execução em domingo.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G35"
+    }
+  },
+  "S07-002": {
+    "label": "C",
+    "justification": "Informa que se trata da PTAX de fechamento do Banco Central, apresenta compra e venda, data e horário do boletim, esclarece que não é cotação em tempo real e utiliza o último dia útil, adequado à execução em domingo.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G35"
+    }
+  },
+  "S07-003": {
+    "label": "C",
+    "justification": "Informa que se trata da PTAX de fechamento do Banco Central, apresenta compra e venda, data e horário do boletim, esclarece que não é cotação em tempo real e utiliza o último dia útil, adequado à execução em domingo.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G35"
+    }
+  },
+  "S08-001": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S08-002": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S08-003": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S08-004": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S08-005": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S08-006": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S08-007": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S08-008": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S08-009": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S08-010": {
+    "label": "P",
+    "justification": "Solicita o identificador e confirma corretamente, pela ferramenta, que a transação está recusada, sem inventar o motivo. Entretanto, não apresenta a explicação documentada de venda negada prevista em L48. Como L48 não foi recuperado, a resposta fica na categoria parcial, conforme a rubrica S08.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G36"
+    }
+  },
+  "S09-001": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo anunciado de até 48 parcelas no cartão de crédito, conforme L267, mas não esclarece que o limite efetivo depende das políticas de crédito do emissor.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G37"
+    }
+  },
+  "S09-002": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo de até 48 parcelas com o Crediário, mas omite a ressalva de que o limite efetivo depende do emissor do cartão.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G38"
+    }
+  },
+  "S09-003": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo anunciado de até 48 parcelas, mas não distingue esse máximo do limite efetivamente disponibilizado pelo emissor.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G39"
+    }
+  },
+  "S09-004": {
+    "label": "P",
+    "justification": "Informa que o Crediário oferece até 48 parcelas, conforme L267, mas não esclarece que o limite efetivo depende das políticas de crédito do emissor.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G40"
+    }
+  },
+  "S09-005": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo de até 48 parcelas no cartão de crédito. A menção a taxas acessíveis é compatível com a descrição de L267, mas falta a ressalva sobre o limite definido pelo emissor.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G41"
+    }
+  },
+  "S09-006": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo anunciado de até 48 parcelas no cartão de crédito, mas omite a dependência do limite efetivo em relação às políticas do emissor.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G42"
+    }
+  },
+  "S09-007": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo de até 48 parcelas no cartão de crédito, conforme L267, mas não esclarece que o limite efetivo depende do emissor. A classificação se aplica às duas execuções agrupadas.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G43"
+    }
+  },
+  "S09-008": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo de até 48 parcelas e menciona taxas acessíveis, compatíveis com L267, mas não apresenta a ressalva sobre as políticas de crédito do emissor.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G44"
+    }
+  },
+  "S09-009": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo de até 48 parcelas no cartão de crédito, conforme L267, mas não esclarece que o limite efetivo depende do emissor. A classificação se aplica às duas execuções agrupadas.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G43"
+    }
+  },
+  "S09-010": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo anunciado de até 48 parcelas, mas não especifica que o limite efetivo depende do emissor do cartão.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G45"
+    }
+  },
+  "S10-001": {
+    "label": "P",
+    "justification": "Confirma corretamente que é possível vender pelo WhatsApp e identifica os canais de envio do link, mas não descreve o fluxo após o envio: o cliente clicar no link, escolher o método de pagamento e finalizar a compra.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G46"
+    }
+  },
+  "S10-002": {
+    "label": "C",
+    "justification": "Confirma a possibilidade de venda pelo WhatsApp e descreve corretamente o fluxo completo: o vendedor envia o link, o cliente clica, escolhe o método de pagamento e finaliza a compra.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G47"
+    }
+  },
+  "S10-003": {
+    "label": "C",
+    "justification": "Confirma a possibilidade de venda pelo WhatsApp, apresenta os canais de envio respaldados por L203 e descreve corretamente as etapas de conclusão da compra.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G48"
+    }
+  },
+  "S10-004": {
+    "label": "P",
+    "justification": "Confirma corretamente que o Link de Pagamento pode ser enviado pelo WhatsApp, mas não explica o que o cliente faz após receber o link.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G49"
+    }
+  },
+  "S10-005": {
+    "label": "P",
+    "justification": "Confirma corretamente a possibilidade de envio pelo WhatsApp e apresenta os demais canais documentados, mas omite o fluxo de clique, escolha do método de pagamento e finalização da compra.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G50"
+    }
+  },
+  "S10-006": {
+    "label": "P",
+    "justification": "Confirma corretamente que o link pode ser enviado pelo WhatsApp e cita os canais documentados, mas não descreve o fluxo de pagamento realizado pelo cliente.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G51"
+    }
+  },
+  "S10-007": {
+    "label": "C",
+    "justification": "Confirma a possibilidade de venda pelo WhatsApp e descreve corretamente o fluxo completo de envio, acesso ao link, escolha do método de pagamento e finalização da compra.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G52"
+    }
+  },
+  "S10-008": {
+    "label": "P",
+    "justification": "Confirma corretamente que o link pode ser enviado pelo WhatsApp e apresenta os canais documentados, mas não explica as etapas seguintes da compra.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G53"
+    }
+  },
+  "S10-009": {
+    "label": "C",
+    "justification": "Confirma a possibilidade de venda pelo WhatsApp e descreve corretamente o fluxo completo, conforme L203. As duas execuções agrupadas apresentam a mesma resposta.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G54"
+    }
+  },
+  "S10-010": {
+    "label": "C",
+    "justification": "Confirma a possibilidade de venda pelo WhatsApp e descreve corretamente o fluxo completo, conforme L203. As duas execuções agrupadas apresentam a mesma resposta.",
+    "annotations": {
+      "fonte": "humano",
+      "grupo_revisao": "G54"
+    }
+  }
+}

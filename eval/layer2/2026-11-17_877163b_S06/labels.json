@@ -1,0 +1,52 @@
+{
+  "S06-001": {
+    "label": "I",
+    "justification": "Diz que não há informação suficiente com L145 e L46 no contexto (G2).",
+    "annotations": {}
+  },
+  "S06-002": {
+    "label": "C",
+    "justification": "Conceito (L145) + app (L46); a condição da Antecipação Automática reproduz L207 e fica restrita a ela.",
+    "annotations": {}
+  },
+  "S06-003": {
+    "label": "I",
+    "justification": "Nega informação específica e omite o procedimento presente no contexto (G2).",
+    "annotations": {}
+  },
+  "S06-004": {
+    "label": "C",
+    "justification": "Conceito + app; cita L207 restrito à Antecipação Automática e diz que não é o método geral.",
+    "annotations": {}
+  },
+  "S06-005": {
+    "label": "C",
+    "justification": "Conceito + canal; cita L207 restrito à Antecipação Automática, sem inventar taxa ou condição.",
+    "annotations": {}
+  },
+  "S06-006": {
+    "label": "C",
+    "justification": "Conceito + app; reconhece a ausência de taxas e de aprovação no contexto.",
+    "annotations": {}
+  },
+  "S06-007": {
+    "label": "I",
+    "justification": "Diz que os documentos não detalham o funcionamento, desconsiderando L46 (G2).",
+    "annotations": {}
+  },
+  "S06-008": {
+    "label": "C",
+    "justification": "Conceito + app; a condição de isenção vem de L207 e é atribuída à Antecipação Automática.",
+    "annotations": {}
+  },
+  "S06-009": {
+    "label": "P",
+    "justification": "Conceito + app, mas distorce L207: atribui à taxa a condição que L207 atribui à Antecipação Automática.",
+    "annotations": {}
+  },
+  "S06-010": {
+    "label": "P",
+    "justification": "Conceito + app, mas generaliza a condição de L207 (avaliação individual) para toda antecipação.",
+    "annotations": {}
+  }
+}

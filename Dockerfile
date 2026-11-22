@@ -10,13 +10,15 @@ COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Só o código da aplicação: os testes ficam fora da imagem de produção.
 COPY app ./app
-COPY tests ./tests
 
+# O código fica com o dono root (somente leitura para o usuário da aplicação);
+# só /app/data, onde ficam memória de sessão e tickets, é gravável.
 RUN addgroup --system app && \
     adduser --system --ingroup app --home /app --no-create-home app && \
     mkdir -p /app/data && \
-    chown -R app:app /app
+    chown app:app /app/data
 
 EXPOSE 8000
 

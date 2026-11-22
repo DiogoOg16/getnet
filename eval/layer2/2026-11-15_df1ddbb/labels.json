@@ -1,0 +1,482 @@
+{
+  "S01-001": {
+    "label": "C",
+    "justification": "Compara corretamente os preços e limites de isenção, descreve funcionalidades da Smart com suporte documental e não inventa características da Clássica.",
+    "annotations": {}
+  },
+  "S01-002": {
+    "label": "C",
+    "justification": "Comparação correta de preços, isenção e funcionalidades; todas as características apresentadas têm suporte nas fontes.",
+    "annotations": {}
+  },
+  "S01-003": {
+    "label": "C",
+    "justification": "Valores e limites de isenção corretos; funcionalidades da Smart sustentadas pelos documentos.",
+    "annotations": {}
+  },
+  "S01-004": {
+    "label": "P",
+    "justification": "A comparação de preços e funcionalidades está correta, mas sugere que a Clássica tem menos funcionalidades sem evidência documental.",
+    "annotations": {}
+  },
+  "S01-005": {
+    "label": "C",
+    "justification": "Compara corretamente preços, isenção e recursos da Smart, incluindo processamento e gestão integrada.",
+    "annotations": {}
+  },
+  "S01-006": {
+    "label": "C",
+    "justification": "Informações sobre valores, isenção e funcionalidades da Smart estão fundamentadas; não atribui características não documentadas à Clássica.",
+    "annotations": {}
+  },
+  "S01-007": {
+    "label": "C",
+    "justification": "Comparação correta, com funcionalidades adicionais sustentadas por L74 e L83 e condições de isenção compatíveis com L269.",
+    "annotations": {}
+  },
+  "S01-008": {
+    "label": "I",
+    "justification": "Afirma que a exclusão de Voucher e Crediário do cálculo da isenção se aplica apenas à Clássica, embora L269 não faça essa restrição.",
+    "annotations": {}
+  },
+  "S01-009": {
+    "label": "P",
+    "justification": "Apresenta preços e funcionalidades, mas omite os limites de faturamento para isenção do aluguel.",
+    "annotations": {}
+  },
+  "S01-010": {
+    "label": "P",
+    "justification": "A comparação principal está correta, mas afirma que a Clássica não tem as funcionalidades mencionadas, algo que não está demonstrado pela documentação.",
+    "annotations": {}
+  },
+  "S02-001": {
+    "label": "C",
+    "justification": "A previsão é para Porto Alegre no dia seguinte, apresenta mínima, máxima e chance de chuva, além de identificar o Open-Meteo como fonte.",
+    "annotations": {}
+  },
+  "S02-002": {
+    "label": "C",
+    "justification": "A previsão é para Porto Alegre no dia seguinte, apresenta mínima, máxima e chance de chuva, além de identificar o Open-Meteo como fonte.",
+    "annotations": {}
+  },
+  "S02-003": {
+    "label": "C",
+    "justification": "A previsão é para Porto Alegre no dia seguinte, apresenta mínima, máxima e chance de chuva, além de identificar o Open-Meteo como fonte.",
+    "annotations": {}
+  },
+  "S03-001": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S03-002": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S03-003": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S03-004": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S03-005": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S03-006": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S03-007": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S03-008": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S03-009": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S03-010": {
+    "label": "C",
+    "justification": "Restringe a consulta às vendas de ontem, separa a data da venda da previsão de liquidação, informa o status em português e deixa claro que os dados são simulados.",
+    "annotations": {}
+  },
+  "S04-001": {
+    "label": "I",
+    "justification": "Recusa responder apesar de haver evidência parcial relevante sobre o recebimento via Pix e a vinculação de conta bancária.",
+    "annotations": {}
+  },
+  "S04-002": {
+    "label": "P",
+    "justification": "A necessidade de conta é generalizada a partir de evidência referente a uma modalidade específica, sem distinguir as modalidades.",
+    "annotations": {}
+  },
+  "S04-003": {
+    "label": "P",
+    "justification": "Faz generalização semelhante: afirma a necessidade de conta bancária, mas não delimita a conclusão à modalidade documentada.",
+    "annotations": {}
+  },
+  "S04-004": {
+    "label": "P",
+    "justification": "Reconhece que não há informação sobre uma conta específica, mas extrapola ao sugerir que qualquer tipo de conta listado serve para o recebimento via Getnet.",
+    "annotations": {}
+  },
+  "S04-005": {
+    "label": "P",
+    "justification": "Usa evidência sobre a vinculação bancária no Pix, mas transforma isso em regra geral sem delimitar a modalidade.",
+    "annotations": {}
+  },
+  "S04-006": {
+    "label": "P",
+    "justification": "A conclusão sobre a necessidade de conta bancária é generalizada, embora a documentação sustente essa exigência para a modalidade descrita em L63.",
+    "annotations": {}
+  },
+  "S04-007": {
+    "label": "I",
+    "justification": "Deixa de aproveitar a evidência parcial de L63 e L231 e não apresenta uma resposta útil sobre o que a documentação efetivamente sustenta.",
+    "annotations": {}
+  },
+  "S04-008": {
+    "label": "I",
+    "justification": "Atribui ao recebimento via Pix o prazo de até dois dias úteis, que em L231 está associado à opção de recebimento no cartão, não ao Pix.",
+    "annotations": {}
+  },
+  "S04-009": {
+    "label": "P",
+    "justification": "Reconhece a ausência de informação sobre uma conta específica, mas não apresenta a evidência disponível sobre a vinculação bancária exigida na modalidade descrita em L63.",
+    "annotations": {}
+  },
+  "S04-010": {
+    "label": "P",
+    "justification": "Identifica corretamente a evidência de conta bancária, mas generaliza a exigência e sugere a Get Conta sem esclarecer os limites da documentação.",
+    "annotations": {}
+  },
+  "S05-001": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-002": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-003": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-004": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-005": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-006": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-007": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-008": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-009": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-010": {
+    "label": "C",
+    "justification": "No primeiro turno, pergunta pelos sintomas relevantes sem inventar dados ou procedimentos; no segundo, encaminha para atendimento humano e abre o ticket.",
+    "annotations": {}
+  },
+  "S05-V-001": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S05-V-002": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S05-V-003": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S05-V-004": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S05-V-005": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S05-V-006": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S05-V-007": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S05-V-008": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S05-V-009": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S05-V-010": {
+    "label": "C",
+    "justification": "Reconhece que a documentação não contém orientação técnica suficiente e encaminha o caso sem inventar procedimentos nem recorrer a documentação irrelevante.",
+    "annotations": {}
+  },
+  "S06-001": {
+    "label": "I",
+    "justification": "Recusa responder apesar de L46 apresentar a possibilidade de antecipar vendas pelo aplicativo.",
+    "annotations": {}
+  },
+  "S06-002": {
+    "label": "I",
+    "justification": "Reconhece a existência da antecipação pelo aplicativo, mas afirma que não há informação suficiente para responder.",
+    "annotations": {}
+  },
+  "S06-003": {
+    "label": "I",
+    "justification": "Desconsidera as informações de procedimento disponíveis e trata a antecipação como se fosse um produto não documentado.",
+    "annotations": {}
+  },
+  "S06-004": {
+    "label": "I",
+    "justification": "Recusa responder apesar de L46 indicar a antecipação pelo aplicativo.",
+    "annotations": {}
+  },
+  "S06-005": {
+    "label": "I",
+    "justification": "Reconhece a possibilidade de antecipar pelo aplicativo, mas não aproveita a informação disponível para responder.",
+    "annotations": {}
+  },
+  "S06-006": {
+    "label": "C",
+    "justification": "Explica quais vendas podem ser antecipadas e apresenta os canais disponíveis, sem inventar taxas ou condições.",
+    "annotations": {}
+  },
+  "S06-007": {
+    "label": "I",
+    "justification": "Recusa responder apesar da existência de informações sobre o procedimento.",
+    "annotations": {}
+  },
+  "S06-008": {
+    "label": "I",
+    "justification": "Trata a antecipação como algo não documentado, embora L46 descreva a antecipação de vendas no crédito pelo aplicativo.",
+    "annotations": {}
+  },
+  "S06-009": {
+    "label": "C",
+    "justification": "Explica quais vendas podem ser antecipadas e apresenta diferentes canais, incluindo aplicativo, central e gerente bancário.",
+    "annotations": {}
+  },
+  "S06-010": {
+    "label": "I",
+    "justification": "Reconhece que é possível antecipar vendas no crédito, mas recusa responder apesar da informação de procedimento disponível.",
+    "annotations": {}
+  },
+  "S07-001": {
+    "label": "C",
+    "justification": "Informa a PTAX de fechamento, fonte oficial, data e horário do boletim, valores de compra e venda e ressalva que não é uma cotação em tempo real.",
+    "annotations": {}
+  },
+  "S07-002": {
+    "label": "C",
+    "justification": "Informa a PTAX de fechamento, fonte oficial, data e horário do boletim, valores de compra e venda e ressalva que não é uma cotação em tempo real.",
+    "annotations": {}
+  },
+  "S07-003": {
+    "label": "C",
+    "justification": "Informa a PTAX de fechamento, fonte oficial, data e horário do boletim, valores de compra e venda e ressalva que não é uma cotação em tempo real.",
+    "annotations": {}
+  },
+  "S08-001": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S08-002": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S08-003": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S08-004": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S08-005": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S08-006": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S08-007": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S08-008": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S08-009": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S08-010": {
+    "label": "C",
+    "justification": "Solicita o identificador antes da consulta, confirma a transação pela ferramenta, informa que não há motivo registrado e distingue a explicação documental do motivo específico da recusa.",
+    "annotations": {}
+  },
+  "S09-001": {
+    "label": "P",
+    "justification": "Informa até 48 vezes, mas não ressalva que o limite efetivo depende do emissor.",
+    "annotations": {}
+  },
+  "S09-002": {
+    "label": "P",
+    "justification": "Informa até 48 vezes sem a ressalva sobre o limite estabelecido pelo emissor.",
+    "annotations": {}
+  },
+  "S09-003": {
+    "label": "P",
+    "justification": "Informa corretamente o máximo anunciado, mas omite a dependência do emissor.",
+    "annotations": {}
+  },
+  "S09-004": {
+    "label": "P",
+    "justification": "Apresenta até 48 vezes sem distinguir o máximo anunciado do limite efetivo.",
+    "annotations": {}
+  },
+  "S09-005": {
+    "label": "P",
+    "justification": "Informa até 48 vezes, mas omite a ressalva sobre o emissor.",
+    "annotations": {}
+  },
+  "S09-006": {
+    "label": "P",
+    "justification": "Número correto, porém sem explicar que o limite depende do emissor do cartão.",
+    "annotations": {}
+  },
+  "S09-007": {
+    "label": "P",
+    "justification": "Informa o máximo anunciado, mas não apresenta a condição do limite efetivo.",
+    "annotations": {}
+  },
+  "S09-008": {
+    "label": "P",
+    "justification": "Informa até 48 parcelas sem a ressalva necessária.",
+    "annotations": {}
+  },
+  "S09-009": {
+    "label": "P",
+    "justification": "Informa até 48 vezes no cartão de crédito, mas omite a dependência do emissor.",
+    "annotations": {}
+  },
+  "S09-010": {
+    "label": "P",
+    "justification": "Mesma situação: máximo correto, sem a ressalva sobre o limite efetivo.",
+    "annotations": {}
+  },
+  "S10-001": {
+    "label": "C",
+    "justification": "Confirma a possibilidade e descreve o fluxo completo: envio, clique, escolha do método e finalização.",
+    "annotations": {}
+  },
+  "S10-002": {
+    "label": "P",
+    "justification": "Confirma que é possível enviar pelo WhatsApp, mas não descreve o fluxo de pagamento.",
+    "annotations": {}
+  },
+  "S10-003": {
+    "label": "P",
+    "justification": "Confirma a possibilidade, mas não explica como o cliente conclui a compra.",
+    "annotations": {}
+  },
+  "S10-004": {
+    "label": "C",
+    "justification": "Descreve corretamente o envio e o fluxo completo de pagamento.",
+    "annotations": {}
+  },
+  "S10-005": {
+    "label": "P",
+    "justification": "Confirma o envio pelo WhatsApp, mas não explica o restante do processo.",
+    "annotations": {}
+  },
+  "S10-006": {
+    "label": "C",
+    "justification": "Confirma a possibilidade e descreve o fluxo completo de compra.",
+    "annotations": {}
+  },
+  "S10-007": {
+    "label": "P",
+    "justification": "Confirma o envio por WhatsApp, mas não descreve o fluxo do cliente.",
+    "annotations": {}
+  },
+  "S10-008": {
+    "label": "P",
+    "justification": "Identifica corretamente os canais de envio, mas omite o fluxo de pagamento.",
+    "annotations": {}
+  },
+  "S10-009": {
+    "label": "P",
+    "justification": "Confirma o uso do WhatsApp, mas não descreve o processo de conclusão da compra.",
+    "annotations": {}
+  },
+  "S10-010": {
+    "label": "P",
+    "justification": "Confirma o canal de envio, mas não apresenta o fluxo completo.",
+    "annotations": {}
+  }
+}

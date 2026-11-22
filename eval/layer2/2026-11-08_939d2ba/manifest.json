@@ -1,0 +1,109 @@
+{
+  "run_id": "20261108T201206Z-9de853",
+  "started_at": "2026-11-08T20:12:06+00:00",
+  "code": {
+    "head": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+    "head_tree": "f18a031ec9f3949ec3eba3f607c07a255dd8773a",
+    "head_app_tree": "4ccfae1989cb8119a5cfae962b59e83f85d955ac",
+    "branch": "feat/architecture-improvements",
+    "status_porcelain": [
+      "M .github/workflows/ci.yml",
+      "?? eval/official_scenarios.json",
+      "?? eval/official_scenarios_rubrics.md",
+      "?? eval/run_official_scenarios.py",
+      "?? tests/test_eval_runner.py",
+      "?? tests/test_official_scenarios.py"
+    ],
+    "app_working_tree_sha256": "181eac372be961c44476916985aa2d404379cbc669a784fad3426d4b2b3cdfe2",
+    "app_matches_head": true
+  },
+  "criteria_sha256": {
+    "eval/official_scenarios.json": "f2f6875105fc96a98b63b2cbf199e7fb84145e230f4939b1ab179354ffc1b5de",
+    "eval/official_scenarios_rubrics.md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff"
+  },
+  "criteria_version": "1.2",
+  "corpus_sha256": "4606534bcb218a74057b8cc89e20ac3e0163839dc2ec62c4602ef71486f61f4d",
+  "model": "qwen2.5:7b",
+  "model_digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+  "ollama_url": "http://localhost:11434",
+  "ollama_server_version": "0.40.6",
+  "client_timeouts_s": {
+    "knowledge": 60,
+    "customer_support": 60
+  },
+  "warmup": {
+    "ok": true,
+    "latency_s": 8.68
+  },
+  "settlement_reference_date": "2026-11-08",
+  "scenarios": [
+    "S01",
+    "S02",
+    "S03",
+    "S04",
+    "S05",
+    "S06",
+    "S07",
+    "S08",
+    "S09",
+    "S10",
+    "S05-V"
+  ],
+  "n_per_scenario": {
+    "S01": 10,
+    "S02": 3,
+    "S03": 10,
+    "S04": 10,
+    "S05": 10,
+    "S06": 10,
+    "S07": 3,
+    "S08": 10,
+    "S09": 10,
+    "S10": 10,
+    "S05-V": 10
+  },
+  "python": "3.11.2",
+  "platform": "Linux-6.1.0-54-amd64-x86_64-with-glibc2.36",
+  "pip_freeze": {
+    "file": "pip_freeze.txt",
+    "sha256": "7a76886fb83e55f4b014f122825ebb476447379b7281784207dc3ca023d63a4b",
+    "packages": 39,
+    "returncode": 0
+  },
+  "isolated_state_dir": "/tmp/eval01-state-who7k64j",
+  "finished_at": "2026-11-08T20:34:39+00:00",
+  "generation": {
+    "llm_calls": 91,
+    "llm_calls_failed": 0,
+    "models_requested": [
+      "qwen2.5:7b"
+    ],
+    "models_returned": [
+      "qwen2.5:7b"
+    ],
+    "options_sent": [
+      "not_sent"
+    ],
+    "timeouts_s": [
+      60
+    ],
+    "system_prompts": [
+      {
+        "has_tools": false,
+        "sha256_16": "d21a93002e54b7e0"
+      },
+      {
+        "has_tools": true,
+        "sha256_16": "79d0c9cd4f07c191"
+      },
+      {
+        "has_tools": true,
+        "sha256_16": "afae6ae3703e2be6"
+      },
+      {
+        "has_tools": true,
+        "sha256_16": "be71d5116cf0c338"
+      }
+    ]
+  }
+}

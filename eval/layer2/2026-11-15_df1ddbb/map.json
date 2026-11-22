@@ -1,0 +1,778 @@
+{
+  "seed": 20261115,
+  "items": {
+    "S01-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S01-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S01-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S01-004": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S01-005": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S01-006": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S01-007": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S01-008": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S01-009": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S01-010": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S01",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S02-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S02",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S02-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S02",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S02-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S02",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S03-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S03-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S03-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S03-004": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S03-005": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S03-006": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S03-007": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S03-008": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S03-009": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S03-010": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S03",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S04-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S04-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S04-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S04-004": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S04-005": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S04-006": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S04-007": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S04-008": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S04-009": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S04-010": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S04",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S05-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S05-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S05-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S05-004": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S05-005": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S05-006": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S05-007": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S05-008": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S05-009": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S05-010": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S05-V-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S05-V-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S05-V-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S05-V-004": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S05-V-005": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S05-V-006": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S05-V-007": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S05-V-008": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S05-V-009": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S05-V-010": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S05-V",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S06-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S06-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S06-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S06-004": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S06-005": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S06-006": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S06-007": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S06-008": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S06-009": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S06-010": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S06",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S07-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S07",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S07-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S07",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S07-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S07",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S08-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S08-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S08-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S08-004": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S08-005": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S08-006": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S08-007": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S08-008": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S08-009": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S08-010": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S08",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S09-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S09-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S09-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S09-004": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S09-005": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S09-006": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S09-007": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S09-008": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S09-009": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S09-010": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S09",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S10-001": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S10-002": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S10-003": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S10-004": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S10-005": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S10-006": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S10-007": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 2,
+      "outcome": "generated"
+    },
+    "S10-008": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S10-009": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S10-010": {
+      "run_dir": "run",
+      "run_id": "20261115T205133Z-524891",
+      "commit": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+      "scenario": "S10",
+      "index": 1,
+      "outcome": "generated"
+    }
+  },
+  "fallback_items": {},
+  "excluded": [],
+  "runs": [
+    "run"
+  ]
+}

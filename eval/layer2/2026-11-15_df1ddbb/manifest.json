@@ -1,0 +1,105 @@
+{
+  "run_id": "20261115T205133Z-524891",
+  "started_at": "2026-11-15T20:51:33+00:00",
+  "code": {
+    "head": "df1ddbbb04e8b7480ccc8073cc70e973c086c667",
+    "head_tree": "3fc63ab6a9ad905db4a01038dd1474221b8911cd",
+    "head_app_tree": "daae2807facf85d73c6b573d5d964edceb880d1e",
+    "branch": "feat/architecture-improvements",
+    "status_porcelain": [
+      "?? metas.txt",
+      "?? objetivo_getnet_ai_hardcore_engineer.md"
+    ],
+    "app_working_tree_sha256": "196c6c317695182c8eb5480da61080aef95514609141b120817256805162b37d",
+    "app_matches_head": true
+  },
+  "criteria_sha256": {
+    "eval/official_scenarios.json": "a62c6c1e9ed26c57f21dc73142eb75f311d1b74e15abbed299428767a07f0e16",
+    "eval/official_scenarios_rubrics.md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff"
+  },
+  "criteria_version": "1.5",
+  "corpus_sha256": "4606534bcb218a74057b8cc89e20ac3e0163839dc2ec62c4602ef71486f61f4d",
+  "model": "qwen2.5:7b",
+  "model_digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+  "ollama_url": "http://localhost:11434",
+  "ollama_server_version": "0.40.6",
+  "client_timeouts_s": {
+    "knowledge": 60.0,
+    "customer_support": 60.0
+  },
+  "warmup": {
+    "ok": true,
+    "latency_s": 7.98
+  },
+  "settlement_reference_date": "2026-11-15",
+  "scenarios": [
+    "S01",
+    "S02",
+    "S03",
+    "S04",
+    "S05",
+    "S06",
+    "S07",
+    "S08",
+    "S09",
+    "S10",
+    "S05-V"
+  ],
+  "n_per_scenario": {
+    "S01": 10,
+    "S02": 3,
+    "S03": 10,
+    "S04": 10,
+    "S05": 10,
+    "S06": 10,
+    "S07": 3,
+    "S08": 10,
+    "S09": 10,
+    "S10": 10,
+    "S05-V": 10
+  },
+  "python": "3.11.2",
+  "platform": "Linux-6.1.0-54-amd64-x86_64-with-glibc2.36",
+  "pip_freeze": {
+    "file": "pip_freeze.txt",
+    "sha256": "7a76886fb83e55f4b014f122825ebb476447379b7281784207dc3ca023d63a4b",
+    "packages": 39,
+    "returncode": 0
+  },
+  "isolated_state_dir": "/tmp/eval01-state-2eieb3cf",
+  "finished_at": "2026-11-15T21:14:29+00:00",
+  "generation": {
+    "llm_calls": 91,
+    "llm_calls_failed": 0,
+    "models_requested": [
+      "qwen2.5:7b"
+    ],
+    "models_returned": [
+      "qwen2.5:7b"
+    ],
+    "options_sent": [
+      "not_sent"
+    ],
+    "timeouts_s": [
+      60.0
+    ],
+    "system_prompts": [
+      {
+        "has_tools": false,
+        "sha256_16": "d21a93002e54b7e0"
+      },
+      {
+        "has_tools": true,
+        "sha256_16": "79d0c9cd4f07c191"
+      },
+      {
+        "has_tools": true,
+        "sha256_16": "afae6ae3703e2be6"
+      },
+      {
+        "has_tools": true,
+        "sha256_16": "be71d5116cf0c338"
+      }
+    ]
+  }
+}

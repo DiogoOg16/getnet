@@ -1,0 +1,74 @@
+{
+  "run_id": "20261117T134058Z-50ce2c",
+  "started_at": "2026-11-17T13:40:58+00:00",
+  "code": {
+    "head": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+    "head_tree": "7181ce980d695662f8009119e74f5e9d5b655548",
+    "head_app_tree": "752806fb6a388b850c71ef3ead0b185293dd925b",
+    "branch": "feat/architecture-improvements",
+    "status_porcelain": [
+      "?? docs/PROJECT_AUDIT_AND_ROADMAP.md",
+      "?? metas.txt",
+      "?? objetivo_getnet_ai_hardcore_engineer.md"
+    ],
+    "app_working_tree_sha256": "aa5746a1fb283251e09680e8b1965d8092d1d1e67a7325440c9c0fed707c5be0",
+    "app_matches_head": true
+  },
+  "criteria_sha256": {
+    "eval/official_scenarios.json": "fe477b8dbc8ea138cc39089779d539da9b2ccab01d03a6ed1a23ffdaf8145e4a",
+    "eval/official_scenarios_rubrics.md": "b8f9d7f61f7c7eb5c152615f6b44f75ce94b57ace9fb37b50a70e1239e0f8cff"
+  },
+  "criteria_version": "1.6",
+  "corpus_sha256": "4606534bcb218a74057b8cc89e20ac3e0163839dc2ec62c4602ef71486f61f4d",
+  "model": "qwen2.5:7b",
+  "model_digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+  "ollama_url": "http://localhost:11434",
+  "ollama_server_version": "0.40.6",
+  "client_timeouts_s": {
+    "knowledge": 60.0,
+    "customer_support": 60.0
+  },
+  "warmup": {
+    "ok": true,
+    "latency_s": 9.86
+  },
+  "settlement_reference_date": "2026-11-17",
+  "scenarios": [
+    "S06"
+  ],
+  "n_per_scenario": {
+    "S06": 10
+  },
+  "python": "3.11.2",
+  "platform": "Linux-6.1.0-55-amd64-x86_64-with-glibc2.36",
+  "pip_freeze": {
+    "file": "pip_freeze.txt",
+    "sha256": "7a76886fb83e55f4b014f122825ebb476447379b7281784207dc3ca023d63a4b",
+    "packages": 39,
+    "returncode": 0
+  },
+  "isolated_state_dir": "/tmp/eval01-state-weno_wrp",
+  "finished_at": "2026-11-17T13:45:09+00:00",
+  "generation": {
+    "llm_calls": 10,
+    "llm_calls_failed": 0,
+    "models_requested": [
+      "qwen2.5:7b"
+    ],
+    "models_returned": [
+      "qwen2.5:7b"
+    ],
+    "options_sent": [
+      "not_sent"
+    ],
+    "timeouts_s": [
+      60.0
+    ],
+    "system_prompts": [
+      {
+        "has_tools": false,
+        "sha256_16": "d21a93002e54b7e0"
+      }
+    ]
+  }
+}

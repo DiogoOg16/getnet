@@ -1,0 +1,118 @@
+[
+  {
+    "round": "2026-11-08_939d2ba",
+    "files": {
+      "manifest.json": {
+        "source": "run/manifest.json",
+        "sha256": "dbb09c8e42e713216e3e5eceaf804899bd35ee593b9b02c0ca9455201bbb1f86"
+      },
+      "executions.jsonl": {
+        "source": "run/executions.jsonl",
+        "sha256": "a11da1678b731c4eece30d4ee5243bdc2510592cc89c864cb86d49ad4bd9f54b"
+      },
+      "labels_frozen.json": {
+        "source": "blind_v2/labels_frozen.json",
+        "sha256": "6c547c187ec19e83868cb1605bb8ba330a97204e4317cf50ab591cc81a7ae0af",
+        "note": "registro do congelamento (data e hashes de labels.json e labels_fallback.json)"
+      },
+      "labels_fallback.json": {
+        "source": "blind_v2/labels_fallback.json",
+        "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      },
+      "report.json": {
+        "source": "blind_v2/report.json",
+        "sha256": "0f19afc2dd7deb98e542aa76ca1c152c445f9e8f6fe6f9fcc1fd667ea0f45603"
+      },
+      "map.json": {
+        "source": "blind_v2/mapa_oculto/map.json",
+        "sha256_original": "e923c94fe77ed247f67a81a1e2aa48c049887212d84c51d935e158500cfb6596",
+        "sha256": "e4a14388a7a468aff5b2a1744fe3574ce2d497d35dc3aa16cb40e53f296e22d6",
+        "note": "caminhos absolutos locais trocados por relativos; o resto é idêntico"
+      },
+      "labels.json": {
+        "source": "blind_v2/labels.json",
+        "sha256": "d6de11014d1b5e0f0812545dba808a392ae5320cbe52dd14974d988d1d56b97c"
+      }
+    }
+  },
+  {
+    "round": "2026-11-15_df1ddbb",
+    "files": {
+      "manifest.json": {
+        "source": "run/manifest.json",
+        "sha256": "e3a30b5c221458daf8c0e06a384a75152fe11bec992eed816fb551c6c6d2a78b"
+      },
+      "executions.jsonl": {
+        "source": "run/executions.jsonl",
+        "sha256": "0d1c3914cad8e592d541ab2f5d91b31544e1101ffe3a69c21823d3781a0f9216"
+      },
+      "labels_frozen.json": {
+        "source": "blind/labels_frozen.json",
+        "sha256": "1f48925b14a8082d7b661076f20179dedade228a7c6d413b2c406b1f0cdb6845",
+        "note": "registro do congelamento (data e hashes de labels.json e labels_fallback.json)"
+      },
+      "labels_fallback.json": {
+        "source": "blind/labels_fallback.json",
+        "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      },
+      "report.json": {
+        "source": "blind/report.json",
+        "sha256": "aed9040da9aab7c3143712dde954b24906ea3b5bb7f1cbae060d0e7f85b4d004"
+      },
+      "map.json": {
+        "source": "blind/mapa_oculto/map.json",
+        "sha256_original": "0e6998a74f62429ce85977efad003cb5f450081d7e7175262fa942698ee10eed",
+        "sha256": "15f6e256140d348d0685438339c9c0267f18aea13a32d5cc5f780defcd6b0565",
+        "note": "caminhos absolutos locais trocados por relativos; o resto é idêntico"
+      },
+      "revisao_S06_decisoes.json": {
+        "source": "lotes/revisao_S06_decisoes.json",
+        "sha256": "ce89892e6732fbae2e3856e74d4de32893f8c7fdbb5fd5cde52abb7d28ac8484"
+      },
+      "labels.json": {
+        "source": "blind/labels.json",
+        "sha256": "aadbd07331b07d01a931ce705536dc7baa167837f3ee669edb57298c1673de2b"
+      }
+    }
+  },
+  {
+    "round": "2026-11-17_877163b_S06",
+    "files": {
+      "manifest.json": {
+        "source": "runs/manifest.json",
+        "sha256": "1dc6ae426029c4dc16f29ae06eb0d3382c0420c6f86ffacc663d027c76ab3bd0"
+      },
+      "executions.jsonl": {
+        "source": "runs/executions.jsonl",
+        "sha256": "a497b818c03e66444e8dc17d2c633bbc7b530abc2569a4ece4cecfae73d4b8b3"
+      },
+      "labels_frozen.json": {
+        "source": "blind/labels_frozen.json",
+        "sha256": "892a5c093e27362b9b51991b7ac1fef53c6a1afc4f0b69e240647126486da3ff",
+        "note": "registro do congelamento (data e hashes de labels.json e labels_fallback.json)"
+      },
+      "labels_fallback.json": {
+        "source": "blind/labels_fallback.json",
+        "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      },
+      "report.json": {
+        "source": "blind/report.json",
+        "sha256": "8a5b8be0fb528d1ab3c901c5af33ec06d21cd276f94552f8bdb8529df00252c8"
+      },
+      "map.json": {
+        "source": "blind/mapa_oculto/map.json",
+        "sha256_original": "6ad78664332dc8c581a74ea1e74699a5972e03b4f606cd1e516ed84f6d2e160c",
+        "sha256": "4062390a625e8fdeef72acd4fe38603abec37fdafe0a75597aedfa1f5f65592e",
+        "note": "caminhos absolutos locais trocados por relativos; o resto é idêntico"
+      },
+      "comparacao.md": {
+        "source": "comparacao.md",
+        "sha256": "a1402bd65b0e99b1fd83c16858e07e4e173817d1fd5cb1b21603b7327410a55f"
+      },
+      "labels.json": {
+        "source": "blind/labels.json",
+        "sha256": "46f32112a775cdd10dce999022e6f5869c3784b5003ff28a00d6c65a604829fd"
+      }
+    }
+  }
+]

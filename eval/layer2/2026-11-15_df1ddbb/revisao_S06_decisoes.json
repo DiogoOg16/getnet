@@ -1,0 +1,19 @@
+{
+  "rodada": "df1ddbb (2026-11-15)",
+  "decidido_em": "2026-11-18",
+  "calibracao": "(b) rubrica literal, escolhida pelo usuário: abstenção que ainda apresenta o procedimento/tipo de venda = P ('explica só como solicitar, sem o conceito, reconhecendo a limitação'); abstenção que não apresenta nada do contexto = I (G2). A mesma regra foi aplicada à rodada 877163b.",
+  "originais": "labels_frozen.json (não alterado): 2 C / 0 P / 8 I",
+  "revisados": {
+    "S06-001": ["P", "Recusa, mas cita a antecipação pelo app (L46)."],
+    "S06-002": ["P", "Recusa, mas cita antecipação no crédito à vista/parcelado pelo app."],
+    "S06-003": ["P", "Recusa, mas cita o app e os canais Santander (L158)."],
+    "S06-004": ["P", "Recusa, mas cita a antecipação pelo app."],
+    "S06-005": ["P", "Recusa, mas cita a antecipação pelo app."],
+    "S06-006": ["C", "Mantém: crédito à vista/parcelado pelo app + canais, sem inventar."],
+    "S06-007": ["P", "Recusa, mas cita a antecipação pelo app."],
+    "S06-008": ["P", "Recusa, mas cita crédito à vista/parcelado pelo app."],
+    "S06-009": ["C", "Mantém: app, central e gerente, sem inventar."],
+    "S06-010": ["P", "Recusa, mas cita que vendas no crédito à vista/parcelado podem ser antecipadas (sem canal)."]
+  },
+  "resultado_revisado": {"C": 2, "P": 8, "I": 0}
+}

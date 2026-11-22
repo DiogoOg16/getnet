@@ -581,10 +581,10 @@ Comportamento da suíte padrão:
 
 #### Como ler o resultado
 
-Com os critérios v1.6, a suíte padrão dá `968 passed, 5 skipped, 9 xfailed`.
+Com os critérios v1.6, a suíte padrão dá `983 passed, 5 skipped, 8 xfailed`.
 
 - **`skipped` (5):** testes opt-in que dependem de rede ou do Ollama real (`RUN_NETWORK_TESTS=1`, `RUN_OLLAMA_INTEGRATION=1`).
-- **`xfailed` (9):** 3 requisitos dos cenários oficiais (tabela abaixo) e 6 itens do checklist do enunciado e do feedback anterior (`tests/acceptance/test_mission_and_v4_checklist.py`, ver adiante). Os 3 primeiros são requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
+- **`xfailed` (8):** 3 requisitos dos cenários oficiais (tabela abaixo) e 5 itens do checklist do enunciado e do feedback anterior (`tests/acceptance/test_mission_and_v4_checklist.py`, ver adiante). Os 3 primeiros são requisitos dos cenários oficiais que o sistema ainda **não** cumpre, marcados com `xfail(strict=True)` e o item de backlog correspondente. São limitações conhecidas, não testes desligados:
 
 | Requisito | Backlog | Defeito |
 |---|---|---|
@@ -603,7 +603,6 @@ Com `strict=True`, se um desses defeitos for corrigido o teste vira `XPASS` e a 
 | V4-1 | Perguntas em inglês recebem resposta em português |
 | V4-3 | "Como funciona…" vai para o Knowledge mesmo fora do domínio ("Como funciona a transferência de calor?"); "O que é…" fora do domínio vai para a busca web |
 | V4-9 | Logs em texto `chave=valor`, não JSON |
-| V4-10 | O `Dockerfile` copia `tests/` para a imagem |
 | V4-10 | Imagem do Ollama sem versão (`ollama/ollama:latest`) |
 | V4-10 | `requirements.txt` com versões exatas, mas sem hashes |
 
@@ -685,6 +684,8 @@ A avaliação separa o que é determinístico do que depende do modelo.
    python eval/run_official_scenarios.py freeze --blind BLIND   # depois da rotulagem
    python eval/run_official_scenarios.py report --blind BLIND
    ```
+
+**Evidência versionada:** manifestos, respostas completas, rótulos congelados e relatórios de cada rodada estão em [`eval/layer2/`](eval/layer2/README.md); `tests/test_layer2_evidence.py` recalcula os totais abaixo a partir desses arquivos e confere os hashes dos rótulos. A versão entregue não passou por uma rodada nova da camada 2.
 
 **Resultado da camada 2 registrado** (execução de 2026-11-08 sobre o commit `939d2ba`, `qwen2.5:7b`, 86 respostas): 32 Corretas, 48 Parciais e 6 Incorretas, com 100% de disponibilidade. Por cenário: S02, S03, S05 e S07 corretos em todas as execuções; S10 com 5 de 10 corretas; S01 com 1 correta, 7 parciais e 2 incorretas; S04 com 6 parciais e 4 incorretas; S06, S08 e S09 parciais em todas. Leitura honesta desse resultado:
 
@@ -885,7 +886,8 @@ Os logs registram, por requisição, o `request_id`, a decisão de roteamento, c
 │   ├── official_scenarios.json         # critérios congelados dos 10 cenários
 │   ├── official_scenarios_rubrics.md   # rubrica da avaliação humana
 │   ├── retrieval_metrics.py            # Recall@K, MRR, nDCG, Precision, latência (EVAL-02)
-│   └── run_official_scenarios.py       # camada 2 (modelo real)
+│   ├── run_official_scenarios.py       # camada 2 (modelo real)
+│   └── layer2/                         # evidência das rodadas: execuções, rótulos, relatórios
 ├── scripts/
 │   ├── agent_probe.py
 │   ├── check_scenarios.py

@@ -1,0 +1,90 @@
+{
+  "seed": 20261117,
+  "items": {
+    "S06-001": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 7,
+      "outcome": "generated"
+    },
+    "S06-002": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 5,
+      "outcome": "generated"
+    },
+    "S06-003": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 8,
+      "outcome": "generated"
+    },
+    "S06-004": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 4,
+      "outcome": "generated"
+    },
+    "S06-005": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 9,
+      "outcome": "generated"
+    },
+    "S06-006": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 6,
+      "outcome": "generated"
+    },
+    "S06-007": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 1,
+      "outcome": "generated"
+    },
+    "S06-008": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 3,
+      "outcome": "generated"
+    },
+    "S06-009": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 0,
+      "outcome": "generated"
+    },
+    "S06-010": {
+      "run_dir": "runs",
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "index": 2,
+      "outcome": "generated"
+    }
+  },
+  "fallback_items": {},
+  "excluded": [],
+  "runs": [
+    "runs"
+  ]
+}

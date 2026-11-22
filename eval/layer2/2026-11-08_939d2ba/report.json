@@ -1,0 +1,256 @@
+{
+  "rows": [
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S01",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 1,
+        "P": 7,
+        "I": 2
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S02",
+      "executions": 3,
+      "generated": 3,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 3,
+        "P": 0,
+        "I": 0
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S03",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 10,
+        "P": 0,
+        "I": 0
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S04",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 0,
+        "P": 6,
+        "I": 4
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S05",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 10,
+        "P": 0,
+        "I": 0
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S05-V",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 10,
+        "P": 0,
+        "I": 0
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S06",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 0,
+        "P": 10,
+        "I": 0
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S07",
+      "executions": 3,
+      "generated": 3,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 3,
+        "P": 0,
+        "I": 0
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S08",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 0,
+        "P": 10,
+        "I": 0
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S09",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 0,
+        "P": 10,
+        "I": 0
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    },
+    {
+      "run_id": "20261108T201206Z-9de853",
+      "commit": "939d2ba0cf854df4ea03545247a8ffa8f2565226",
+      "scenario": "S10",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 5,
+        "P": 5,
+        "I": 0
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    }
+  ],
+  "labels": {
+    "C": "Correta",
+    "P": "Parcial",
+    "I": "Incorreta"
+  },
+  "notes": "quality conta só execuções generated; fallback_quality conta só execuções degraded e não entra em quality.",
+  "labels_sha256": {
+    "labels.json": "d6de11014d1b5e0f0812545dba808a392ae5320cbe52dd14974d988d1d56b97c",
+    "labels_fallback.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "run_id": "20261117T134058Z-50ce2c",
+      "commit": "877163b72defd292cfc923c055cdcb6c551c1fc6",
+      "scenario": "S06",
+      "executions": 10,
+      "generated": 10,
+      "degraded": 0,
+      "external_unavailable": 0,
+      "http_error": 0,
+      "quality": {
+        "C": 5,
+        "P": 2,
+        "I": 3
+      },
+      "fallback_quality": {
+        "C": 0,
+        "P": 0,
+        "I": 0
+      },
+      "availability": 1.0,
+      "degradation_rate": 0.0
+    }
+  ],
+  "labels": {
+    "C": "Correta",
+    "P": "Parcial",
+    "I": "Incorreta"
+  },
+  "notes": "quality conta só execuções generated; fallback_quality conta só execuções degraded e não entra em quality.",
+  "labels_sha256": {
+    "labels.json": "46f32112a775cdd10dce999022e6f5869c3784b5003ff28a00d6c65a604829fd",
+    "labels_fallback.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  }
+}
