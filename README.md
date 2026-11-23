@@ -58,27 +58,46 @@ Observação: os testes de integração real com Ollama permanecem opt-in por va
 
 ## Arquitetura e fluxo da mensagem
 
-```text
-Cliente
-  |
-  v
-FastAPI (/chat) -- autenticação Bearer, user_id == token, memória de sessão
-  |
-  v
-ChatOrchestrator -- Router Agent (texto original) monta um plano de até 3 etapas
-  |                 agentes recebem a mensagem já mascarada
-  |
-  +--> Knowledge Agent ------> Retriever local ------> Ollama (opcional)
-  |
-  +--> Customer Support -----> Ferramentas de cliente/transação simuladas
-  |
-  +--> Web Search -----------> Clima / câmbio / busca web
-  |
-  +--> Human Escalation -----> Ticket persistido (pending -> assigned -> completed)
-  |
-  v
-Resposta JSON + metadados + trace por etapa
+```mermaid
+flowchart TB
+    U([Cliente]) -->|"POST /chat · message, user_id, token Bearer"| API
+
+    subgraph API_LAYER["API (FastAPI)"]
+        API["Autenticação: user_id precisa ser o do token<br/>limites: 2000 caracteres e 30 req/min por usuário"]
+        MEM[("Memória de sessão<br/>por usuário e sessão")]
+        API <--> MEM
+    end
+
+    API --> ORC
+
+    subgraph ORCH["Orquestração"]
+        ORC["ChatOrchestrator<br/>plano de até 3 etapas, sem repetir agente"]
+        R["Router<br/>regras de intenção"]
+        ORC -->|"1. qual agente?"| R
+        ORC -->|"2. resultado da ferramenta pede mais?<br/>(venda negada sem motivo)"| ORC
+    end
+
+    ORC -->|mensagem com dados pessoais mascarados| AG
+
+    subgraph AG["Agentes"]
+        K["Knowledge<br/>RAG BM25 sobre a base da Getnet"]
+        CS["Customer Support<br/>function calling com validação"]
+        WS["Web Search<br/>clima, câmbio, busca"]
+        HE["Escalonamento humano"]
+    end
+
+    K --> DOCS[("Base: 269 documentos<br/>do site da Getnet")]
+    K -.->|geração opcional| LLM[["Ollama · qwen2.5:7b"]]
+    CS -.->|chamada de ferramenta| LLM
+    CS --> TOOLS[("Ferramentas: cliente,<br/>transação, recebimentos<br/>(dados simulados)")]
+    WS --> EXT[("Open-Meteo · Banco Central<br/>DuckDuckGo com domínios permitidos")]
+    HE --> TK[("Ticket persistido<br/>pending → assigned → completed")]
+    ATT([Atendente]) -->|"/human-handoff: assume e conclui"| TK
+
+    AG --> OUT(["Resposta JSON<br/>agente, fontes, ferramenta, fatos verificados, trace por etapa"])
 ```
+
+Em texto: a API autentica e aplica os limites; o orquestrador pergunta ao Router qual agente atende, executa a etapa e, se o resultado da ferramenta mostrar uma venda negada sem motivo registrado, acrescenta o Knowledge para citar a explicação documental; os agentes recebem a mensagem já mascarada; o escalonamento cria um ticket que o atendente assume e conclui.
 
 ### Agentes
 
